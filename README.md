@@ -42,6 +42,14 @@ Appium 기반으로 UI XML 수집 → 테스트 코드 자동 생성 → 린트 
 pip install -r requirements.txt
 ```
 
+| 패키지 | 용도 |
+|---|---|
+| `appium-python-client` | Appium 드라이버 |
+| `pytest` | 테스트 실행 |
+| `pytest-html` | HTML 리포트 생성 |
+| `pytest-json-report` | JSON 리포트 생성 (결과 파싱 정확도 향상) |
+| `flake8` | 린트 검사 |
+
 ### 2. Appium 및 드라이버
 
 ```bash
