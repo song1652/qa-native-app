@@ -1,0 +1,3 @@
+[01_analyze] platform=android mode=emulator
+  collecting: main
+[01_analyze] done. 1 screen(s) collected.

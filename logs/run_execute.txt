@@ -1,0 +1,33 @@
+[05_execute] Using pytest-json-report for result parsing.
+[05_execute] Running: python -m pytest /Users/songkyoungjin/qa-native-app/tests/generated/android -v --junit-xml=/Users/songkyoungjin/qa-native-app/state/pytest_report.xml --json-report --json-report-file=/Users/songkyoungjin/qa-native-app/state/pytest_report.json --html=/Users/songkyoungjin/qa-native-app/tests/reports/report_android.html --self-contained-html
+============================= test session starts ==============================
+platform darwin -- Python 3.12.9, pytest-9.0.3, pluggy-1.6.0 -- /Users/songkyoungjin/.pyenv/versions/3.12.9/bin/python
+cachedir: .pytest_cache
+metadata: {'Python': '3.12.9', 'Platform': 'macOS-26.4.1-arm64-arm-64bit', 'Packages': {'pytest': '9.0.3', 'pluggy': '1.6.0'}, 'Plugins': {'deepeval': '4.0.5', 'repeat': '0.9.4', 'playwright': '0.7.2', 'xdist': '3.8.0', 'json-report': '1.5.0', 'metadata': '3.1.1', 'html': '4.2.0', 'rerunfailures': '16.3', 'asyncio': '1.3.0', 'base-url': '2.1.0', 'anyio': '4.13.0'}, 'AWS_REGION': 'ap-northeast-1', 'Base URL': ''}
+rootdir: /Users/songkyoungjin/qa-native-app
+configfile: setup.cfg
+plugins: deepeval-4.0.5, repeat-0.9.4, playwright-0.7.2, xdist-3.8.0, json-report-1.5.0, metadata-3.1.1, html-4.2.0, rerunfailures-16.3, asyncio-1.3.0, base-url-2.1.0, anyio-4.13.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 3 items
+
+tests/generated/android/settings/tc_001_main_screen.py::TestMainScreen::test_settings_main_screen PASSED [ 33%]
+tests/generated/android/settings/tc_002_search_bar.py::TestSearchBar::test_search_bar_tap PASSED [ 66%]
+tests/generated/android/settings/tc_003_network_item.py::TestNetworkItem::test_network_item_visible PASSED [100%]Running teardown with pytest sessionfinish...
+
+
+=============================== warnings summary ===============================
+tests/generated/android/settings/tc_001_main_screen.py::TestMainScreen::test_settings_main_screen
+tests/generated/android/settings/tc_002_search_bar.py::TestSearchBar::test_search_bar_tap
+tests/generated/android/settings/tc_003_network_item.py::TestNetworkItem::test_network_item_visible
+  /Users/songkyoungjin/.pyenv/versions/3.12.9/lib/python3.12/site-packages/appium/webdriver/webdriver.py:220: DeprecationWarning: setting remote_server_addr in RemoteConnection() is deprecated, set in client_config instead
+    command_executor = AppiumConnection(remote_server_addr=command_executor, client_config=client_config)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /Users/songkyoungjin/qa-native-app/state/pytest_report.xml -
+--------------------------------- JSON report ----------------------------------
+report saved to: /Users/songkyoungjin/qa-native-app/state/pytest_report.json
+- Generated html report: file:///Users/songkyoungjin/qa-native-app/tests/reports/report_android.html -
+======================== 3 passed, 3 warnings in 12.93s ========================
+[05_execute] Parsing JSON report results...
+[05_execute] Results: 3 passed, 0 failed / 3 total
+[05_execute] HTML report saved: /Users/songkyoungjin/qa-native-app/tests/reports/report_android.html

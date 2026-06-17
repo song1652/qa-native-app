@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>App QA Report</title>
+<style>
+  :root{--bg:#0d1117;--surface:rgba(30,41,59,.4);--border:rgba(255,255,255,.1);--text:#f8fafc;--text2:#94a3b8;--text3:#64748b;--pass:#10b981;--pass-bg:rgba(16,185,129,.1);--fail:#f43f5e;--fail-bg:rgba(244,63,94,.1);--warn:#f59e0b;--skip:#a855f7;--accent:#6366f1;--radius:16px;--radius-sm:12px;--shadow:0 20px 60px -15px rgba(0,0,0,.6)}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,sans-serif;background:#0d1117;color:var(--text);min-height:100vh}
+  .layout{display:grid;grid-template-columns:200px 1fr;min-height:100vh}
+  .sidebar{background:rgba(13,17,23,.7);border-right:1px solid var(--border);padding:24px 0;position:sticky;top:0;height:100vh}
+  .sidebar-logo{padding:0 16px 20px;border-bottom:1px solid var(--border);margin-bottom:12px}
+  .logo-text{font-size:16px;font-weight:800}.logo-sub{font-size:11px;color:var(--text3);margin-top:3px}
+  .nav-section{padding:0 10px}
+  .nav-item{font-size:13px;color:var(--text2);padding:9px 10px;border-radius:var(--radius-sm);cursor:pointer;list-style:none;font-weight:500;display:flex;align-items:center;gap:8px}
+  .nav-item:hover,.nav-item.active{background:rgba(30,41,59,.65);color:var(--text)}
+  .nav-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+  .nav-dot.pass{background:var(--pass)}.nav-dot.fail{background:var(--fail)}.nav-dot.warn{background:var(--warn)}
+  .nav-count{margin-left:auto;font-size:11px;color:var(--text3)}
+  .main{padding:32px 36px;max-width:860px}
+  .topbar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px}
+  .topbar h1{font-size:24px;font-weight:800}.meta{font-size:11px;color:var(--text3);margin-top:4px}
+  .overall-badge{padding:8px 16px;border-radius:var(--radius);font-size:12px;font-weight:700}
+  .overall-badge.pass{background:var(--pass-bg);color:var(--pass);border:1px solid rgba(16,185,129,.25)}
+  .overall-badge.fail{background:var(--fail-bg);color:var(--fail);border:1px solid rgba(244,63,94,.25)}
+  .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:28px}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px}
+  .stat-num{font-size:28px;font-weight:800;line-height:1;margin-bottom:4px}
+  .stat-lbl{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px}
+  .group-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:14px;overflow:hidden}
+  .group-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border)}
+  .group-header.pass{border-left:3px solid var(--pass)}.group-header.fail{border-left:3px solid var(--fail)}.group-header.warn{border-left:3px solid var(--warn)}
+  .group-title-wrap{display:flex;align-items:center;gap:9px}
+  .group-chevron{color:var(--text3);font-size:11px;transition:transform .2s}
+  .group-chevron.open{transform:rotate(90deg)}
+  .group-dot{width:7px;height:7px;border-radius:50%}
+  .group-dot.pass{background:var(--pass)}.group-dot.fail{background:var(--fail)}.group-dot.warn{background:var(--warn)}
+  .group-title{font-size:13px;font-weight:700}.group-sub{font-size:11px;color:var(--text3)}
+  .badge{font-size:10px;font-weight:700;padding:2px 9px;border-radius:20px}
+  .badge.pass{background:var(--pass-bg);color:var(--pass)}.badge.fail{background:var(--fail-bg);color:var(--fail)}
+  .filter-bar{display:flex;gap:6px;padding:9px 18px;border-bottom:1px solid var(--border)}
+  .fbtn{font-size:11px;padding:3px 10px;border-radius:14px;border:1px solid var(--border);background:transparent;color:var(--text3);cursor:pointer}
+  .fbtn.active{background:rgba(30,41,59,.65);color:var(--text);border-color:rgba(255,255,255,.2)}
+  .case-list{padding:6px 0}
+  .case-item{border-bottom:1px solid var(--border);cursor:pointer}
+  .case-item:last-child{border-bottom:none}
+  .case-header{display:flex;align-items:center;gap:10px;padding:9px 18px}
+  .case-dot{width:5px;height:5px;border-radius:50%}
+  .case-dot.pass{background:var(--pass)}.case-dot.fail{background:var(--fail)}.case-dot.skip{background:var(--skip)}
+  .case-title{flex:1;font-size:12px;font-weight:500}
+  .case-right{display:flex;align-items:center;gap:8px}
+  .case-status-txt{font-size:10px;font-weight:700}
+  .case-status-txt.pass{color:var(--pass)}.case-status-txt.fail{color:var(--fail)}
+  .chevron{color:var(--text3);font-size:16px;transition:transform .2s}
+  .chevron.open{transform:rotate(90deg)}
+  .case-detail{display:none;padding:0 18px 12px 33px}
+  .detail-row{display:flex;gap:12px;margin-top:8px;font-size:11px}
+  .detail-label{min-width:80px;font-weight:600;color:var(--text3);text-transform:uppercase;font-size:9px}
+  .detail-val{color:var(--text2);font-family:monospace}
+  .steps-list{padding-left:14px;margin:0}
+  .video-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:20px;overflow:hidden}
+  .video-header{display:flex;align-items:center;gap:8px;padding:12px 18px;border-bottom:1px solid var(--border)}
+  .video-icon{color:var(--accent);font-size:14px}
+  .video-title{font-size:13px;font-weight:700;flex:1}
+  .video-dl{font-size:11px;color:var(--accent);text-decoration:none;padding:3px 10px;border:1px solid var(--accent);border-radius:20px}
+  .video-dl:hover{background:rgba(99,102,241,.12)}
+  .video-player{width:100%;max-height:420px;background:#000;display:block}
+  .detail-error{color:var(--fail);font-family:monospace;white-space:pre-wrap;word-break:break-all}
+  .artifact-panel{margin-top:14px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden}
+  .artifact-sub{padding:12px 14px;border-bottom:1px solid var(--border)}
+  .artifact-sub:last-child{border-bottom:none}
+  .artifact-sub-title{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px}
+  .screenshot-wrap{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px}
+  .screenshot-thumb{max-width:300px;max-height:220px;object-fit:cover;border-radius:8px;border:1px solid var(--border);cursor:zoom-in;transition:opacity .15s,box-shadow .15s}
+  .screenshot-thumb:hover{opacity:.85;box-shadow:0 0 0 2px var(--accent)}
+  .artifact-video{max-width:100%;width:480px;border-radius:8px;border:1px solid var(--border);display:block;margin-bottom:6px;background:#000}
+  .artifact-dl{font-size:11px;color:var(--text3);text-decoration:none;display:inline-flex;align-items:center;gap:4px}
+  .artifact-dl:hover{color:var(--text2)}
+  .lb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9999;align-items:center;justify-content:center;cursor:zoom-out}
+  .lb-overlay.open{display:flex}
+  .lb-overlay img{max-width:92vw;max-height:92vh;object-fit:contain;border-radius:8px;box-shadow:0 0 80px rgba(0,0,0,.9)}
+</style>
+<script>
+var _gState={};
+function _gs(l){if(!_gState[l])_gState[l]={filter:'all',open:false};return _gState[l];}
+function toggle(uid){var d=document.getElementById('detail_'+uid),c=document.getElementById('chv_'+uid);if(d.style.display==='none'||!d.style.display){d.style.display='block';c.classList.add('open');}else{d.style.display='none';c.classList.remove('open');}}
+function toggleGroup(l){var st=_gs(l);st.open=!st.open;var b=document.getElementById('gbody_'+l),c=document.getElementById('gchv_'+l);if(st.open){b.style.display='block';c.classList.add('open');}else{b.style.display='none';c.classList.remove('open');}}
+function setFilter(l,f){var st=_gs(l);st.filter=f;var list=document.getElementById('clist_'+l),items=list.querySelectorAll('.case-item');items.forEach(function(el){el.style.display=(f==='all'||el.dataset.status===f)?'':'none';});document.getElementById('fbar_'+l).querySelectorAll('.fbtn').forEach(function(b){b.classList.remove('active');if((f==='all'&&b.textContent.startsWith('All'))||(f==='pass'&&b.textContent.startsWith('Pass'))||(f==='fail'&&b.textContent.startsWith('Fail')))b.classList.add('active');});}
+function _openLb(src){var ov=document.getElementById('lb-overlay');if(!ov)return;document.getElementById('lb-img').src=src;ov.classList.add('open');}
+document.addEventListener('click',function(e){
+  var t;
+  t=e.target.closest('#lb-overlay');if(t){t.classList.remove('open');return;}
+  t=e.target.closest('.screenshot-thumb');if(t){_openLb(t.src);return;}
+  t=e.target.closest('[data-toggle]');if(t){toggle(t.getAttribute('data-toggle'));return;}
+  t=e.target.closest('[data-toggle-group]');if(t){toggleGroup(t.getAttribute('data-toggle-group'));return;}
+  t=e.target.closest('[data-filter]');if(t){setFilter(t.getAttribute('data-filter'),t.getAttribute('data-filter-val'));return;}
+});
+(function(){var ov=document.createElement('div');ov.id='lb-overlay';ov.className='lb-overlay';var img=document.createElement('img');img.id='lb-img';ov.appendChild(img);if(document.body)document.body.appendChild(ov);else document.addEventListener('DOMContentLoaded',function(){document.body.appendChild(ov);});})();
+</script>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-text">QA App</div>
+      <div class="logo-sub">Android Test Report</div>
+    </div>
+    <nav class="nav-section">
+      <ul style="list-style:none;"><li class="nav-item active" id="nav_all" data-nav="all">All (3)</li>
+<li class="nav-item" id="nav_other" data-nav="other"><span class="nav-dot fail"></span>OTHER<span class="nav-count">2/3</span></li>
+</ul>
+    </nav>
+  </aside>
+  <div class="main">
+    <div class="topbar">
+      <div><h1>Test Results</h1><div class="meta">2026-06-17 09:01:49 &middot; 1 group(s) &middot; 3 cases</div></div>
+      <div class="overall-badge fail">1 FAILED</div>
+    </div>
+    <div class="stats">
+      <div class="stat-card"><div class="stat-num">3</div><div class="stat-lbl">Total</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--pass)">2</div><div class="stat-lbl">Passed</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--fail)">1</div><div class="stat-lbl">Failed</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--skip)">0</div><div class="stat-lbl">Skipped</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--fail)">66.7%</div><div class="stat-lbl">Pass Rate</div></div>
+    </div>
+    
+    
+<section class="group-card" id="group_other">
+  <div class="group-header fail" data-toggle-group="other" style="cursor:pointer">
+    <div class="group-title-wrap">
+      <span class="group-chevron" id="gchv_other">&#9654;</span>
+      <span class="group-dot fail"></span>
+      <span class="group-title">OTHER</span>
+      <span class="group-sub">2 / 3 passed</span>
+    </div>
+    <div class="group-right">
+      <span class="badge fail">FAIL</span>
+    </div>
+  </div>
+  <div class="group-body" id="gbody_other" style="display:none">
+    <div class="filter-bar" id="fbar_other">
+      <button class="fbtn active" data-filter="other" data-filter-val="all">All (3)</button>
+      <button class="fbtn pass" data-filter="other" data-filter-val="pass">Pass (2)</button>
+      <button class="fbtn fail" data-filter="other" data-filter-val="fail">Fail (1)</button>
+    </div>
+    <div class="case-list" id="clist_other"><div class="case-item fail" data-status="fail" data-toggle="other_0">  <div class="case-header">    <span class="case-dot fail"></span>    <span class="case-title">tests/generated/android/tc_001_addition.py</span>    <div class="case-right">      <span class="case-status-txt fail">FAIL</span>      <span class="chevron" id="chv_other_0">&#8250;</span>    </div>  </div>  <div class="case-detail" id="detail_other_0">    <div class="detail-row">      <span class="detail-label">Steps</span>      <span class="detail-val"><ol class="steps-list"><li>homepage_title 요소가 존재하는지 확인한다</li></ol></span>    </div>    <div class="detail-row">      <span class="detail-label">Expected</span>      <span class="detail-val">homepage_title 요소에 &quot;Settings&quot; 텍스트가 표시된다</span>    </div>        <div class="detail-row">      <span class="detail-label">Error</span>      <span class="detail-val detail-error">AssertionError: Element not found: com.android.settings:id/homepage_title</span>    </div>    <div class="artifact-panel"><div class="artifact-sub"><div class="artifact-sub-title">Video</div><video src="file:///Users/songkyoungjin/qa-native-app/reports/recordings/test_run_20260617_083545.mp4" controls class="artifact-video"></video><a href="file:///Users/songkyoungjin/qa-native-app/reports/recordings/test_run_20260617_083545.mp4" class="artifact-dl" download>&#8659; video</a></div></div>  </div></div><div class="case-item pass" data-status="pass" data-toggle="other_1">  <div class="case-header">    <span class="case-dot pass"></span>    <span class="case-title">tests/generated/android/tc_002_subtraction.py</span>    <div class="case-right">      <span class="case-status-txt pass">PASS</span>      <span class="chevron" id="chv_other_1">&#8250;</span>    </div>  </div>  <div class="case-detail" id="detail_other_1">    <div class="detail-row">      <span class="detail-label">Steps</span>      <span class="detail-val"><ol class="steps-list"><li>-</li></ol></span>    </div>    <div class="detail-row">      <span class="detail-label">Expected</span>      <span class="detail-val">-</span>    </div>          </div></div><div class="case-item pass" data-status="pass" data-toggle="other_2">  <div class="case-header">    <span class="case-dot pass"></span>    <span class="case-title">tests/generated/android/tc_003_multiplication.py</span>    <div class="case-right">      <span class="case-status-txt pass">PASS</span>      <span class="chevron" id="chv_other_2">&#8250;</span>    </div>  </div>  <div class="case-detail" id="detail_other_2">    <div class="detail-row">      <span class="detail-label">Steps</span>      <span class="detail-val"><ol class="steps-list"><li>-</li></ol></span>    </div>    <div class="detail-row">      <span class="detail-label">Expected</span>      <span class="detail-val">-</span>    </div>          </div></div></div>
+  </div>
+</section>
+  </div>
+</div>
+</body>
+</html>

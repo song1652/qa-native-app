@@ -1,0 +1,8 @@
+{
+  "main": {
+    "description": "계산기 메인 화면",
+    "precondition": "app_launch",
+    "actions": [],
+    "platform": ["android", "ios"]
+  }
+}

@@ -1,0 +1,16 @@
+[02_generate] platform=android
+[02_generate] 6개 TC 마크다운 발견
+[02_generate] lessons_learned hints 없음 — placeholder 사용
+  parsing: ios_test/tc_001_main_screen.md
+  skip tc_001_main_screen.md (platform not in ['ios'])
+  parsing: ios_test/tc_002_search_bar.md
+  skip tc_002_search_bar.md (platform not in ['ios'])
+  parsing: ios_test/tc_003_network_item.md
+  skip tc_003_network_item.md (platform not in ['ios'])
+  parsing: settings/tc_001_main_screen.md
+  generated: tests/generated/android/settings/tc_001_main_screen.py
+  parsing: settings/tc_002_search_bar.md
+  generated: tests/generated/android/settings/tc_002_search_bar.py
+  parsing: settings/tc_003_network_item.md
+  generated: tests/generated/android/settings/tc_003_network_item.py
+[02_generate] done. 3 file(s) generated → tests/generated/android/

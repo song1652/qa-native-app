@@ -1,0 +1,5 @@
+{
+  "tests/generated/ios/settings/tc_001_main_screen.py::TestMainScreen::test_settings_main_screen": "screenshots/tests_generated_ios_settings_tc_001_main_screen.py__TestMainScreen__test_settings_main_screen.png",
+  "tests/generated/ios/settings/tc_002_search_bar.py::TestSearchBar::test_search_bar_tap": "screenshots/tests_generated_ios_settings_tc_002_search_bar.py__TestSearchBar__test_search_bar_tap.png",
+  "tests/generated/ios/settings/tc_003_network_item.py::TestNetworkItem::test_network_item_visible": "screenshots/tests_generated_ios_settings_tc_003_network_item.py__TestNetworkItem__test_network_item_visible.png"
+}

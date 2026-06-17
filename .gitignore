@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+tests/reports/
+tests/screenshots/
+tests/traces/
+state/pipeline.json
+config/test_data.json
+*.env
+.DS_Store

@@ -1,0 +1,33 @@
+{
+  "android": {
+    "emulator": {
+      "deviceName": "Android Emulator",
+      "platformVersion": "14.0",
+      "automationName": "UiAutomator2",
+      "avd": "calculator_test",
+      "noReset": true,
+      "forceAppLaunch": true,
+      "shouldTerminateApp": true
+    },
+    "real_device": {
+      "deviceName": "Galaxy S24",
+      "platformVersion": "14.0",
+      "automationName": "UiAutomator2",
+      "udid": ""
+    }
+  },
+  "ios": {
+    "simulator": {
+      "deviceName": "iPhone 16",
+      "platformVersion": "26.5",
+      "automationName": "XCUITest",
+      "udid": "5666D9D8-91BC-453B-9A6F-556573EC5D3A"
+    },
+    "real_device": {
+      "deviceName": "iPhone 16",
+      "platformVersion": "26.5",
+      "automationName": "XCUITest",
+      "udid": ""
+    }
+  }
+}

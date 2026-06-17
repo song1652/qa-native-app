@@ -1,0 +1,6 @@
+[03_lint] platform=android
+[03_lint] 3개 파일 검사 시작
+  pass: tc_001_main_screen.py
+  pass: tc_002_search_bar.py
+  pass: tc_003_network_item.py
+[03_lint] done — 3 파일 모두 통과
