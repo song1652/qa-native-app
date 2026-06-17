@@ -253,12 +253,3 @@ qa-native-app/
 | 힐링 3회 모두 실패 | selector / assertion 불일치 | `tests/reports/recordings/` 영상 확인 후 수동 수정 |
 | `ANDROID_HOME` 오류 | Appium 환경변수 미설정 | Appium 서버 실행 시 `ANDROID_HOME` 명시 |
 
----
-
-## 플랫폼 현황
-
-| 플랫폼 | 드라이버 | 환경 | 상태 |
-|---|---|---|---|
-| Android | UiAutomator2 | 에뮬레이터 (emulator-5554) | 운영 중 |
-| iOS | XCUITest | iPhone 16 Simulator | 운영 중 |
-| 실기기 + CI/CD | — | — | Phase 3 예정 |
