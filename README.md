@@ -22,36 +22,57 @@ Appium 기반으로 UI XML 수집 → 테스트 코드 자동 생성 → 린트 
 
 ---
 
-## 사전 요구사항
-
-| 항목 | 최소 버전 | 확인 방법 |
-|------|----------|----------|
-| **Python** | 3.12+ (pyenv 권장) | `python --version` |
-| **Node.js** | 18+ (nvm v20 권장) | `node --version` |
-| **Appium** | 2.x | `appium --version` |
-| **Android Studio** | 최신 (Android 테스트 시) | Android Studio 실행 확인 |
-| **Xcode** | 15+ (iOS 테스트 시) | `xcodebuild -version` |
-
----
-
 ## 설치
+
+### 0. Homebrew (미설치 시)
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
 
 ### 1. Python (pyenv)
 
 ```bash
-# pyenv 설치 (미설치 시)
 brew install pyenv
 pyenv install 3.12.9
 pyenv global 3.12.9
 ```
 
+`~/.zshrc` (또는 `~/.bash_profile`)에 추가:
+
+```bash
+export PYENV_ROOT="$HOME/.pyenv"
+export PATH="$PYENV_ROOT/bin:$PATH"
+eval "$(pyenv init -)"
+```
+
+적용:
+
+```bash
+source ~/.zshrc
+python --version   # Python 3.12.9 확인
+```
+
 ### 2. Node.js (nvm)
 
 ```bash
-# nvm 설치 (미설치 시)
 brew install nvm
+```
+
+`~/.zshrc`에 추가:
+
+```bash
+export NVM_DIR="$HOME/.nvm"
+[ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"
+```
+
+적용:
+
+```bash
+source ~/.zshrc
 nvm install 20
 nvm use 20
+node --version   # v20.x.x 확인
 ```
 
 ### 3. Python 패키지
@@ -74,14 +95,17 @@ pip install -r requirements.txt
 npm install -g appium
 appium driver install uiautomator2   # Android
 appium driver install xcuitest       # iOS
+appium --version   # 2.x 확인
 ```
 
 ### 5. Android 환경 설정
 
 1. [Android Studio](https://developer.android.com/studio) 설치
-2. **SDK Manager** → `Android SDK Platform-Tools` 설치 (adb 포함)
+2. Android Studio 실행 → **SDK Manager** 열기:
+   - `SDK Platforms` 탭 → **Android 14.0 (API 34)** 이상 체크 후 설치
+   - `SDK Tools` 탭 → **Android SDK Build-Tools**, **Android SDK Platform-Tools** 체크 후 설치
 3. **AVD Manager** → 에뮬레이터 생성 (API 30+)
-4. 환경변수 설정 (`~/.zshrc` 또는 `~/.bash_profile`에 추가):
+4. `~/.zshrc`에 환경변수 추가:
 
 ```bash
 export ANDROID_HOME=$HOME/Library/Android/sdk
@@ -89,16 +113,17 @@ export PATH=$PATH:$ANDROID_HOME/platform-tools
 export PATH=$PATH:$ANDROID_HOME/emulator
 ```
 
-설치 확인:
+적용 및 확인:
 
 ```bash
+source ~/.zshrc
 adb --version
 emulator -list-avds   # 생성한 AVD 이름 확인 → devices.json의 avd 값에 입력
 ```
 
 ### 6. iOS 환경 설정 (Mac 전용)
 
-1. App Store에서 **Xcode** 설치
+1. App Store에서 **Xcode** 설치 (15 이상)
 2. Command Line Tools 설치:
 
 ```bash
@@ -108,8 +133,11 @@ xcode-select --install
 3. 시뮬레이터 UDID 확인:
 
 ```bash
+# 시뮬레이터 부팅
+xcrun simctl boot "iPhone 16"
+# UDID 확인
 xcrun simctl list devices booted
-# 부팅된 시뮬레이터가 없으면: xcrun simctl boot "iPhone 16"
+# → devices.json의 udid 값에 입력
 ```
 
 4. (실기기 테스트 시) libimobiledevice 설치:
@@ -119,7 +147,57 @@ brew install libimobiledevice
 idevice_id -l   # 연결된 실기기 UDID 확인
 ```
 
-### 7. Appium 서버 실행
+### 7. config 파일 수정
+
+설치 후 반드시 아래 두 파일을 실제 앱 정보로 수정해야 합니다.
+
+**`config/test_data.json`** — 앱 패키지명 입력:
+
+```json
+{
+  "app": {
+    "android": {
+      "package":  "com.example.app",        ← 실제 패키지명으로 변경
+      "activity": "com.example.app.MainActivity",  ← 실제 액티비티로 변경
+      "app_path": ""
+    },
+    "ios": {
+      "bundle_id": "com.example.app",       ← 실제 번들 ID로 변경
+      "app_path":  ""
+    }
+  }
+}
+```
+
+**`config/devices.json`** — 에뮬레이터/시뮬레이터 정보 입력:
+
+```json
+{
+  "android": {
+    "emulator": {
+      "deviceName":        "Android Emulator",
+      "platformVersion":   "14.0",
+      "automationName":    "UiAutomator2",
+      "avd":               "여기에_avd_이름",   ← emulator -list-avds 결과값
+      "noReset":           true,
+      "forceAppLaunch":    true,
+      "shouldTerminateApp": true
+    }
+  },
+  "ios": {
+    "simulator": {
+      "deviceName":      "iPhone 16",
+      "platformVersion": "18.5",
+      "automationName":  "XCUITest",
+      "udid":            "여기에_UDID"          ← xcrun simctl list devices booted 결과값
+    }
+  }
+}
+```
+
+### 8. Appium 서버 실행
+
+테스트 실행 전 항상 먼저 실행:
 
 ```bash
 ANDROID_HOME=~/Library/Android/sdk \
@@ -133,7 +211,7 @@ ANDROID_HOME=~/Library/Android/sdk \
 ### 대시보드 (권장)
 
 ```bash
-~/.pyenv/versions/3.12.9/bin/python agents/dashboard/serve.py
+python agents/dashboard/serve.py
 # http://localhost:8767
 ```
 
@@ -155,77 +233,6 @@ python scripts/02_generate.py --platform ios
 python scripts/03_lint.py --platform ios
 python scripts/05_execute.py --platform ios
 ```
-
----
-
-## 설정 파일 작성
-
-### config/screens.json — 화면 정의
-
-```json
-{
-  "screen_key": {
-    "description": "화면 설명",
-    "actions": [
-      {"type": "tap", "target": "element-id"},
-      {"type": "input_text", "target": "field-id", "value_key": "account.id"}
-    ],
-    "platform": ["android", "ios"]
-  }
-}
-```
-
-- `actions: []` — 앱 초기 화면 그대로 (탐색 불필요)
-- `platform` — `["android"]` / `["ios"]` / `["android", "ios"]`
-
-### config/test_data.json — 앱 식별자
-
-```json
-{
-  "app": {
-    "android": {
-      "package":  "com.example.app",
-      "activity": "com.example.app.MainActivity",
-      "app_path": ""
-    },
-    "ios": {
-      "bundle_id": "com.example.app",
-      "app_path":  ""
-    }
-  }
-}
-```
-
-- `app_path` 비워두면 이미 설치된 앱 사용, 절대경로 지정 시 `.apk`/`.ipa` 설치 후 실행
-
-### config/devices.json — Appium Capabilities
-
-```json
-{
-  "android": {
-    "emulator": {
-      "deviceName": "Android Emulator",
-      "platformVersion": "14.0",
-      "automationName": "UiAutomator2",
-      "avd": "avd_name",
-      "noReset": true,
-      "forceAppLaunch": true,
-      "shouldTerminateApp": true
-    }
-  },
-  "ios": {
-    "simulator": {
-      "deviceName": "iPhone 16",
-      "platformVersion": "18.5",
-      "automationName": "XCUITest",
-      "udid": "simulator-udid"
-    }
-  }
-}
-```
-
-- Android UDID 확인: `adb devices`
-- iOS Simulator UDID 확인: `xcrun simctl list devices booted`
 
 ---
 
@@ -260,6 +267,31 @@ tags: [smoke]
 ```
 
 파일명 규칙: `tc_{번호}_{english_snake_case}.md`
+
+---
+
+## 설정 파일 상세
+
+### config/screens.json — 화면 정의
+
+분석 단계에서 어떤 화면을 탐색할지 지정합니다.
+
+```json
+{
+  "screen_key": {
+    "description": "화면 설명",
+    "actions": [
+      {"type": "tap",        "target": "element-id"},
+      {"type": "input_text", "target": "field-id", "value_key": "account.id"}
+    ],
+    "platform": ["android", "ios"]
+  }
+}
+```
+
+- `actions: []` — 앱 초기 화면 그대로 (탐색 불필요)
+- `platform` — `["android"]` / `["ios"]` / `["android", "ios"]`
+- `value_key` — `test_data.json`의 경로 (예: `"account.id"` → `test_data["account"]["id"]`)
 
 ---
 
@@ -314,10 +346,11 @@ qa-native-app/
 | 증상 | 원인 | 해결 |
 |---|---|---|
 | `Appium 연결 확인하세요` | Appium 서버 미실행 | `ANDROID_HOME=~/Library/Android/sdk appium --port 4723` 실행 |
-| `Android 디바이스 없음` | 에뮬레이터 미실행 또는 adb 미연결 | `adb devices` 확인 후 에뮬레이터 실행 |
-| `iOS Simulator 없음` | 시뮬레이터 미부팅 | Xcode에서 시뮬레이터 실행 또는 `xcrun simctl boot {udid}` |
+| `Android 디바이스 없음` | 에뮬레이터 미실행 또는 adb 미연결 | Android Studio에서 에뮬레이터 실행 후 `adb devices` 확인 |
+| `iOS Simulator 없음` | 시뮬레이터 미부팅 | `xcrun simctl boot "iPhone 16"` 실행 |
+| `pyenv: command not found` | pyenv 쉘 초기화 미설정 | `~/.zshrc`에 pyenv init 추가 후 `source ~/.zshrc` |
+| `nvm: command not found` | nvm 쉘 초기화 미설정 | `~/.zshrc`에 nvm 초기화 추가 후 `source ~/.zshrc` |
+| `ANDROID_HOME` 오류 | Appium 환경변수 미설정 | Appium 서버 실행 시 `ANDROID_HOME` 명시 |
 | 코드 생성 실패 | TC 마크다운 형식 오류 | `testcases/` 파일 형식 확인 |
 | lint 실패 | 생성 코드 문법 오류 | 해당 `.py` 직접 수정 후 lint 재실행 |
 | 힐링 3회 모두 실패 | selector / assertion 불일치 | `tests/reports/recordings/` 영상 확인 후 수동 수정 |
-| `ANDROID_HOME` 오류 | Appium 환경변수 미설정 | Appium 서버 실행 시 `ANDROID_HOME` 명시 |
-
