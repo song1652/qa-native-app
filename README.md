@@ -339,18 +339,3 @@ qa-native-app/
 └── requirements.txt
 ```
 
----
-
-## 트러블슈팅
-
-| 증상 | 원인 | 해결 |
-|---|---|---|
-| `Appium 연결 확인하세요` | Appium 서버 미실행 | `ANDROID_HOME=~/Library/Android/sdk appium --port 4723` 실행 |
-| `Android 디바이스 없음` | 에뮬레이터 미실행 또는 adb 미연결 | Android Studio에서 에뮬레이터 실행 후 `adb devices` 확인 |
-| `iOS Simulator 없음` | 시뮬레이터 미부팅 | `xcrun simctl boot "iPhone 16"` 실행 |
-| `pyenv: command not found` | pyenv 쉘 초기화 미설정 | `~/.zshrc`에 pyenv init 추가 후 `source ~/.zshrc` |
-| `nvm: command not found` | nvm 쉘 초기화 미설정 | `~/.zshrc`에 nvm 초기화 추가 후 `source ~/.zshrc` |
-| `ANDROID_HOME` 오류 | Appium 환경변수 미설정 | Appium 서버 실행 시 `ANDROID_HOME` 명시 |
-| 코드 생성 실패 | TC 마크다운 형식 오류 | `testcases/` 파일 형식 확인 |
-| lint 실패 | 생성 코드 문법 오류 | 해당 `.py` 직접 수정 후 lint 재실행 |
-| 힐링 3회 모두 실패 | selector / assertion 불일치 | `tests/reports/recordings/` 영상 확인 후 수동 수정 |
