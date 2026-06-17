@@ -26,17 +26,35 @@ Appium 기반으로 UI XML 수집 → 테스트 코드 자동 생성 → 린트 
 
 | 항목 | 최소 버전 | 확인 방법 |
 |------|----------|----------|
-| **Python** | 3.12+ | `python --version` |
+| **Python** | 3.12+ (pyenv 권장) | `python --version` |
 | **Node.js** | 18+ (nvm v20 권장) | `node --version` |
 | **Appium** | 2.x | `appium --version` |
-| **Android SDK** | API 30+ | `adb --version` |
+| **Android Studio** | 최신 (Android 테스트 시) | Android Studio 실행 확인 |
 | **Xcode** | 15+ (iOS 테스트 시) | `xcodebuild -version` |
 
 ---
 
 ## 설치
 
-### 1. Python 패키지
+### 1. Python (pyenv)
+
+```bash
+# pyenv 설치 (미설치 시)
+brew install pyenv
+pyenv install 3.12.9
+pyenv global 3.12.9
+```
+
+### 2. Node.js (nvm)
+
+```bash
+# nvm 설치 (미설치 시)
+brew install nvm
+nvm install 20
+nvm use 20
+```
+
+### 3. Python 패키지
 
 ```bash
 pip install -r requirements.txt
@@ -44,13 +62,13 @@ pip install -r requirements.txt
 
 | 패키지 | 용도 |
 |---|---|
-| `appium-python-client` | Appium 드라이버 |
+| `appium-python-client` | Appium Python 드라이버 |
 | `pytest` | 테스트 실행 |
 | `pytest-html` | HTML 리포트 생성 |
 | `pytest-json-report` | JSON 리포트 생성 (결과 파싱 정확도 향상) |
 | `flake8` | 린트 검사 |
 
-### 2. Appium 및 드라이버
+### 4. Appium 및 드라이버
 
 ```bash
 npm install -g appium
@@ -58,12 +76,54 @@ appium driver install uiautomator2   # Android
 appium driver install xcuitest       # iOS
 ```
 
-### 3. Appium 서버 실행
+### 5. Android 환경 설정
+
+1. [Android Studio](https://developer.android.com/studio) 설치
+2. **SDK Manager** → `Android SDK Platform-Tools` 설치 (adb 포함)
+3. **AVD Manager** → 에뮬레이터 생성 (API 30+)
+4. 환경변수 설정 (`~/.zshrc` 또는 `~/.bash_profile`에 추가):
 
 ```bash
-# Android SDK 경로 지정 필수
+export ANDROID_HOME=$HOME/Library/Android/sdk
+export PATH=$PATH:$ANDROID_HOME/platform-tools
+export PATH=$PATH:$ANDROID_HOME/emulator
+```
+
+설치 확인:
+
+```bash
+adb --version
+emulator -list-avds   # 생성한 AVD 이름 확인 → devices.json의 avd 값에 입력
+```
+
+### 6. iOS 환경 설정 (Mac 전용)
+
+1. App Store에서 **Xcode** 설치
+2. Command Line Tools 설치:
+
+```bash
+xcode-select --install
+```
+
+3. 시뮬레이터 UDID 확인:
+
+```bash
+xcrun simctl list devices booted
+# 부팅된 시뮬레이터가 없으면: xcrun simctl boot "iPhone 16"
+```
+
+4. (실기기 테스트 시) libimobiledevice 설치:
+
+```bash
+brew install libimobiledevice
+idevice_id -l   # 연결된 실기기 UDID 확인
+```
+
+### 7. Appium 서버 실행
+
+```bash
 ANDROID_HOME=~/Library/Android/sdk \
-  ~/.nvm/versions/node/v20.20.2/bin/appium --address 0.0.0.0 --port 4723
+  appium --address 0.0.0.0 --port 4723
 ```
 
 ---
