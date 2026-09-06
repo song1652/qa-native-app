@@ -1,122 +1,100 @@
-# QA Automation — App (Appium)
+# QA Automation — Native App 작업 가이드
 
-> 웹 QA(`qa-native`)와 **별개 프로젝트**. Android / iOS 앱 테스트 자동화.
-> 파이프라인 철학은 qa-native와 동일하되, 드라이버·셀렉터·수집 방식이 다름.
+이 저장소는 웹 QA 프로젝트와 분리된 Appium 기반 Android/iOS 네이티브 앱 자동화 프로젝트입니다.
 
-## 절대 규칙
-- `anthropic`, `langchain`, `openai` 등 외부 LLM SDK import 절대 금지
-- 모든 단계 결과는 `state/pipeline.json`에 저장 후 다음 단계 진행
-- **테스트 함수명**: `test_{english_snake_case}` (영문 snake_case)
-- **파일명**: `tc_{번호}_{english_snake_case}.py`
-- **테스트 파일은 자체 완결**: 드라이버 초기화 포함, 공유 헬퍼 금지
+## 핵심 원칙
 
-## 설정 파일
-
-| 파일 | 용도 |
-|------|------|
-| `config/screens.json` | 화면 정의. precondition + actions (활성 앱 기준) |
-| `config/devices.json` | 디바이스/에뮬레이터 Capabilities |
-| `config/test_data.json` | 테스트 입력값 — 앱 패키지명, 계정 등 (활성 앱 기준) |
-| `config/presets/{앱이름}/` | 앱별 설정 보관. 대시보드에서 선택 시 config/로 복사됨 |
-| `config/presets/_template/` | 새 앱 추가용 예제 파일 (목록에 노출되지 않음) |
-
-## 멀티앱 관리
-
-새 앱 추가 절차:
-1. `config/presets/앱이름/test_data.json` — 패키지명/번들ID 작성
-2. `config/presets/앱이름/screens.json` — 테스트 화면 정의
-3. `testcases/앱이름/tc_*.md` — TC 마크다운 작성
-4. 대시보드 앱 드롭다운에서 선택 → 플랫폼 선택 → 전체 실행
-
-앱 전환 API: `POST /api/switch_app {"app": "앱이름"}`
-앱 목록 API: `GET /api/apps`
+- 외부 LLM SDK(`anthropic`, `langchain`, `openai` 등)를 제품 코드에 import하지 않습니다.
+- 파이프라인 단계 결과는 `state/pipeline.json`에 기록합니다.
+- 테스트 함수명은 `test_{english_snake_case}`를 사용합니다.
+- 생성 테스트 파일은 드라이버 초기화까지 포함하는 자체 완결 형태를 유지합니다.
+- locator의 기준값은 `config/locators.json`에서 관리합니다. 생성된 `.py` 파일은 산출물입니다.
+- Android와 iOS UI hierarchy snapshot은 동일한 화면명 아래에서도 플랫폼별로 분리합니다.
 
 ## 파이프라인
 
-```
-01_analyze → 02_generate → 03_lint → 05_execute → 06_heal (최대 3회)
+```text
+01_analyze → 02_generate → 03_lint → 05_execute → 06_heal
 ```
 
-대시보드 **▶ 전체 실행** 버튼으로 위 단계가 자동 순차 실행됨.
-- 실패 없으면 heal 생략하고 즉시 완료
-- heal 3회 실패 시 영상(`tests/reports/recordings/`) 자동 저장
+- `01_analyze.py`: Appium `page_source`로 native UI hierarchy 수집
+- `02_generate.py`: TC Markdown과 locator registry를 이용한 플랫폼별 pytest 생성
+- `03_lint.py`: 생성 코드 flake8 검사
+- `05_execute.py`: pytest/Appium 실행 및 리포트 저장
+- `06_heal.py`: 실패 직전 최신 hierarchy를 다시 수집하고 유일 후보만 healing
 
-## 실행 순서
+대시보드의 전체 실행은 위 순서의 단일 파이프라인입니다. 제품에는 단일/병렬 실행 유형을 별도로 노출하지 않습니다.
+
+## Locator 작업 규칙
+
+1. Appium Inspector 또는 native hierarchy에서 요소 속성을 확인합니다.
+2. 확인한 플랫폼별 locator를 `config/locators.json`에 저장합니다.
+3. strict 생성으로 registry 누락을 차단합니다.
+4. 실패 시 `06_heal.py`가 최신 Appium `page_source`에서 후보를 찾습니다.
+5. 후보가 유일하고 신뢰도가 높을 때만 registry를 갱신합니다.
+6. 후보가 모호하거나 snapshot이 없으면 자동 변경하지 않고 실패 상태로 남깁니다.
 
 ```bash
-# 환경 준비
-ANDROID_HOME=~/Library/Android/sdk \
-  ~/.nvm/versions/node/v20.20.2/bin/appium --address 0.0.0.0 --port 4723 &
+python scripts/02_generate.py --platform android --strict-locators
+python scripts/02_generate.py --platform ios --strict-locators
+```
 
-# 대시보드 서버 (권장)
-~/.pyenv/versions/3.12.9/bin/python agents/dashboard/serve.py
+상세 healing 정책은 [docs/LOCATOR_HEALING.md](docs/LOCATOR_HEALING.md)에 있습니다.
 
-# 직접 실행 (Android)
+## 설정 파일
+
+| 파일 | 역할 |
+|---|---|
+| `config/test_data.json` | 앱 package/activity, bundle ID, 테스트 데이터 |
+| `config/devices.json` | Android/iOS capability |
+| `config/screens.json` | 분석 화면과 진입 action |
+| `config/locators.json` | 플랫폼별 target locator registry |
+| `config/jira_config.json` | 이 제품 전용 Jira 프로젝트/이슈 설정 |
+
+`config/locators.json` target key는 기본적으로 `{tc_slug}.{selector_key}` 형식이며, entry는 플랫폼별 `strategy`와 `value`를 가집니다.
+
+대시보드 전체 실행이 healing 3회 후에도 실패하면 `scripts/jira_reporter.py`가 이 프로젝트의 Jira 설정으로 Bug를 생성하고 스크린샷/영상을 첨부합니다. `JIRA_TOKEN`이 없으면 Jira 보고만 건너뛰며 테스트 결과는 유지합니다. Jira 설정은 다른 제품과 공유하지 않습니다.
+
+## 실행 명령
+
+```bash
+appium --address 0.0.0.0 --port 4723
+python agents/dashboard/serve.py
+
+# Android
 python scripts/01_analyze.py --platform android --mode emulator
+python scripts/02_generate.py --platform android --strict-locators
+python scripts/03_lint.py --platform android
 python scripts/05_execute.py --platform android
 
-# 직접 실행 (iOS)
+# iOS
 python scripts/01_analyze.py --platform ios --mode simulator
+python scripts/02_generate.py --platform ios --strict-locators
+python scripts/03_lint.py --platform ios
 python scripts/05_execute.py --platform ios
 ```
 
-## 디렉토리 구조
+## 디렉토리 규칙
 
-```
-qa-native-app/
-├── config/
-│   ├── screens.json          # 활성 앱 화면 정의
-│   ├── devices.json          # Appium Capabilities (공용)
-│   ├── test_data.json        # 활성 앱 패키지명/계정
-│   └── presets/
-│       ├── _template/        # 새 앱 추가용 예제 (대시보드 미노출)
-│       └── settings/         # Android Settings + iOS Preferences
-├── scripts/
-│   ├── drivers/
-│   │   ├── android_driver.py
-│   │   └── ios_driver.py
-│   ├── 01_analyze.py         # page_source 기반 UI XML 수집
-│   ├── 02_generate.py        # TC 마크다운 → pytest 코드 생성
-│   ├── 03_lint.py            # flake8 린트
-│   ├── 05_execute.py         # pytest 실행 + HTML 리포트 생성
-│   ├── 06_heal.py            # 실패 TC 자동 패치
-│   └── report_html.py        # HTML 리포트 빌더
-├── testcases/
-│   ├── settings/             # Android Settings TC (tc_*.md)
-│   └── ios_test/             # iOS Settings TC (tc_*.md)
-├── tests/
-│   ├── generated/
-│   │   ├── android/          # 생성된 Android pytest 파일
-│   │   └── ios/              # 생성된 iOS pytest 파일
-│   └── reports/
-│       ├── report_android.html
-│       └── report_ios.html
-├── state/
-│   └── pipeline.json         # 파이프라인 실행 상태 (active_app, platform 포함)
-├── logs/                     # 단계별 실행 로그 (run_*.txt)
-└── agents/
-    ├── dashboard/
-    │   └── serve.py          # 대시보드 서버 (포트 8767)
-    └── lessons_learned.md
+```text
+config/locators.json       # locator source of truth
+config/{devices,screens,test_data}.json
+scripts/                   # 분석·생성·린트·실행·힐링
+testcases/                 # 입력 TC Markdown
+tests/generated/           # 생성 코드
+tests/reports/             # 실행 리포트
+state/pipeline.json        # 실행 상태와 snapshot
+logs/                      # 단계별 로그
+docs/LOCATOR_HEALING.md    # healing 정책
 ```
 
-## 플랫폼 현황
-- **Android**: UiAutomator2, 에뮬레이터(emulator-5554) — 운영 중
-- **iOS**: XCUITest, iPhone 16 Simulator (iOS 26.5, UDID: 5666D9D8-91BC-453B-9A6F-556573EC5D3A) — 운영 중
-- **Phase 3**: 실기기 + CI/CD 연동 (예정)
+## 변경 시 검증
 
-## 주요 환경 변수 / 경로
-- Android SDK: `~/Library/Android/sdk/platform-tools/adb`
-- Appium: `~/.nvm/versions/node/v20.20.2/bin/appium` (Node v20 필수)
-- Python: `~/.pyenv/versions/3.12.9/bin/python`
-- 대시보드: `http://localhost:8767`
+```bash
+python3 -m py_compile scripts/*.py
+python3 scripts/02_generate.py --platform android --strict-locators
+python3 scripts/02_generate.py --platform ios --strict-locators
+git diff --check
+```
 
-## qa-native와 공유 vs 분리
-
-| 공유 (철학·포맷만) | 새로 작성 |
-|---|---|
-| pipeline.json 스키마 구조 | 01_analyze.py (page_source 기반) |
-| lessons_learned.md 포맷 | 드라이버 레이어 전체 |
-| 파이프라인 단계 번호 | heal-patterns (앱 전용) |
-| 03_lint.py (flake8) | 05_execute.py (Appium 드라이버) |
-| report_html.py CSS/JS 스타일 | 앱 전용 artifact panel (screenshot/video) |
+실제 Appium 실행은 연결된 서버와 디바이스가 있을 때 별도로 수행합니다.

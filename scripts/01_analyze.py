@@ -133,7 +133,14 @@ def main():
             print(f"  collecting: {screen_name}")
             xml = collect_screen_xml(driver, screen_name, screen_cfg,
                                      test_data)
-            dom_info[screen_name] = {
+            # Android/iOS를 같은 state에 보관해 서로 덮어쓰지 않도록
+            # platform을 1차 키로 둔다. 기존 screen 단위 state도 읽을 수
+            # 있지만, 새 수집부터는 플랫폼별 Inspector snapshot을 유지한다.
+            platform_info = dom_info.setdefault(screen_name, {})
+            if "xml" in platform_info:
+                platform_info = {}
+                dom_info[screen_name] = platform_info
+            platform_info[args.platform] = {
                 "platform": args.platform,
                 "xml": xml,
                 "description": screen_cfg.get("description", ""),

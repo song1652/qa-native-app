@@ -12,9 +12,14 @@ import json
 import os
 import re
 import shutil
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
+SCRIPTS_DIR = Path(__file__).parent
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
+from locator_registry import load_registry, resolve_target
 
 
 def _find_adb() -> str:
@@ -309,6 +314,8 @@ def _collect_all_selectors(tc_blocks: list) -> dict:
 def _build_android_imports() -> str:
     return """\
 import json
+import os
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -345,7 +352,19 @@ def _load_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-_ADB = "{ADB}"
+def _find_adb() -> str:
+    candidates = [
+        os.path.expanduser("~/Library/Android/sdk/platform-tools/adb"),
+        "/usr/local/bin/adb",
+        shutil.which("adb") or "",
+    ]
+    for candidate in candidates:
+        if candidate and Path(candidate).exists():
+            return candidate
+    return "adb"
+
+
+_ADB = _find_adb()
 
 
 def _check_device_connected() -> None:
@@ -477,11 +496,12 @@ def _uses_credentials(tc_blocks: list) -> bool:
 
 
 def _build_test_method(block: dict, tc_number: str, idx: int,
-                       platform: str) -> str:
+                       platform: str, locator_specs: dict | None = None) -> str:
     func_name = block["function_name"]
     steps = block["steps"]
     expected = block["expected"]
     selectors = block["selectors"]
+    locator_specs = locator_specs or {}
 
     lines = []
     lines.append(f"    def {func_name}(self):")
@@ -512,7 +532,7 @@ def _build_test_method(block: dict, tc_number: str, idx: int,
             )
             lines.append(
                 f"            EC.presence_of_element_located("
-                f"(AppiumBy.ACCESSIBILITY_ID, {const}))"
+                f"({_appiumby_for(sel, locator_specs)}, {const}))"
             )
             lines.append("        )")
             lines.append("        el.clear()")
@@ -527,7 +547,7 @@ def _build_test_method(block: dict, tc_number: str, idx: int,
             )
             lines.append(
                 f"            EC.presence_of_element_located("
-                f"(AppiumBy.ACCESSIBILITY_ID, {const}))"
+                f"({_appiumby_for(sel, locator_specs)}, {const}))"
             )
             lines.append("        )")
             lines.append("        el.clear()")
@@ -542,7 +562,7 @@ def _build_test_method(block: dict, tc_number: str, idx: int,
             )
             lines.append(
                 f"            EC.presence_of_element_located("
-                f"(AppiumBy.ACCESSIBILITY_ID, {const}))"
+                f"({_appiumby_for(sel, locator_specs)}, {const}))"
             )
             lines.append("        )")
             lines.append("        el.clear()")
@@ -557,7 +577,7 @@ def _build_test_method(block: dict, tc_number: str, idx: int,
             )
             lines.append(
                 f"            EC.presence_of_element_located("
-                f"(AppiumBy.ACCESSIBILITY_ID, {const}))"
+                f"({_appiumby_for(sel, locator_specs)}, {const}))"
             )
             lines.append("        )")
             lines.append("        el.clear()")
@@ -568,7 +588,7 @@ def _build_test_method(block: dict, tc_number: str, idx: int,
             sel = _find_selector_for_step(step_text, selectors)
             if sel:
                 const = sel_const_map.get(sel, f'"{sel}"')
-                by = _appiumby_for(sel)
+                by = _appiumby_for(sel, locator_specs)
                 lines.append(
                     "        WebDriverWait(driver, 10).until("
                 )
@@ -594,7 +614,7 @@ def _build_test_method(block: dict, tc_number: str, idx: int,
             sel = _find_selector_for_step(step_text, selectors)
             if sel:
                 const = sel_const_map.get(sel, f'"{sel}"')
-                by = _appiumby_for(sel)
+                by = _appiumby_for(sel, locator_specs)
                 lines.append(
                     "        WebDriverWait(driver, 10).until("
                 )
@@ -623,14 +643,18 @@ def _build_test_method(block: dict, tc_number: str, idx: int,
 
     # assert — 기대결과 기반
     lines.append("        # 기대결과 검증")
-    asserted = _build_assert(expected, selectors, sel_const_map)
+    asserted = _build_assert(expected, selectors, sel_const_map, locator_specs)
     lines.extend(asserted)
 
     return "\n".join(lines)
 
 
-def _appiumby_for(selector_val: str) -> str:
+def _appiumby_for(selector_val: str, locator_specs: dict | None = None) -> str:
     """셀렉터 값에 따라 적절한 AppiumBy 전략 문자열을 반환한다."""
+    if locator_specs:
+        for spec in locator_specs.values():
+            if spec.get("value") == selector_val:
+                return f"AppiumBy.{spec['strategy']}"
     if selector_val.startswith("//") or selector_val.startswith("/"):
         return "AppiumBy.XPATH"
     if ":" in selector_val:
@@ -702,7 +726,7 @@ def _find_selector_for_step(step_text: str, selectors: dict) -> str:
 
 
 def _build_assert(expected: str, selectors: dict,
-                  sel_const_map: dict) -> list:
+                  sel_const_map: dict, locator_specs: dict | None = None) -> list:
     """기대결과 텍스트로부터 assert 라인 목록을 생성한다."""
     lines = []
     # selectors 키(short name) 또는 값이 기대결과 텍스트에 포함된 것을 찾아 assert
@@ -716,7 +740,7 @@ def _build_assert(expected: str, selectors: dict,
     if matched:
         for val in matched:
             const = sel_const_map.get(val, f'"{val}"')
-            by = _appiumby_for(val)
+            by = _appiumby_for(val, locator_specs)
             lines.append(
                 "        assert_el = WebDriverWait(driver, 10).until("
             )
@@ -754,7 +778,8 @@ def _build_assert(expected: str, selectors: dict,
 
 def generate_test_file(meta: dict, platform: str,
                        hints: dict | None = None,
-                       subfolder_depth: int = 0) -> str:
+                       subfolder_depth: int = 0,
+                       strict_locators: bool = False) -> str:
     """파싱된 메타데이터로 pytest 파일 내용(문자열)을 생성한다.
 
     hints: _load_lessons_learned_hints() 반환값. SEL_* 상수 값/전략을
@@ -780,6 +805,23 @@ def generate_test_file(meta: dict, platform: str,
     class_name = _to_class_name(tc_slug)
     all_selectors = _collect_all_selectors(tc_blocks)
     has_creds = _uses_credentials(tc_blocks)
+    registry = load_registry()
+    locator_specs = {
+        key: resolve_target(registry, tc_slug, key, platform, val)
+        for key, val in all_selectors.items()
+    }
+    if strict_locators:
+        missing = [
+            f"{tc_slug}.{key} ({platform})"
+            for key in all_selectors
+            if tc_slug + "." + key not in registry.get("targets", {})
+            and key not in registry.get("targets", {})
+        ]
+        if missing:
+            raise ValueError(
+                "Inspector 확인이 필요한 locator가 registry에 없습니다: "
+                + ", ".join(missing)
+            )
 
     # --- 헤더 docstring ---
     header = (
@@ -800,24 +842,33 @@ def generate_test_file(meta: dict, platform: str,
 
     # --- 셀렉터 상수 ---
     sel_lines = ["", "# " + "-" * 74]
-    sel_lines.append(
-        "# Selectors — placeholder values from config/screens.json."
-    )
-    sel_lines.append(
-        "# Replace with real resource-id / XPath once the app is attached."
-    )
+    sel_lines.append("# Selectors — generated from config/locators.json.")
+    sel_lines.append("# Healing updates the registry, then regeneration updates this file.")
     sel_lines.append("# " + "-" * 74)
     for key, val in all_selectors.items():
         const_name = _sel_const_name(key)
-        if const_name in hints:
+        spec = locator_specs[key]
+        registry_entry = registry.get("targets", {}).get(
+            tc_slug + "." + key,
+            registry.get("targets", {}).get(key, {}),
+        )
+        registry_has_target = (
+            isinstance(registry_entry, dict) and platform in registry_entry
+        )
+        if const_name in hints and not registry_has_target:
             hint_val = hints[const_name]["value"]
             hint_strategy = hints[const_name]["strategy"]
+            spec = {"value": hint_val, "strategy": hint_strategy}
             sel_lines.append(
                 f'{const_name} = "{hint_val}"'
-                f"  # healed: AppiumBy.{hint_strategy}"
+                f"  # target_ref: {tc_slug}.{key} / healed: AppiumBy.{hint_strategy}"
             )
         else:
-            sel_lines.append(f'{const_name} = "{val}"')
+            sel_lines.append(
+                f'{const_name} = "{spec["value"]}"'
+                f"  # target_ref: {tc_slug}.{key} / AppiumBy.{spec['strategy']}"
+            )
+        locator_specs[key] = spec
 
     sel_block = "\n".join(sel_lines)
 
@@ -843,7 +894,7 @@ def generate_test_file(meta: dict, platform: str,
             f"    # {'--' * 35}\n"
             f"    # {tc_label}\n"
             f"    # {'--' * 35}\n"
-            + _build_test_method(block, tc_number, idx, platform)
+            + _build_test_method(block, tc_number, idx, platform, locator_specs)
         )
 
     methods_joined = "\n\n".join(numbered_methods)
@@ -885,6 +936,10 @@ def main():
     )
     parser.add_argument(
         "--platform", default="android", choices=["android", "ios"]
+    )
+    parser.add_argument(
+        "--strict-locators", action="store_true",
+        help="registry에 없는 locator는 레거시 fallback하지 않고 생성을 중단합니다.",
     )
     parser.add_argument(
         "--tc-dir", default=None,
@@ -942,7 +997,8 @@ def main():
         out_dir.mkdir(parents=True, exist_ok=True)
 
         code = generate_test_file(
-            meta, platform, hints=hints, subfolder_depth=subfolder_depth
+            meta, platform, hints=hints, subfolder_depth=subfolder_depth,
+            strict_locators=args.strict_locators,
         )
 
         out_name = f"tc_{meta['tc_number']}_{meta['tc_slug']}.py"

@@ -25,18 +25,27 @@ import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+SCRIPTS_DIR = Path(__file__).parent
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
+from locator_registry import load_registry, save_registry
+
 ROOT = Path(__file__).parent.parent
 CONFIG_DIR = ROOT / "config"
 STATE_DIR = ROOT / "state"
 STATE_FILE = STATE_DIR / "pipeline.json"
 
-# XML 속성 추출 대상 (Android UiAutomator2 기준)
-ATTRS = ["resource-id", "content-desc", "text"]
+# Android와 iOS Appium page_source에서 공통적으로 확인 가능한 native 속성
+ATTRS = ["resource-id", "content-desc", "name", "label", "value", "hint", "text"]
 
 # 속성별 AppiumBy 전략 매핑
 ATTR_STRATEGY = {
     "resource-id": "ID",
     "content-desc": "ACCESSIBILITY_ID",
+    "name": "ACCESSIBILITY_ID",
+    "label": "ACCESSIBILITY_ID",
+    "value": "XPATH",
+    "hint": "XPATH",
     "text": "XPATH",
 }
 
@@ -274,24 +283,33 @@ def _find_best_match(sel_value: str, elements: list) -> dict:
     반환: {"attr": "resource-id", "value": "com.example:id/et_username"}
           매칭 없으면 {}
     """
-    best_score = 0
-    best_attr = ""
-    best_value = ""
-
+    # 후보가 여러 개일 때 임의 선택하지 않고, Inspector와 같은
+    # 유일성 검사를 적용한다.
+    ranked = []
     for elem in elements:
         for attr in ATTRS:
-            attr_value = elem.get(attr, "")
-            if not attr_value:
-                continue
-            score = _similarity_score(sel_value, attr_value)
-            if score > best_score:
-                best_score = score
-                best_attr = attr
-                best_value = attr_value
-
-    if best_score > 0:
-        return {"attr": best_attr, "value": best_value}
+            value = elem.get(attr, "")
+            score = _similarity_score(sel_value, value)
+            if score:
+                ranked.append((score, attr, value))
+    ranked.sort(reverse=True)
+    if ranked and ranked[0][0] >= 2:
+        best_score = ranked[0][0]
+        best_values = {(item[1], item[2]) for item in ranked
+                       if item[0] == best_score}
+        if len(best_values) == 1:
+            return {"attr": ranked[0][1], "value": ranked[0][2],
+                    "confidence": "high" if best_score == 3 else "medium"}
     return {}
+
+
+def _target_ref_for_const(source: str, const_name: str) -> str:
+    pattern = re.compile(
+        rf'^{re.escape(const_name)}\s*=.*# target_ref:\s*([^/\s]+)',
+        re.MULTILINE,
+    )
+    match = pattern.search(source)
+    return match.group(1) if match else ""
 
 
 # ---------------------------------------------------------------------------
@@ -376,11 +394,29 @@ def _run_pytest_single(file_path: str) -> bool:
     return result.returncode == 0
 
 
+def _refresh_inspector_snapshot(platform: str) -> dict:
+    """힐링 직전에 Appium page_source를 다시 수집한다.
+
+    GUI Inspector를 사람이 조작하지 않아도, 동일한 native hierarchy를
+    자동 수집한다. 디바이스가 없으면 기존 snapshot을 유지한다.
+    """
+    analyzer = ROOT / "scripts" / "01_analyze.py"
+    result = subprocess.run(
+        [sys.executable, str(analyzer), "--platform", platform],
+        cwd=ROOT, capture_output=True, text=True,
+    )
+    if result.returncode != 0:
+        print("[06_heal] fresh Inspector snapshot 실패 — 기존 snapshot 사용")
+        return {}
+    print("[06_heal] fresh Inspector snapshot 갱신 완료")
+    return load_state().get("dom_info", {})
+
+
 # ---------------------------------------------------------------------------
 # Heal 로직 — XML 기반
 # ---------------------------------------------------------------------------
 
-def heal_file_xml(file_path: str, dom_info: dict) -> dict:
+def heal_file_xml(file_path: str, dom_info: dict, platform: str = "android") -> dict:
     """dom_info XML 기반으로 단일 TC 파일에 self-heal을 적용한다.
 
     반환:
@@ -399,6 +435,9 @@ def heal_file_xml(file_path: str, dom_info: dict) -> dict:
 
     screen_name = _screen_name_from_path(file_path)
     screen_info = dom_info.get(screen_name, {})
+    # 새 형식(platform -> screen)과 기존 형식을 모두 허용한다.
+    if isinstance(screen_info, dict) and platform in screen_info:
+        screen_info = screen_info[platform]
     xml_text = screen_info.get("xml", "")
 
     if not xml_text:
@@ -447,6 +486,16 @@ def heal_file_xml(file_path: str, dom_info: dict) -> dict:
         source = _replace_sel_value_and_strategy(
             source, const_name, replacement_value, new_strategy
         )
+        target = _target_ref_for_const(source, const_name)
+        if target:
+            registry = load_registry()
+            registry.setdefault("targets", {}).setdefault(target, {})[platform] = {
+                "strategy": new_strategy,
+                "value": replacement_value,
+                "confidence": match.get("confidence", "medium"),
+                "source": "appium_page_source",
+            }
+            save_registry(registry)
         healed_any = True
         heal_details.append({
             "sel_const": const_name,
@@ -603,6 +652,10 @@ def main():
         save_state(state)
         sys.exit(1)
 
+    fresh_dom_info = _refresh_inspector_snapshot(args.platform)
+    if fresh_dom_info:
+        dom_info = fresh_dom_info
+
     print(f"[06_heal] {len(failed_files)}개 실패 TC 처리 시작")
 
     healed = []
@@ -613,7 +666,7 @@ def main():
         print(f"[06_heal] healing: {fname}")
 
         if dom_info:
-            result = heal_file_xml(file_path, dom_info)
+            result = heal_file_xml(file_path, dom_info, args.platform)
         else:
             result = heal_file_fallback(file_path)
 

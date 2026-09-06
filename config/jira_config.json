@@ -1,0 +1,11 @@
+{
+  "enabled": true,
+  "base_url": "https://skj94268.atlassian.net",
+  "email": "skj94268@gmail.com",
+  "project_key": "SCRUM",
+  "issue_type_id": "10006",
+  "epic_key": "SCRUM-5",
+  "version": "v1.0.0",
+  "auto_attach": true,
+  "token_env": "JIRA_TOKEN"
+}

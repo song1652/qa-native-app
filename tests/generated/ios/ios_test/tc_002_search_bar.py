@@ -17,10 +17,10 @@ from selenium.webdriver.support import expected_conditions as EC
 
 
 # --------------------------------------------------------------------------
-# Selectors — placeholder values from config/screens.json.
-# Replace with real resource-id / XPath once the app is attached.
+# Selectors — generated from config/locators.json.
+# Healing updates the registry, then regeneration updates this file.
 # --------------------------------------------------------------------------
-SEL_SEARCH_BAR = "검색"
+SEL_SEARCH_BAR = "검색"  # target_ref: search_bar.search_bar / AppiumBy.ACCESSIBILITY_ID
 
 CONFIG_DIR = Path(__file__).parent.parent.parent.parent.parent / "config"
 APPIUM_URL = "http://localhost:4723"

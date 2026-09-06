@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "targets": {
+    "main_screen.homepage_title": {
+      "android": {
+        "strategy": "ID",
+        "value": "com.android.settings:id/homepage_title"
+      },
+      "ios": {
+        "strategy": "ACCESSIBILITY_ID",
+        "value": "설정"
+      }
+    },
+    "main_screen.search_action_bar_title": {
+      "android": {
+        "strategy": "ID",
+        "value": "com.android.settings:id/search_action_bar_title"
+      }
+    },
+    "search_bar.search_action_bar_title": {
+      "android": {
+        "strategy": "ID",
+        "value": "com.android.settings:id/search_action_bar_title"
+      }
+    },
+    "search_bar.open_search_view": {
+      "android": {
+        "strategy": "ID",
+        "value": "com.google.android.settings.intelligence:id/open_search_view"
+      }
+    },
+    "network_item.homepage_container": {
+      "android": {
+        "strategy": "ID",
+        "value": "com.android.settings:id/homepage_container"
+      }
+    },
+    "search_bar.search_bar": {
+      "ios": {
+        "strategy": "ACCESSIBILITY_ID",
+        "value": "검색"
+      }
+    },
+    "network_item.general_item": {
+      "ios": {
+        "strategy": "ACCESSIBILITY_ID",
+        "value": "일반"
+      }
+    }
+  }
+}

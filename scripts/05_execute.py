@@ -299,6 +299,8 @@ def main():
     parser.add_argument("--platform", default="android", choices=["android", "ios"])
     parser.add_argument("--tc-dir", default=None,
                         help="tests/generated/{platform}/ 하위 폴더명 (미지정 시 전체 실행)")
+    parser.add_argument("--test-file", default=None,
+                        help="tests/generated/{platform}/ 기준 단일 생성 파일 경로")
     parser.add_argument("--no-report", action="store_true")
     parser.add_argument("--only-failed", action="store_true")
     parser.add_argument("--record", action="store_true",
@@ -337,9 +339,18 @@ def main():
         print(f"[05_execute] No tests found at {test_dir}")
         sys.exit(1)
 
+    if args.test_file:
+        candidate = (TESTS_DIR / platform / args.test_file).resolve()
+        if candidate.suffix != ".py" or not candidate.is_file() or not candidate.is_relative_to((TESTS_DIR / platform).resolve()):
+            print(f"[05_execute] Invalid test file: {args.test_file}")
+            sys.exit(1)
+        test_target = candidate
+    else:
+        test_target = test_dir
+
     use_json_report = _has_json_report_plugin()
     cmd = [
-        "python", "-m", "pytest", str(test_dir), "-v",
+        "python", "-m", "pytest", str(test_target), "-v",
         f"--junit-xml={JUNIT_XML}",
     ]
     if use_json_report:

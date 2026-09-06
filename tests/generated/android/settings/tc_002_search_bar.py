@@ -6,6 +6,8 @@ Tests:
 """
 
 import json
+import os
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -17,11 +19,11 @@ from selenium.webdriver.support import expected_conditions as EC
 
 
 # --------------------------------------------------------------------------
-# Selectors — placeholder values from config/screens.json.
-# Replace with real resource-id / XPath once the app is attached.
+# Selectors — generated from config/locators.json.
+# Healing updates the registry, then regeneration updates this file.
 # --------------------------------------------------------------------------
-SEL_SEARCH_ACTION_BAR_TITLE = "com.android.settings:id/search_action_bar_title"
-SEL_OPEN_SEARCH_VIEW = "com.google.android.settings.intelligence:id/open_search_view"
+SEL_SEARCH_ACTION_BAR_TITLE = "com.android.settings:id/search_action_bar_title"  # target_ref: search_bar.search_action_bar_title / AppiumBy.ID
+SEL_OPEN_SEARCH_VIEW = "com.google.android.settings.intelligence:id/open_search_view"  # target_ref: search_bar.open_search_view / AppiumBy.ID
 
 CONFIG_DIR = Path(__file__).parent.parent.parent.parent.parent / "config"
 APPIUM_URL = "http://localhost:4723"
@@ -32,7 +34,19 @@ def _load_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-_ADB = "/Users/songkyoungjin/Library/Android/sdk/platform-tools/adb"
+def _find_adb() -> str:
+    candidates = [
+        os.path.expanduser("~/Library/Android/sdk/platform-tools/adb"),
+        "/usr/local/bin/adb",
+        shutil.which("adb") or "",
+    ]
+    for candidate in candidates:
+        if candidate and Path(candidate).exists():
+            return candidate
+    return "adb"
+
+
+_ADB = _find_adb()
 
 
 def _check_device_connected() -> None:

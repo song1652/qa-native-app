@@ -1,341 +1,134 @@
-# QA Automation — App (Appium)
+# QA Automation — Native App
 
-> **독자**: 사람 — 신규 진입점. 설치·실행 방법과 내부 문서 링크 모음.
+Appium 기반 Android/iOS 네이티브 앱 테스트 자동화 프로젝트입니다. 대시보드 또는 CLI에서 UI hierarchy 분석, 테스트 코드 생성, 린트, 실행, locator healing을 하나의 파이프라인으로 수행합니다.
 
-Android / iOS 앱 테스트 자동화 시스템.  
-Appium 기반으로 UI XML 수집 → 테스트 코드 자동 생성 → 린트 → 실행 → 자가 힐링까지 전 과정을 대시보드에서 실행.
+## 현재 파이프라인
 
----
-
-## 실행 파일 목록
-
-| 파일 | 언제 실행? | 하는 일 |
-|---|---|---|
-| `agents/dashboard/serve.py` | 대시보드 서버 실행 | http://localhost:8767 에서 파이프라인 실행·모니터링·로그 확인 |
-| `scripts/01_analyze.py` | UI 수집 | Appium으로 앱 접속 → screens.json 기반 page_source XML 수집 |
-| `scripts/02_generate.py` | 테스트 코드 생성 | TC 마크다운 → pytest 코드 자동 생성 |
-| `scripts/03_lint.py` | 린트 검사 | 생성된 코드 flake8 검사 |
-| `scripts/05_execute.py` | 테스트 실행 | pytest 실행 + HTML 리포트 생성 |
-| `scripts/06_heal.py` | 자동 힐링 | 실패 TC 자동 패치 (최대 3회) |
-
-> **대시보드 ▶ 전체 실행** 버튼으로 01 → 02 → 03 → 05 → 06 순서가 자동 실행됩니다.
-
----
-
-## 설치
-
-### 0. Homebrew (미설치 시)
-
-```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```text
+01_analyze → 02_generate → 03_lint → 05_execute → 06_heal
 ```
 
-### 1. Python (pyenv)
+`06_heal`은 실행 실패가 있을 때만 사용합니다. 전체 실행은 대시보드의 단일 `파이프라인 실행` 흐름이며, 별도의 단일/병렬 실행 유형을 제공하지 않습니다.
 
-```bash
-brew install pyenv
-pyenv install 3.12.9
-pyenv global 3.12.9
-```
+### 플랫폼
 
-`~/.zshrc` (또는 `~/.bash_profile`)에 추가:
+- Android: Appium UiAutomator2
+- iOS: Appium XCUITest
+- 실행 전 Appium 서버와 대상 에뮬레이터/시뮬레이터 또는 실제 디바이스가 준비되어야 합니다.
+- 화면 분석 결과는 Android/iOS별로 분리해 `state/pipeline.json`에 저장합니다.
 
-```bash
-export PYENV_ROOT="$HOME/.pyenv"
-export PATH="$PYENV_ROOT/bin:$PATH"
-eval "$(pyenv init -)"
-```
+## 빠른 시작
 
-적용:
-
-```bash
-source ~/.zshrc
-python --version   # Python 3.12.9 확인
-```
-
-### 2. Node.js (nvm)
-
-```bash
-brew install nvm
-```
-
-`~/.zshrc`에 추가:
-
-```bash
-export NVM_DIR="$HOME/.nvm"
-[ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"
-```
-
-적용:
-
-```bash
-source ~/.zshrc
-nvm install 20
-nvm use 20
-node --version   # v20.x.x 확인
-```
-
-### 3. Python 패키지
+### 설치
 
 ```bash
 pip install -r requirements.txt
-```
-
-| 패키지 | 용도 |
-|---|---|
-| `appium-python-client` | Appium Python 드라이버 |
-| `pytest` | 테스트 실행 |
-| `pytest-html` | HTML 리포트 생성 |
-| `pytest-json-report` | JSON 리포트 생성 (결과 파싱 정확도 향상) |
-| `flake8` | 린트 검사 |
-
-### 4. Appium 및 드라이버
-
-```bash
 npm install -g appium
-appium driver install uiautomator2   # Android
-appium driver install xcuitest       # iOS
-appium --version   # 2.x 확인
+appium driver install uiautomator2
+appium driver install xcuitest
 ```
 
-### 5. Android 환경 설정
-
-1. [Android Studio](https://developer.android.com/studio) 설치
-2. Android Studio 실행 → **SDK Manager** 열기:
-   - `SDK Platforms` 탭 → **Android 14.0 (API 34)** 이상 체크 후 설치
-   - `SDK Tools` 탭 → **Android SDK Build-Tools**, **Android SDK Platform-Tools** 체크 후 설치
-3. **AVD Manager** → 에뮬레이터 생성 (API 30+)
-4. `~/.zshrc`에 환경변수 추가:
+Android는 `ANDROID_HOME`과 `adb`를 설정하고, iOS는 Xcode 및 `xcrun simctl`을 준비합니다.
 
 ```bash
-export ANDROID_HOME=$HOME/Library/Android/sdk
-export PATH=$PATH:$ANDROID_HOME/platform-tools
-export PATH=$PATH:$ANDROID_HOME/emulator
+export ANDROID_HOME="$HOME/Library/Android/sdk"
+export PATH="$PATH:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator"
 ```
 
-적용 및 확인:
+### 설정
 
-```bash
-source ~/.zshrc
-adb --version
-emulator -list-avds   # 생성한 AVD 이름 확인 → devices.json의 avd 값에 입력
-```
+실제 앱에 맞게 다음 파일을 먼저 수정합니다.
 
-### 6. iOS 환경 설정 (Mac 전용)
+- `config/test_data.json`: Android package/activity, iOS bundle ID/app path
+- `config/devices.json`: Android emulator 또는 device, iOS simulator 또는 device capability
+- `config/screens.json`: 분석 대상 화면과 화면 이동 action
+- `config/locators.json`: 테스트 대상 native locator의 기준값
+- `config/jira_config.json`: 이 제품 전용 Jira 프로젝트/이슈 설정
 
-1. App Store에서 **Xcode** 설치 (15 이상)
-2. Command Line Tools 설치:
-
-```bash
-xcode-select --install
-```
-
-3. 시뮬레이터 UDID 확인:
-
-```bash
-# 시뮬레이터 부팅
-xcrun simctl boot "iPhone 16"
-# UDID 확인
-xcrun simctl list devices booted
-# → devices.json의 udid 값에 입력
-```
-
-4. (실기기 테스트 시) libimobiledevice 설치:
-
-```bash
-brew install libimobiledevice
-idevice_id -l   # 연결된 실기기 UDID 확인
-```
-
-### 7. config 파일 수정
-
-설치 후 반드시 아래 두 파일을 실제 앱 정보로 수정해야 합니다.
-
-**`config/test_data.json`** — 앱 패키지명 입력:
+locator는 `strategy`와 `value`를 명시합니다.
 
 ```json
 {
-  "app": {
-    "android": {
-      "package":  "com.example.app",        ← 실제 패키지명으로 변경
-      "activity": "com.example.app.MainActivity",  ← 실제 액티비티로 변경
-      "app_path": ""
-    },
-    "ios": {
-      "bundle_id": "com.example.app",       ← 실제 번들 ID로 변경
-      "app_path":  ""
+  "schema_version": 1,
+  "targets": {
+    "login.username_field": {
+      "android": {"strategy": "ID", "value": "com.example:id/username"},
+      "ios": {"strategy": "ACCESSIBILITY_ID", "value": "username"}
     }
   }
 }
 ```
 
-**`config/devices.json`** — 에뮬레이터/시뮬레이터 정보 입력:
+권장 locator 우선순위는 Android `ID`/accessibility, iOS `ACCESSIBILITY_ID`/predicate 또는 class chain, XPath는 마지막 수단입니다. Inspector에서 확인한 값을 registry에 저장한 뒤 코드를 생성합니다.
 
-```json
-{
-  "android": {
-    "emulator": {
-      "deviceName":        "Android Emulator",
-      "platformVersion":   "14.0",
-      "automationName":    "UiAutomator2",
-      "avd":               "여기에_avd_이름",   ← emulator -list-avds 결과값
-      "noReset":           true,
-      "forceAppLaunch":    true,
-      "shouldTerminateApp": true
-    }
-  },
-  "ios": {
-    "simulator": {
-      "deviceName":      "iPhone 16",
-      "platformVersion": "18.5",
-      "automationName":  "XCUITest",
-      "udid":            "여기에_UDID"          ← xcrun simctl list devices booted 결과값
-    }
-  }
-}
-```
-
-### 8. Appium 서버 실행
-
-테스트 실행 전 항상 먼저 실행:
+### Appium 서버 및 대시보드
 
 ```bash
-ANDROID_HOME=~/Library/Android/sdk \
-  appium --address 0.0.0.0 --port 4723
-```
-
----
-
-## 실행
-
-### 대시보드 (권장)
-
-```bash
+ANDROID_HOME="$HOME/Library/Android/sdk" appium --address 0.0.0.0 --port 4723
 python agents/dashboard/serve.py
-# http://localhost:8767
 ```
 
-1. 플랫폼 선택 (Android / iOS)
-2. **▶ 전체 실행** 클릭 → 파이프라인 자동 순차 실행
+브라우저에서 <http://localhost:8767>을 엽니다. 대시보드에는 Appium 연결, Android/iOS 플랫폼, 디바이스 연결, 분석·생성·린트·실행·힐링 단계, 로그, 생성 테스트, 리포트, 실행 히스토리가 표시됩니다.
 
-### 직접 실행
+### CLI 실행
 
 ```bash
 # Android
 python scripts/01_analyze.py --platform android --mode emulator
-python scripts/02_generate.py --platform android
+python scripts/02_generate.py --platform android --strict-locators
 python scripts/03_lint.py --platform android
 python scripts/05_execute.py --platform android
 
 # iOS
 python scripts/01_analyze.py --platform ios --mode simulator
-python scripts/02_generate.py --platform ios
+python scripts/02_generate.py --platform ios --strict-locators
 python scripts/03_lint.py --platform ios
 python scripts/05_execute.py --platform ios
 ```
 
----
+`--strict-locators`는 `config/locators.json`에 등록되지 않은 대상의 생성을 중단해 placeholder 코드 생성을 막습니다.
 
-## 테스트 케이스 작성
+## Jira 실패 보고
 
-케이스는 `testcases/` 하위 앱 폴더에 `.md` 파일로 작성합니다. **1파일 = 1케이스.**
+대시보드 전체 파이프라인이 healing 3회 후에도 실패하면 `scripts/jira_reporter.py`가 이 제품의 `config/jira_config.json`을 사용해 Jira Bug를 생성합니다. 실패 스크린샷과 최종 실패 영상도 자동 첨부합니다. Jira 설정이 비활성화되었거나 토큰이 없으면 Jira만 건너뛰고 테스트 결과는 유지합니다.
 
-```
-testcases/
-  {앱이름}/
-    tc_001_main_screen.md
-    tc_002_search_bar.md
-    ...
+```bash
+export JIRA_TOKEN="<Atlassian API token>"
 ```
 
-**케이스 파일 형식:**
+Jira 설정은 `qa-native-fixed`와 공유하지 않습니다. URL, 이메일, 프로젝트 키, 이슈 타입, 에픽, 버전은 이 프로젝트의 `config/jira_config.json`에서 별도로 관리하고, 토큰은 환경변수로만 주입합니다.
 
-```markdown
----
-id: tc_001
-priority: high
-tags: [smoke]
----
-# 메인 화면 진입 확인
+## 테스트 케이스와 locator 흐름
 
-## Steps
-1. 앱 실행
-2. 메인 화면 로드 확인
+테스트 케이스는 `testcases/{app}/tc_*.md`에 작성합니다. 최종 실행 locator의 기준값은 `config/locators.json`에서 관리합니다.
 
-## Expected
-- 메인 화면 타이틀이 표시되어야 한다.
+```text
+TC Markdown → target_ref + config/locators.json
+            → Android/iOS AppiumBy 코드 생성
+            → 실패 시 최신 page_source 수집
+            → 유일 후보만 registry 갱신
 ```
 
-파일명 규칙: `tc_{번호}_{english_snake_case}.md`
+DOM을 모르는 상태에서 locator를 추측해 코드를 확정하지 않습니다. `01_analyze.py`와 `06_heal.py`는 Appium `page_source`로 native hierarchy를 수집합니다. 자세한 정책은 [docs/LOCATOR_HEALING.md](docs/LOCATOR_HEALING.md)를 참고하세요.
 
----
+## 주요 파일
 
-## 설정 파일 상세
-
-### config/screens.json — 화면 정의
-
-분석 단계에서 어떤 화면을 탐색할지 지정합니다.
-
-```json
-{
-  "screen_key": {
-    "description": "화면 설명",
-    "actions": [
-      {"type": "tap",        "target": "element-id"},
-      {"type": "input_text", "target": "field-id", "value_key": "account.id"}
-    ],
-    "platform": ["android", "ios"]
-  }
-}
-```
-
-- `actions: []` — 앱 초기 화면 그대로 (탐색 불필요)
-- `platform` — `["android"]` / `["ios"]` / `["android", "ios"]`
-- `value_key` — `test_data.json`의 경로 (예: `"account.id"` → `test_data["account"]["id"]`)
-
----
-
-## 산출물
-
-| 파일 | 내용 |
+| 경로 | 역할 |
 |---|---|
-| `tests/generated/android/{앱}/tc_*.py` | 생성된 Android pytest 코드 |
-| `tests/generated/ios/{앱}/tc_*.py` | 생성된 iOS pytest 코드 |
-| `tests/reports/report_android.html` | Android HTML 리포트 |
-| `tests/reports/report_ios.html` | iOS HTML 리포트 |
-| `tests/reports/recordings/*.mp4` | 힐링 3회 실패 시 자동 저장 영상 |
-| `state/pipeline.json` | 파이프라인 실행 상태 |
+| `agents/dashboard/serve.py` | 대시보드 서버와 파이프라인 API |
+| `scripts/01_analyze.py` | Appium native UI hierarchy 수집 |
+| `scripts/02_generate.py` | TC Markdown → pytest 코드 생성 |
+| `scripts/03_lint.py` | 생성 코드 lint 검사 |
+| `scripts/05_execute.py` | pytest/Appium 실행과 리포트 생성 |
+| `scripts/06_heal.py` | 실패 locator의 Inspector 스타일 healing |
+| `scripts/locator_registry.py` | locator 정규화·registry·후보 탐색 공통 모듈 |
+| `config/locators.json` | 플랫폼별 locator source of truth |
+| `state/pipeline.json` | 단계별 상태와 UI hierarchy snapshot |
+| `docs/LOCATOR_HEALING.md` | locator healing 운영 정책 |
 
----
+## 산출물 및 제한사항
 
-## 파일 구조
-
-```
-qa-native-app/
-├── config/
-│   ├── screens.json       # 화면 정의
-│   ├── devices.json       # Appium Capabilities
-│   └── test_data.json     # 앱 패키지명 / 계정
-├── scripts/
-│   ├── drivers/
-│   │   ├── android_driver.py
-│   │   └── ios_driver.py
-│   ├── 01_analyze.py
-│   ├── 02_generate.py
-│   ├── 03_lint.py
-│   ├── 05_execute.py
-│   ├── 06_heal.py
-│   └── report_html.py
-├── testcases/             # TC 마크다운 (앱별 서브폴더)
-├── tests/
-│   ├── generated/         # 생성된 pytest 파일
-│   └── reports/           # HTML 리포트 + 영상
-├── state/
-│   └── pipeline.json      # 파이프라인 상태
-├── agents/
-│   ├── dashboard/
-│   │   └── serve.py       # 대시보드 서버 (포트 8767)
-│   └── lessons_learned.md
-└── requirements.txt
-```
-
+- 산출물: `tests/generated/`, `tests/reports/`, `state/pipeline.json`, `logs/run_*.txt`, `agents/lessons_learned.md`
+- 실제 디바이스/Appium 서버가 없으면 end-to-end 실행은 검증할 수 없습니다.
+- 후보가 여러 개이거나 snapshot이 없으면 자동 healing하지 않고 실패 원인을 남깁니다.
+- GUI Appium Inspector를 매 실행마다 조작하지는 않지만, 같은 native hierarchy를 Appium `page_source`로 자동 수집합니다.
