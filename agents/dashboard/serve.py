@@ -367,15 +367,12 @@ h1{font-size:21px;font-weight:800;letter-spacing:.2px;
 .app-main.quick-view::before{display:none}
 .app-main.report-view::before{display:none}
 .app-main.quick-view .grid.focus-right #view-tests .tabs{display:none}
-.quick-mode>.status-bar{display:none}
-.report-mode>.status-bar{display:none}
-.quick-mode .app-layout,.report-mode .app-layout{height:calc(100vh - 54px)}
+.quick-mode .app-layout,.report-mode .app-layout{height:calc(100vh - 100px)}
 .quick-mode .app-main,.report-mode .app-main{overflow:hidden}
 .app-main>.grid{max-width:920px;margin:0 auto}
 .app-main.report-view>.grid{max-width:none;margin:0}
 .app-main.dashboard-view>.grid{display:none}
-body.dashboard-mode>.status-bar{display:none}
-body.dashboard-mode .app-layout{height:calc(100vh - 54px)}
+body.dashboard-mode .app-layout{height:calc(100vh - 100px)}
 .overview-view{max-width:920px;margin:0 auto;padding:0 0 24px}
 .overview-heading{font-size:29px;font-weight:800;letter-spacing:-.7px;margin:0 0 20px;
   background:linear-gradient(135deg,#fff 0%,#d8ccf8 60%,#a78bfa 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
