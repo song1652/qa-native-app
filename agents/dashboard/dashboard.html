@@ -1,0 +1,1838 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>App QA Dashboard</title>
+<style>
+:root {
+  color-scheme:dark;
+  --bg:#08071b;
+  --bg-gradient:radial-gradient(ellipse at 20% 0%,rgba(88,40,180,.15),transparent 50%),
+    radial-gradient(ellipse at 80% 100%,rgba(60,30,140,.1),transparent 50%),#08071b;
+  --surface:rgba(18,16,42,.55); --surface2:rgba(28,24,60,.5);
+  --border:rgba(140,120,220,.12); --border-glass:rgba(140,120,220,.1);
+  --text:#f0eff5; --text2:#b8b3d0; --text3:#8c87a8;
+  --pass:#34d399; --fail:#fb7185; --warn:#fbbf24; --accent:#8b5cf6;
+  --android:#3ddc84; --ios:#60a5fa; --radius:12px; --radius-sm:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{height:100%;overflow:hidden}
+body{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  background:var(--bg-gradient);color:var(--text);font-size:14px;height:100%;min-height:100vh;overflow:hidden}
+h1{font-size:21px;font-weight:800;letter-spacing:.2px;
+  background:linear-gradient(135deg,#fff 0%,#d8ccf8 50%,#a78bfa 100%);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.subtitle{font-size:12px;color:var(--text3);margin-top:3px;margin-bottom:24px}
+
+/* fixed 앱과 동일한 외곽 셸 */
+.title-row{height:54px;display:flex;align-items:center;gap:14px;padding:0 24px;
+  background:rgba(12,10,30,.7);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+  border-bottom:1px solid var(--border-glass);position:relative;z-index:10}
+.title-row::after{content:'';position:absolute;left:0;right:0;bottom:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(139,92,246,.2) 30%,rgba(167,139,250,.15) 70%,transparent)}
+.title-row>div:first-child{display:flex;align-items:center;gap:14px}
+.title-row h1{font-size:15px;white-space:nowrap}
+.title-row .subtitle{display:none}
+.title-row::before{content:'●  LIVE';font-size:10px;font-weight:600;letter-spacing:.8px;color:var(--pass);
+  background:rgba(52,211,153,.06);border:1px solid rgba(52,211,153,.12);padding:3px 10px;border-radius:16px}
+
+/* 상태 바 */
+.status-bar{height:46px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;flex-shrink:0;
+  background:rgba(12,10,30,.62);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border-glass);padding:0 24px;margin:0;position:relative;z-index:9}
+.reset-btn{flex-shrink:0;margin-left:auto;font-size:11px;font-weight:600;padding:6px 13px;border-radius:8px;
+  background:rgba(255,255,255,.03);color:var(--text2);border:1px solid var(--border);
+  cursor:pointer;transition:all .18s}
+.reset-btn:hover:not(:disabled){background:rgba(251,113,133,.08);color:var(--fail);
+  border-color:rgba(251,113,133,.35)}
+.reset-btn:disabled{opacity:.5;cursor:wait}
+.si{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2)}
+.sdiv{width:1px;height:16px;background:var(--border)}
+.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.dot.on{background:var(--pass);box-shadow:0 0 6px var(--pass)}
+.dot.off{background:var(--fail)}
+.step-badge{padding:2px 9px;border-radius:10px;font-size:11px;font-weight:600;
+  background:rgba(99,102,241,.15);color:var(--accent);border:1px solid rgba(99,102,241,.3)}
+.automation-badge{padding:3px 9px;border-radius:10px;font-size:11px;font-weight:600;
+  color:var(--text2);background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.22)}
+
+/* 레이아웃 */
+.grid{display:grid;grid-template-columns:360px minmax(0,1fr);gap:18px;align-items:start}
+.app-layout{display:flex;height:calc(100vh - 100px);min-height:0;overflow:hidden}
+.sidebar{position:static;left:auto;top:auto;bottom:auto;width:260px;flex-shrink:0;z-index:5;background:rgba(12,10,30,.5);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:0;border-right:1px solid var(--border-glass);
+  border-radius:0;padding:14px 0;min-height:0;overflow-y:auto}
+.sidebar-section{padding:8px 0 12px;border-bottom:1px solid var(--border)}
+.sidebar-section:last-child{border-bottom:none}
+.sidebar-label{padding:6px 16px;font-size:10px;font-weight:600;color:var(--text3);
+  text-transform:uppercase;letter-spacing:1px;opacity:.75}
+.sidebar-item{display:flex;align-items:center;gap:9px;padding:9px 16px;cursor:pointer;
+  color:var(--text2);font-size:14px;font-weight:500;border-left:2px solid transparent;
+  transition:all .18s}
+.sidebar-item:hover{background:rgba(139,92,246,.07);color:var(--text)}
+.sidebar-item.active{background:linear-gradient(90deg,rgba(139,92,246,.12),transparent);
+  border-left-color:var(--accent);color:#fff;font-weight:600}
+.sidebar-dot{width:7px;height:7px;border-radius:50%;background:rgba(140,120,220,.25);
+  border:1px solid rgba(140,120,220,.35);flex-shrink:0}
+.sidebar-item.active .sidebar-dot{background:var(--accent);border-color:var(--accent);
+  box-shadow:0 0 7px rgba(139,92,246,.6)}
+.app-main{flex:1;min-width:0;min-height:0;overflow-y:auto;padding:24px 32px 48px}
+.app-main::before{content:'Dashboard';display:none;font-size:29px;font-weight:800;margin:0 0 10px 0;
+  letter-spacing:-.7px;color:#f0eff5}
+.app-main.dashboard-view::before{display:none}
+.app-main.quick-view::before{content:'빠른 실행'}
+.app-main.quick-view::before{display:none}
+.app-main.report-view::before{display:none}
+.app-main.quick-view .grid.focus-right #view-tests .tabs{display:none}
+.quick-mode .app-layout,.report-mode .app-layout{height:calc(100vh - 100px)}
+.quick-mode .app-main,.report-mode .app-main{overflow:hidden}
+.app-main>.grid{max-width:920px;margin:0 auto}
+.app-main.report-view>.grid,.app-main.import-view>.grid{max-width:none;margin:0}
+.app-main.dashboard-view>.grid{display:none}
+body.dashboard-mode .app-layout{height:calc(100vh - 100px)}
+.overview-view{max-width:920px;margin:0 auto;padding:0 0 24px}
+.overview-heading{font-size:29px;font-weight:800;letter-spacing:-.7px;margin:0 0 20px;
+  background:linear-gradient(135deg,#fff 0%,#d8ccf8 60%,#a78bfa 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.overview-hero{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px}
+.overview-card{background:var(--surface);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border:1px solid var(--border);border-radius:var(--radius);padding:20px 24px;box-shadow:0 4px 24px rgba(0,0,0,.22);position:relative;overflow:hidden}
+.overview-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(139,92,246,.24),transparent)}
+.overview-hero-main{display:flex;align-items:center;gap:24px;min-height:194px;padding:22px 28px}
+.overview-donut{width:150px;height:150px;flex-shrink:0;transform:rotate(-90deg);overflow:visible}
+.overview-donut-bg,.overview-donut-fill{fill:none;stroke-width:5}
+.overview-donut-bg{stroke:rgba(140,120,220,.08)}
+.overview-donut-fill{stroke:var(--pass);stroke-linecap:butt;filter:drop-shadow(0 0 4px var(--pass));transition:stroke-dasharray .35s ease}
+.overview-donut-value{font-size:24px;font-weight:800;fill:var(--text);transform:rotate(90deg);transform-origin:60px 60px}
+.overview-donut-label{font-size:9px;font-weight:600;letter-spacing:.7px;fill:var(--text3);transform:rotate(90deg);transform-origin:60px 60px}
+.overview-context{font-size:11px;color:var(--text3);font-weight:500;margin-bottom:12px;white-space:nowrap}
+.overview-hero-stats{display:flex;gap:16px}
+.overview-stat b{display:block;font-size:22px;font-weight:800;line-height:1}
+.overview-stat small{display:block;margin-top:4px;font-size:10px;color:var(--text3);font-weight:600}
+.overview-hero-legend,.overview-trend-legend{display:flex;align-items:center;gap:12px;flex-wrap:wrap;color:var(--text3);font-size:10px;white-space:nowrap}
+.overview-hero-legend{margin-top:12px}.overview-legend-item{display:inline-flex;align-items:center;gap:4px}
+.overview-legend-dot{width:6px;height:6px;border-radius:50%;display:inline-block}
+.overview-trend-title{font-size:12px;font-weight:600;color:var(--text3);margin-bottom:8px}
+.overview-trend-empty,.overview-trend-chart{height:144px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text3);font-size:12px;opacity:.7}
+.overview-trend-empty-message{flex:1;display:flex;align-items:center}
+.overview-trend-chart{display:block;opacity:1}
+.overview-trend-chart svg{width:100%;height:100%}
+.overview-trend-footer{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-top:2px;color:var(--text3);font-size:10px}
+.overview-trend-footer .overview-trend-legend{justify-content:flex-end;gap:12px;margin-left:auto}
+.overview-kpi-row{display:flex;gap:12px;margin-bottom:20px}
+.overview-kpi{flex:1;display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;position:relative;overflow:hidden}
+.overview-kpi-icon{font-size:10px;color:var(--accent);opacity:.7}.overview-kpi-label{font-size:10px;font-weight:600;color:var(--text3);margin-bottom:2px}.overview-kpi-value{font-size:16px;font-weight:700}
+.overview-log-head{display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:600;color:var(--text3);margin-bottom:12px}
+.overview-log{background:rgba(8,7,20,.6);border:1px solid var(--border);border-radius:10px;padding:14px;font:11px/1.7 monospace;color:#a78bfa;max-height:180px;overflow-y:auto;white-space:pre-wrap;word-break:break-all}
+.overview-log-head .log-clear{border:1px solid var(--border);border-radius:6px;padding:3px 7px;font-size:14px;line-height:1;color:var(--text3)}
+@media (max-width:900px){.overview-view{max-width:none}.overview-hero{grid-template-columns:1fr}.overview-kpi-row{flex-wrap:wrap}.overview-kpi{min-width:180px}}
+.pipeline-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}.pipeline-card-head .card-title{margin-bottom:0}
+.pipeline-card-head .reset-btn{font-size:13px;padding:7px 15px;color:var(--text);background:rgba(139,92,246,.14);border-color:rgba(139,92,246,.45);box-shadow:0 0 0 1px rgba(139,92,246,.08)}
+.pipeline-card-head .reset-btn:hover:not(:disabled){background:rgba(139,92,246,.26);color:#fff;border-color:var(--accent)}
+.view-hidden{display:none!important}
+.grid.focus-left{display:block}
+.grid.focus-left .right-panel{display:none}
+.grid.focus-right{display:block}
+.grid.focus-right #view-pipeline{display:none}
+
+/* 카드 */
+.card{background:var(--surface);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:0 8px 30px rgba(0,0,0,.12)}
+.card-title{font-size:12px;text-transform:uppercase;letter-spacing:.9px;
+  color:var(--text3);font-weight:600;margin-bottom:16px}
+
+/* 플랫폼 라디오 */
+.platform-radio{display:none}
+.platform-selector{display:flex;gap:10px;margin-bottom:18px}
+.pl-label{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;
+  padding:16px 10px;border-radius:var(--radius);border:2px solid var(--border);
+  cursor:pointer;transition:all .18s;background:rgba(255,255,255,.03)}
+.pl-label:hover{border-color:rgba(255,255,255,.25)}
+.pl-icon{font-size:28px}
+.pl-name{font-size:14px;font-weight:700}
+.pl-desc{font-size:11px;color:var(--text3);text-align:center;line-height:1.5}
+#radio-android:checked ~ .platform-selector label[for="radio-android"]
+  {border-color:var(--android);background:rgba(61,220,132,.08)}
+#radio-ios:checked ~ .platform-selector label[for="radio-ios"]
+  {border-color:var(--ios);background:rgba(0,122,255,.08)}
+.pl-name.android{color:var(--android)}
+.pl-name.ios{color:var(--ios)}
+
+/* 파이프라인 스텝 */
+.steps{display:flex;flex-direction:column;gap:0}
+.step-row{display:flex;align-items:center;gap:8px;position:relative}
+.step-connector{width:2px;height:10px;background:var(--border);margin-left:10px}
+.step-num{width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,.08);
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:700;color:var(--text3);flex-shrink:0}
+.step-num.running{background:var(--accent);color:#fff;animation:pulse 1s infinite}
+.step-num.done{background:var(--pass);color:#fff}
+.step-num.failed{background:var(--fail);color:#fff}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+.btn{flex:1;padding:9px 14px;border-radius:var(--radius-sm);
+  border:1px solid var(--border);font-size:13px;font-weight:600;cursor:pointer;
+  transition:all .15s;display:flex;align-items:center;justify-content:space-between;
+  background:rgba(255,255,255,.03);color:var(--text2)}
+.btn:hover:not(:disabled){background:rgba(139,92,246,.08);color:var(--text);border-color:rgba(139,92,246,.35)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover:not(:disabled){opacity:.85}
+.btn.heal-btn{background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.4);color:var(--warn)}
+.btn.heal-btn:hover:not(:disabled){background:rgba(245,158,11,.2)}
+.btn-right{display:flex;align-items:center;gap:6px}
+.btn-tag{font-size:11px;font-weight:600;padding:2px 6px;border-radius:6px;
+  background:rgba(255,255,255,.1);color:rgba(255,255,255,.5)}
+.btn-tip{font-size:11px;color:var(--text3)}
+
+/* 취소 버튼 */
+.cancel-btn{width:26px;height:26px;border-radius:6px;border:1px solid rgba(244,63,94,.3);
+  background:rgba(244,63,94,.1);color:var(--fail);font-size:14px;cursor:pointer;
+  display:none;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
+.cancel-btn:hover{background:rgba(244,63,94,.25)}
+.cancel-btn.visible{display:flex}
+
+/* 스피너 */
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{display:none;width:12px;height:12px;border:2px solid rgba(255,255,255,.2);
+  border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
+.btn.loading .spinner{display:inline-block}
+
+/* 로그 */
+.log-wrap{margin-top:14px}
+.log-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}
+.log-label{font-size:12px;color:var(--text3)}
+.log-clear{font-size:11px;color:var(--text3);cursor:pointer;background:none;border:none;padding:0}
+.log-clear:hover{color:var(--text2)}
+.log-box{background:#060a0f;border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:10px 12px;font-size:12px;font-family:monospace;color:#7dd3a8;
+  max-height:180px;overflow-y:auto;white-space:pre-wrap;line-height:1.7}
+
+/* 실패 요약 */
+.fail-summary{margin-top:12px;display:none}
+.fail-summary.visible{display:block}
+.fail-title{font-size:12px;font-weight:600;color:var(--fail);margin-bottom:6px;
+  display:flex;align-items:center;gap:6px}
+.fail-item{background:rgba(244,63,94,.08);border:1px solid rgba(244,63,94,.2);
+  border-radius:var(--radius-sm);padding:8px 10px;margin-bottom:6px;font-size:12px}
+.fail-tc{font-weight:600;color:var(--fail);font-family:monospace;word-break:break-all}
+.fail-err{color:var(--text3);margin-top:3px;font-size:11px;font-family:monospace;word-break:break-all}
+
+/* 오른쪽 패널 */
+.right-panel{display:flex;flex-direction:column;gap:14px}
+
+/* 탭 */
+.tabs{display:flex;gap:4px;margin-bottom:12px}
+.tab{padding:6px 13px;border-radius:var(--radius-sm);font-size:12px;font-weight:600;
+  cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text3)}
+.tab.active{background:var(--surface2);color:var(--text);border-color:rgba(255,255,255,.2)}
+.tab-content{display:none}.tab-content.active{display:block}
+
+/* 생성 파일 */
+.gen-item{display:flex;align-items:center;justify-content:space-between;
+  padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+.gen-item:last-child{border-bottom:none}
+.gen-badge{font-size:11px;font-weight:600;padding:3px 8px;border-radius:7px;margin-right:6px}
+.gen-badge.android{background:rgba(61,220,132,.12);color:var(--android)}
+.gen-badge.ios{background:rgba(0,122,255,.12);color:var(--ios)}
+.gen-count{color:var(--text3);font-size:12px}
+.gen-file{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);font-size:11px}
+.gen-file:last-child{border-bottom:none}
+.gen-file-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text2);font-family:monospace}
+.gen-run-btn{flex-shrink:0;padding:4px 9px;border-radius:6px;border:1px solid rgba(139,92,246,.35);background:rgba(139,92,246,.1);color:var(--accent);font-size:10px;cursor:pointer}
+.gen-run-btn:hover{background:rgba(139,92,246,.22);color:#fff}
+.quick-view-title{font-size:29px;font-weight:800;letter-spacing:-.7px;margin-bottom:10px;color:var(--text)}
+.quick-view-subtitle{font-size:13px;color:var(--text3);margin-bottom:16px}
+.quick-select-card,.quick-result-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:16px}
+.quick-platform-selector{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.quick-platform-btn{padding:11px 14px;border:1px solid var(--border);border-radius:9px;background:var(--surface2);color:var(--text2);font-size:13px;font-weight:600;cursor:pointer}
+.quick-platform-btn.active{border-color:rgba(139,92,246,.65);background:rgba(139,92,246,.14);color:var(--text)}
+.quick-select-head,.quick-result-head{display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:12px}
+.quick-select-head label,.quick-action-row label{font-size:13px;color:var(--text2);font-weight:400;cursor:pointer}
+.quick-group-list{display:flex;flex-direction:column;gap:2px}
+.quick-group-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;font-size:14px}
+.quick-group-item:hover{background:rgba(139,92,246,.06)}
+.quick-group-item input{width:16px;height:16px;accent-color:#60a5fa;cursor:pointer}
+.quick-group-name{flex:1;font-weight:500;color:var(--text)}
+.quick-group-count{font-size:13px;color:var(--text2)}
+.quick-action-row{display:flex;align-items:center;gap:10px;margin-top:14px}
+.quick-run-action{background:var(--accent);border:0;border-radius:8px;color:#fff;padding:10px 20px;font-weight:600;font-size:13px;cursor:pointer}
+.quick-run-action:disabled{opacity:.5;cursor:wait}
+.quick-log{background:#060a0f;border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;font:11px/1.6 monospace;color:#7dd3a8;white-space:pre-wrap;max-height:220px;overflow:auto;margin-bottom:16px}
+.quick-result-head{margin-bottom:16px}.quick-result-badge{padding:4px 12px;border-radius:16px;font-size:10px}.quick-result-badge.pass{color:var(--pass);border:1px solid rgba(52,211,153,.3);background:rgba(52,211,153,.08)}.quick-result-badge.fail{color:var(--fail);border:1px solid rgba(251,113,133,.3);background:rgba(251,113,133,.08)}
+.quick-result-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.quick-result-stats>div{text-align:center;border:1px solid var(--border);border-radius:10px;padding:12px 8px}.quick-result-stats b{display:block;font-size:25px;color:var(--text)}.quick-result-stats small{font-size:10px;color:var(--text2);letter-spacing:.5px}.pass-text{color:var(--pass)!important}.fail-text{color:var(--fail)!important}.quick-result-meta{margin-top:12px;font-size:11px;color:var(--text3)}
+.reports-view .report-preview{margin-top:0;padding-top:0;border-top:0}
+.report-delete-dialog{position:fixed;inset:0;width:min(460px,90vw);max-height:min(80vh,520px);margin:auto;padding:26px;border:1px solid var(--border);border-radius:var(--radius);background:#12102a;color:var(--text);box-shadow:0 16px 48px #0008}.report-delete-dialog::backdrop{background:#0009}.report-delete-dialog h2{margin:0 0 16px;font-size:18px}.report-delete-dialog p{overflow-wrap:anywhere;line-height:1.8;font-size:13px;color:var(--text3)}.report-dialog-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:24px}.report-delete-dialog button{font:12px inherit;border:1px solid var(--border);border-radius:8px;padding:8px 12px;background:var(--surface2);color:var(--text);cursor:pointer}.report-delete-dialog .report-danger{color:var(--fail);border-color:rgba(251,113,133,.3)}
+.report-pager button{font:12px inherit;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text2);cursor:pointer}.report-pager button:disabled{opacity:.4;color:var(--text3);background:rgba(255,255,255,.03);cursor:default}
+.reports-view{width:100%}.reports-title{font-size:29px;font-weight:800;letter-spacing:-.7px;margin-bottom:10px}.reports-subtitle{font-size:13px;color:var(--text3);margin-bottom:18px}.report-controls{display:flex;gap:10px;align-items:center;padding:14px;margin-bottom:14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface)}.report-search{flex:1;min-width:140px;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:#08071b;color:var(--text);font:12px inherit}.report-controls button,.report-controls select,.report-actions button,.report-actions a,.report-panel-head button{font:12px inherit;border:1px solid var(--border);border-radius:8px;padding:8px 12px;background:var(--surface2);color:var(--text);cursor:pointer;text-decoration:none}.report-danger{color:var(--fail)!important}.report-count,.report-selection-count{color:var(--text3);font-size:12px;white-space:nowrap}.report-workspace{display:grid;grid-template-columns:minmax(370px,.95fr) minmax(360px,1.3fr);gap:14px;align-items:stretch}.report-panel{display:flex;flex-direction:column;min-width:0;height:max(570px,calc(100vh - 290px));border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);overflow:hidden}.report-panel-head{display:flex;flex-shrink:0;align-items:center;justify-content:space-between;gap:12px;min-height:62px;padding:14px 16px;border-bottom:1px solid var(--border);background:var(--surface2);font-size:13px}.report-select-all{display:flex;align-items:center;gap:9px;cursor:pointer}.reports-view input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);cursor:pointer}.report-list{flex:1;min-height:0;overflow-y:auto}.report-item{display:grid;grid-template-columns:20px minmax(0,1fr);gap:8px 10px;align-items:center;padding:15px 16px;border-bottom:1px solid var(--border)}.report-item:hover,.report-item.is-open{background:rgba(139,92,246,.11)}.report-info{min-width:0}.report-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:600;color:var(--text)}.report-meta{margin-top:4px;font-size:11px;color:var(--text3)}.report-actions{grid-column:2;display:flex;gap:6px}.report-actions button,.report-actions a{padding:5px 9px;font-size:11px;background:transparent}.report-empty{padding:36px 20px;text-align:center;line-height:1.7;color:var(--text3);font-size:13px}.report-pager{display:flex;justify-content:center;align-items:center;gap:12px;padding:14px;color:var(--text3);font-size:12px}.report-preview{display:flex;flex-direction:column}.report-iframe-wrap{flex:1;min-height:0;margin:16px;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:#fff}.report-iframe-wrap iframe{display:block;width:100%;height:100%;min-height:540px;border:none}.report-preview-empty{margin:auto}.report-panel-head button{padding:5px 9px;font-size:11px;background:transparent}
+.import-controls{display:flex;flex-direction:column;gap:10px}
+.import-row{display:flex;align-items:center;gap:8px}
+.import-row label{font-size:12px;color:var(--text3);min-width:44px}
+.import-select,.import-file{flex:1;min-width:0;background:var(--surface2);color:var(--text);
+  border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;font-size:12px}
+.import-platforms{display:flex;gap:12px;font-size:12px;color:var(--text2)}
+.import-platforms label{display:flex;align-items:center;gap:5px;min-width:0}
+.import-help{font-size:11px;color:var(--text3);line-height:1.6}
+.import-result{font-size:12px;color:var(--pass);line-height:1.6;white-space:pre-wrap}
+
+/* Import Studio — native-fixed 5단계 위저드 */
+#view-import.import-studio{--is-bg:#0b0b14;--is-card:#1a1a2e;--is-card2:#222238;--is-border:rgba(255,255,255,.07);--is-accent:#8b5cf6;--is-text:#f0edff;--is-text2:#9b97b4;--is-text3:#6b6880;--is-pass:#34d399;display:flex;width:100%;height:310px;min-height:310px;padding:0;overflow:hidden;background:var(--is-bg);color:var(--is-text)}
+#view-import.import-studio.is-source-expanded{height:420px;min-height:420px}
+#view-import.import-studio.is-stage-detail{height:min(520px,calc(100vh - 150px));min-height:420px}
+#view-import.import-studio.is-stage-mapping{height:min(700px,calc(100vh - 150px));min-height:560px}
+#view-import.import-studio.is-stage-preview{height:min(700px,calc(100vh - 150px));min-height:560px}
+#view-import.import-studio.is-stage-commit{height:min(650px,calc(100vh - 150px));min-height:560px}
+#view-import.import-studio.is-stage-complete{height:420px;min-height:420px}
+#import-studio-root{display:flex;flex:1;min-width:0;flex-direction:column}
+.import-loading{margin:auto;color:var(--is-text3);font-size:13px}
+.is-header{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:20px 28px 16px;border-bottom:1px solid var(--is-border)}
+.is-title-row{display:flex;width:100%;align-items:center;justify-content:space-between;gap:16px}.is-title{font-size:20px;font-weight:700;color:var(--is-text)}.is-reset-btn{display:flex;align-items:center;gap:6px;padding:6px 11px;border:1px solid var(--is-border);border-radius:7px;background:transparent;color:var(--is-text2);font:600 11px inherit;cursor:pointer}.is-reset-btn:hover{border-color:rgba(139,92,246,.45);background:rgba(139,92,246,.08);color:var(--is-text)}
+.is-wizard{display:flex;flex:1;align-items:center;min-width:0}
+.is-step{display:flex;align-items:center}.is-step-circle{display:grid;width:28px;height:28px;place-items:center;border:2px solid var(--is-border);border-radius:50%;background:var(--is-card);color:var(--is-text3);font-size:12px;font-weight:600}.is-step-circle.active,.is-step-circle.done{border-color:var(--is-accent);background:var(--is-accent);color:#fff}.is-step-circle.active{box-shadow:0 0 0 4px rgba(139,92,246,.2)}
+.is-step-label{margin-left:8px;color:var(--is-text3);font-size:12px;white-space:nowrap}.is-step-label.active{color:var(--is-text);font-weight:600}.is-step-line{height:2px;min-width:30px;flex:1;margin:0 12px;background:var(--is-border)}.is-step-line.done{background:var(--is-accent)}
+.is-body{display:flex;min-height:0;flex:1;flex-direction:column}.is-content{min-height:0;flex:1;overflow:auto;padding:20px 28px}.is-description{margin-bottom:16px;color:var(--is-text2);font-size:13px}
+.is-file-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,312px));gap:12px}.is-file-card{padding:16px;border:2px solid var(--is-border);border-radius:10px;background:var(--is-card);cursor:pointer;text-align:left}.is-file-card:hover{border-color:rgba(139,92,246,.35);background:var(--is-card2)}.is-file-card.selected{border-color:var(--is-accent);background:rgba(139,92,246,.08)}.is-file-head{display:flex;align-items:center;gap:12px}.is-excel-icon{display:grid;width:36px;height:36px;flex-shrink:0;place-items:center;border-radius:8px;background:#1e6a3e;color:#fff;font-weight:800}.is-file-info{min-width:0;flex:1}.is-file-name{overflow:hidden;color:var(--is-text);font-size:13px;font-weight:600;text-overflow:ellipsis;white-space:nowrap}.is-file-meta{margin-top:3px;color:var(--is-text3);font-size:11px}.is-file-check{display:grid;width:18px;height:18px;place-items:center;border:2px solid var(--is-border);border-radius:4px;background:var(--is-card2);color:transparent}.is-file-card.selected .is-file-check{border-color:var(--is-accent);background:var(--is-accent);color:#fff}
+.is-file-sheets{display:flex;flex-direction:column;gap:6px;margin-top:12px}.is-sheet-row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;background:var(--is-card2);color:var(--is-text2);font-size:12px;cursor:pointer}.is-sheet-row input{width:13px;height:13px;accent-color:var(--is-accent)}.is-sheet-name{flex:1}.is-sheet-count{color:var(--is-text3);font:11px monospace}
+.is-panel{padding:18px;border:1px solid var(--is-border);border-radius:10px;background:var(--is-card)}.is-panel-title{margin-bottom:14px;color:var(--is-text);font-size:14px;font-weight:700}.is-option-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.is-field{display:flex;flex-direction:column;gap:7px;color:var(--is-text2);font-size:12px}.is-select{padding:9px 11px;border:1px solid var(--is-border);border-radius:7px;background:var(--is-card2);color:var(--is-text);font:13px inherit}.is-platforms{display:flex;gap:16px;padding:10px 0}.is-platforms label{display:flex;align-items:center;gap:7px;color:var(--is-text2);font-size:13px}.is-platforms input{width:15px;height:15px;accent-color:var(--is-accent)}
+.is-step2-layout{display:grid;grid-template-columns:220px minmax(360px,1fr) 310px;gap:14px;height:100%}.is-subpanel{display:flex;min-width:0;flex-direction:column;overflow:hidden;border:1px solid var(--is-border);border-radius:10px;background:var(--is-card)}.is-subpanel-head{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--is-border)}.is-subpanel-title{flex:1;color:var(--is-text);font-size:13px;font-weight:600}.is-panel-badge{padding:2px 7px;border-radius:10px;background:rgba(139,92,246,.2);color:var(--is-accent);font-size:11px;font-weight:700}.is-subpanel-body{min-height:0;flex:1;overflow:auto;padding:12px 14px}.is-mini-file{display:flex;align-items:center;gap:8px;padding:8px;border:1px solid var(--is-border);border-radius:6px;background:var(--is-card2)}.is-mini-excel{display:grid;width:24px;height:24px;place-items:center;border-radius:5px;background:#1e6a3e;color:#fff;font-size:10px;font-weight:700}.is-mini-name{min-width:0;flex:1;overflow:hidden;color:var(--is-text);font-size:11px;text-overflow:ellipsis;white-space:nowrap}.is-mini-ok{color:var(--is-pass)}.is-mini-meta{padding:5px 8px;color:var(--is-text3);font-size:10px}
+.is-map-header,.is-map-row{display:grid;grid-template-columns:16px minmax(120px,1fr) 32px minmax(120px,1fr) 24px;gap:8px;align-items:center}.is-map-header{padding:8px 14px 2px;color:var(--is-text3);font-size:10px;font-weight:600;letter-spacing:.4px}.is-mapping-list{display:flex;min-height:0;flex:1;flex-direction:column;gap:6px;overflow:auto;padding:8px 14px}.is-drag{color:var(--is-text3);opacity:.55}.is-map-select{width:100%;padding:6px 8px;border:1px solid var(--is-border);border-radius:6px;background:var(--is-card2);color:var(--is-text);font-size:12px}.is-map-target{padding:6px 8px;color:var(--is-text2);font-size:12px}.is-map-ok{color:var(--is-pass);text-align:center}.is-map-hint{padding:8px 14px;color:var(--is-text3);font-size:11px}
+.is-kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}.is-kpi{padding:10px 12px;border:1px solid var(--is-border);border-radius:6px;background:var(--is-card2)}.is-kpi.wide{grid-column:1/-1}.is-kpi-label{color:var(--is-text2);font-size:10px}.is-kpi-number{margin-top:4px;color:var(--is-text3);font-size:22px;font-weight:700}.is-kpi-number.added{color:#34d399}.is-kpi-number.updated{color:#60a5fa}.is-kpi-number.conflict{color:#fbbf24}.is-kpi-number.error{color:#f87171}.is-kpi-number.same{color:var(--is-text2)}.is-preview-head{display:flex;align-items:center;gap:8px;margin:14px 0 8px}.is-preview-label{flex:1;color:var(--is-text);font-size:12px;font-weight:600}.is-preview-count{color:var(--is-text3);font-size:9px}.is-mini-table{width:100%;border-collapse:collapse;color:var(--is-text3);font-size:10px}.is-mini-table th,.is-mini-table td{padding:6px;border-bottom:1px solid var(--is-border);text-align:left}.is-status-pill{display:inline-block;padding:2px 6px;border-radius:8px;font-size:9px;font-weight:700}.is-status-pill.added{background:rgba(52,211,153,.12);color:#34d399}.is-status-pill.updated{background:rgba(96,165,250,.12);color:#60a5fa}.is-status-pill.conflict{background:rgba(251,191,36,.12);color:#fbbf24}.is-status-pill.error{background:rgba(248,113,113,.12);color:#f87171}.is-status-pill.same{background:rgba(155,151,180,.12);color:var(--is-text2)}.is-legend{display:flex;flex-wrap:wrap;gap:9px;margin-top:12px;color:var(--is-text3);font-size:10px}.is-legend i{display:inline-block;width:7px;height:7px;margin-right:4px;border-radius:50%}
+.is-mapping{display:grid;grid-template-columns:1fr 32px 1fr;gap:7px;align-items:center;margin-top:16px}.is-map-cell{padding:8px 10px;border-radius:6px;background:var(--is-card2);color:var(--is-text2);font-size:12px}.is-map-arrow{text-align:center;color:var(--is-text3)}
+.is-full-preview{display:flex;min-height:0;flex:1;flex-direction:column;padding:12px 28px 0;overflow:hidden}.is-preview-filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}.is-filter-btn{padding:6px 13px;border:1px solid var(--is-border);border-radius:16px;background:var(--is-card);color:var(--is-text2);font:600 11px inherit;cursor:pointer}.is-filter-btn.active{border-color:var(--is-accent);background:var(--is-accent);color:#fff}.is-full-table-wrap{min-height:0;flex:1;overflow:auto}.is-full-table{width:100%;border-collapse:collapse;table-layout:fixed;color:var(--is-text2);font-size:11px}.is-full-table th{position:sticky;top:0;z-index:1;padding:9px 10px;background:var(--is-card);color:var(--is-text3);font-size:10px;text-align:left}.is-full-table td{padding:10px;border-bottom:1px solid var(--is-border);line-height:1.45;vertical-align:top;white-space:pre-line;overflow-wrap:anywhere}.is-full-table .is-empty-row{padding:40px;text-align:center;color:var(--is-text3)}
+.is-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.is-summary-card{padding:16px;border:1px solid var(--is-border);border-radius:10px;background:var(--is-card)}.is-summary-card span{display:block;color:var(--is-text3);font-size:11px}.is-summary-card strong{display:block;margin-top:7px;color:var(--is-text);font-size:16px}.is-safe-box{padding:18px;border:1px solid rgba(52,211,153,.22);border-radius:10px;background:rgba(52,211,153,.06);color:var(--is-text2);font-size:13px;line-height:1.8}.is-complete{text-align:center;padding:50px 20px}.is-complete-icon{display:grid;width:54px;height:54px;margin:0 auto 16px;place-items:center;border-radius:50%;background:rgba(52,211,153,.14);color:var(--is-pass);font-size:26px}.is-complete h2{margin-bottom:8px;font-size:20px}.is-complete pre{max-width:720px;margin:18px auto 0;padding:14px;border-radius:8px;background:var(--is-card);color:var(--is-text2);font:11px/1.6 monospace;text-align:left;white-space:pre-wrap}
+.is-stage-complete .is-header{padding-bottom:14px}.is-stage-complete .is-wizard{max-width:800px}.is-stage-complete .is-content{display:flex;align-items:center;justify-content:center;overflow:hidden}.is-stage-complete .is-complete{width:min(720px,100%);padding:18px 20px}.is-stage-complete .is-complete pre{max-height:86px;overflow:auto;margin-top:14px}
+.is-policy-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:20px}.is-policy-card{padding:16px;border:2px solid var(--is-border);border-radius:10px;background:var(--is-card);cursor:pointer;text-align:left}.is-policy-card:hover{border-color:rgba(139,92,246,.4)}.is-policy-card.selected{border-color:var(--is-accent);background:rgba(139,92,246,.08)}.is-policy-badge{display:inline-block;margin-bottom:8px;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700}.is-policy-badge.rec{background:rgba(52,211,153,.12);color:#34d399}.is-policy-badge.warn{background:rgba(251,191,36,.12);color:#fbbf24}.is-policy-name{margin-bottom:4px;color:var(--is-text);font-size:13px;font-weight:700}.is-policy-desc{color:var(--is-text3);font-size:11px;line-height:1.5}.is-commit-summary{margin-bottom:16px;padding:16px;border:1px solid var(--is-border);border-radius:10px;background:var(--is-card)}.is-commit-summary h3{margin-bottom:12px;font-size:13px}.is-commit-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px}.is-commit-row:last-child{border:0}.is-commit-label{color:var(--is-text2)}.is-snapshot-info{display:flex;align-items:center;gap:10px;padding:12px 16px;border:1px solid rgba(139,92,246,.2);border-radius:10px;background:rgba(139,92,246,.08);color:var(--is-text2);font-size:12px}.is-btn.success{border:0;background:rgba(52,211,153,.9);color:#0b1a14}.is-btn.success:hover{background:#34d399}
+.is-bottom{display:flex;height:60px;flex-shrink:0;align-items:center;gap:12px;padding:0 28px;border-top:1px solid var(--is-border);background:rgba(17,17,32,.9)}.is-safe-note{display:flex;align-items:center;gap:8px;color:var(--is-text3);font-size:12px}.is-safe-note::before{content:'◆';color:var(--is-accent)}.is-spacer{flex:1}.is-count{color:var(--is-text3);font-size:12px}.is-btn{padding:8px 20px;border:1px solid var(--is-border);border-radius:6px;background:transparent;color:var(--is-text2);font:600 13px inherit;cursor:pointer}.is-btn:hover{background:var(--is-card2);color:var(--is-text)}.is-btn.primary{border:0;background:var(--is-accent);color:#fff;box-shadow:0 2px 12px rgba(139,92,246,.35)}.is-btn:disabled{cursor:not-allowed;opacity:.45}
+.is-error{margin:0 28px;padding:10px 12px;border:1px solid rgba(248,113,113,.25);border-radius:7px;background:rgba(248,113,113,.08);color:#f87171;font-size:12px}
+@media(max-width:1100px){.is-step2-layout{grid-template-columns:180px minmax(340px,1fr)}.is-step2-layout>.is-subpanel:last-child{display:none}}@media(max-width:900px){.is-step-label{display:none}.is-option-grid,.is-summary,.is-policy-grid{grid-template-columns:1fr}.is-step2-layout{grid-template-columns:1fr}.is-step2-layout>.is-subpanel:first-child{display:none}.is-header,.is-content,.is-bottom{padding-left:18px;padding-right:18px}}
+
+/* 리포트 */
+.report-link{display:flex;align-items:center;justify-content:space-between;
+  padding:8px 0;border-bottom:1px solid var(--border);text-decoration:none;
+  color:var(--text2);font-size:13px;transition:color .15s}
+.report-link:last-child{border-bottom:none}
+.report-link:hover{color:var(--accent)}
+.report-preview{margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
+.report-preview-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.report-preview-title{font-size:12px;color:var(--text2)}
+.report-preview-close{font-size:10px;padding:4px 9px;border:1px solid var(--border);
+  border-radius:6px;background:transparent;color:var(--text3);cursor:pointer}
+.report-preview-close:hover{color:var(--text);border-color:rgba(139,92,246,.4)}
+.report-preview iframe{width:100%;height:560px;border:1px solid var(--border);
+  border-radius:var(--radius-sm);background:#fff}
+
+/* 실행 히스토리 — native-fixed의 KPI / 필터 / 결과 행 구조 */
+.app-main.history-view::before{content:'실행 히스토리'}
+.history-card{background:transparent;border:0;box-shadow:none;padding:0;overflow:visible}
+.history-toolbar{display:flex;align-items:center;justify-content:flex-end;margin-bottom:16px}
+.history-reset{padding:6px 12px;border:1px solid rgba(251,113,133,.45);border-radius:6px;
+  background:rgba(251,113,133,.04);color:#fb7185;font-size:12px;font-weight:600;cursor:pointer}
+.history-reset:hover{background:rgba(251,113,133,.12)}
+.history-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:20px}
+.history-kpi{min-height:72px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);
+  border-radius:12px;box-shadow:0 4px 18px rgba(0,0,0,.12)}
+.history-kpi-label{font-size:11px;color:var(--text2);font-weight:600;letter-spacing:.2px;margin-bottom:5px}
+.history-kpi-value{font-size:24px;line-height:1;font-weight:800;color:var(--text)}
+.history-kpi-value.pass{color:var(--pass)}
+.history-kpi-value.accent{color:var(--accent)}
+.history-kpi-suffix{font-size:13px;color:var(--text2);font-weight:600;margin-left:2px}
+.history-filters{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:16px;color:var(--text2);font-size:12px}
+.history-filter-label{font-weight:600;margin-right:2px}
+.history-filter{padding:5px 12px;border:1px solid var(--border);border-radius:8px;
+  background:rgba(255,255,255,.02);color:var(--text2);font:600 12px inherit;cursor:pointer}
+.history-filter:hover,.history-filter.active{background:rgba(139,92,246,.14);border-color:rgba(139,92,246,.45);color:#fff}
+.history-filter.group{border-radius:7px;padding:5px 11px}
+.history-table{border:1px solid var(--border);border-radius:12px;background:rgba(18,16,42,.42);overflow:hidden}
+.history-row{display:grid;grid-template-columns:1.15fr .82fr .92fr .68fr .72fr 1.85fr .9fr;align-items:center;gap:12px;
+  min-height:70px;padding:12px 16px;border-bottom:1px solid var(--border);font-size:12px}
+.history-row:last-child{border-bottom:0}
+.history-row.header{min-height:42px;background:rgba(255,255,255,.025);color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:.4px}
+.history-date{font-family:monospace;color:var(--text2);line-height:1.35}
+.history-date strong{display:block;color:var(--text);font-size:13px}
+.history-pass{color:var(--pass);font-size:18px;font-weight:800}
+.history-progress{height:4px;margin-top:5px;background:rgba(52,211,153,.18);border-radius:4px;overflow:hidden}
+.history-progress span{display:block;width:100%;height:100%;background:var(--pass)}
+.history-count{font-size:17px;font-weight:800;color:var(--text)}
+.history-count small{font-size:11px;color:var(--text2);font-weight:600}
+.history-type{display:inline-flex;align-items:center;justify-content:center;padding:5px 8px;border-radius:7px;
+  background:rgba(139,92,246,.12);color:#a78bfa;font-size:11px;font-weight:700;white-space:nowrap}
+.history-platform{display:inline-flex;align-items:center;justify-content:center;padding:5px 8px;border-radius:7px;
+  font-size:11px;font-weight:700;white-space:nowrap}
+.history-platform.android{color:#34d399;background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.22)}
+.history-platform.ios{color:#60a5fa;background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.22)}
+.history-groups{display:flex;gap:6px;flex-wrap:wrap}
+.history-group{padding:4px 7px;border-radius:4px;background:rgba(139,92,246,.14);color:#a78bfa;font:700 10px monospace;white-space:nowrap}
+.history-result{display:inline-flex;justify-content:center;padding:5px 10px;border-radius:6px;
+  border:1px solid rgba(52,211,153,.3);background:rgba(52,211,153,.08);color:var(--pass);font-size:11px;font-weight:700;white-space:nowrap}
+.history-empty{padding:34px;text-align:center;color:var(--text3);font-size:13px}
+
+.empty{font-size:13px;color:var(--text3);padding:6px 0}
+
+/* 다음 스텝 하이라이트 */
+.btn.suggested{border-color:#f59e0b!important;box-shadow:0 0 0 1px rgba(245,158,11,.4)}
+/* TC 폴더 선택 */
+.tc-folder-bar{margin-bottom:12px}
+.tc-folder-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
+.tc-folder-head label{font-size:13px;color:var(--text2);font-weight:600}
+.tc-folder-actions{display:flex;gap:8px}
+.tc-folder-action{border:0;background:none;color:var(--accent);font-size:11px;cursor:pointer;padding:0}
+.tc-folder-list{display:flex;flex-direction:column;gap:6px;padding:9px 10px;background:var(--surface2);
+  border:1px solid var(--border);border-radius:var(--radius-sm);max-height:120px;overflow-y:auto}
+.tc-folder-option{display:flex;align-items:center;gap:8px;color:var(--text2);font-size:13px;cursor:pointer}
+.tc-folder-option input{accent-color:var(--accent);width:15px;height:15px}
+.tc-folder-empty{color:var(--text3);font-size:12px}
+.tc-folder-count{color:var(--text3);font-size:12px}
+
+/* 컨피그 가이드 */
+.guide-tabs{display:flex;gap:4px;margin-bottom:10px}
+.guide-tab{padding:5px 12px;border-radius:var(--radius-sm);font-size:11px;font-weight:600;
+  cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text3)}
+.guide-tab.active{background:var(--surface2);color:var(--text);border-color:rgba(255,255,255,.2)}
+.guide-panel{display:none}.guide-panel.active{display:block}
+.guide-desc{font-size:11px;color:var(--text3);margin-bottom:8px;line-height:1.5}
+.guide-code{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:12px 14px;font-size:11px;font-family:monospace;color:var(--text2);
+  white-space:pre;overflow-x:auto;line-height:1.6;margin:0}
+
+button,select{font-family:inherit}
+button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (max-width:900px){
+  body{padding:0}
+  .app-layout{display:block;height:auto;overflow:visible}
+  .status-bar{height:auto;min-height:46px;padding:10px 20px;gap:12px}
+  .sidebar{position:static;width:100%;min-height:0;display:flex;overflow-x:auto;padding:4px}
+  .app-main{overflow:visible;padding:20px}
+  .app-main::before{font-size:24px}
+  .sidebar-section{display:flex;align-items:center;border-bottom:none;padding:0}
+  .sidebar-label{display:none}
+  .sidebar-item{white-space:nowrap;border-left:none;border-bottom:2px solid transparent}
+  .sidebar-item.active{border-left:none;border-bottom-color:var(--accent)}
+  .grid{grid-template-columns:1fr}
+  .history-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .history-table{overflow-x:auto}
+  .history-row{min-width:820px}
+}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;
+  animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body class="dashboard-mode">
+
+<div class="title-row">
+  <div><h1>QA CONTROL CENTER</h1><div class="subtitle">Appium 기반 모바일 자동화</div></div>
+</div>
+
+<!-- 상단 고정 상태바 -->
+<div class="status-bar" aria-label="실행 상태">
+  <div class="si"><span class="dot" id="dot-appium"></span><span id="txt-appium">확인 중...</span></div>
+  <div class="sdiv"></div>
+  <div class="si"><span class="dot" id="dot-device"></span><span id="txt-device">확인 중...</span></div>
+  <div class="sdiv"></div>
+  <div class="si"><span id="txt-automation" class="automation-badge">자동화: 확인 중...</span></div>
+  <div class="sdiv"></div>
+  <div class="si">파이프라인:&nbsp;<span class="step-badge" id="txt-step">-</span></div>
+  <div class="sdiv"></div>
+  <div class="si" id="heal-row" style="display:none">힐링: <span id="heal-cnt" style="color:var(--warn);font-weight:700;margin-left:3px"></span>회</div>
+</div>
+
+<!-- 메인 그리드 -->
+<div class="app-layout">
+
+  <aside class="sidebar" aria-label="주 메뉴">
+    <div class="sidebar-section">
+      <div class="sidebar-label">개요</div>
+      <div class="sidebar-item active" data-view="dashboard" onclick="selectView('dashboard',this)">
+        <span class="sidebar-dot"></span><span>Dashboard</span>
+      </div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Import</div>
+      <div class="sidebar-item" data-view="import" onclick="selectView('import',this)">
+        <span class="sidebar-dot"></span><span>Import Studio</span>
+      </div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">파이프라인</div>
+      <div class="sidebar-item" data-view="pipeline" onclick="selectView('pipeline',this)">
+        <span class="sidebar-dot"></span><span>파이프라인 실행</span>
+      </div>
+      <div class="sidebar-item" data-view="tests" onclick="selectView('tests',this)">
+        <span class="sidebar-dot"></span><span>빠른 실행</span>
+      </div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">테스트 결과</div>
+      <div class="sidebar-item" data-view="reports" onclick="selectView('reports',this)">
+        <span class="sidebar-dot"></span><span>리포트 목록</span>
+      </div>
+      <div class="sidebar-item" data-view="history" onclick="selectView('history',this)">
+        <span class="sidebar-dot"></span><span>실행 히스토리</span>
+      </div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">설정</div>
+      <div class="sidebar-item" data-view="config" onclick="selectView('config',this)">
+        <span class="sidebar-dot"></span><span>Appium 설정</span>
+      </div>
+    </div>
+  </aside>
+  <main class="app-main dashboard-view">
+  <div id="view-overview" class="overview-view">
+    <div class="overview-heading">Dashboard</div>
+    <div class="overview-hero">
+      <div class="overview-card overview-hero-main">
+        <svg class="overview-donut" viewBox="0 0 120 120"><circle class="overview-donut-bg" cx="60" cy="60" r="48"></circle><circle id="overview-donut-fill" class="overview-donut-fill" cx="60" cy="60" r="48" stroke-dasharray="0 302"></circle><text id="overview-rate" class="overview-donut-value" x="60" y="61" text-anchor="middle">0%</text><text class="overview-donut-label" x="60" y="76" text-anchor="middle">PASS RATE</text></svg>
+        <div><div class="overview-context" id="overview-context">최근 실행 없음</div><div class="overview-hero-stats"><div class="overview-stat"><b id="overview-total">0</b><small>Total</small></div><div class="overview-stat"><b id="overview-passed" style="color:var(--pass)">0</b><small>Passed</small></div><div class="overview-stat"><b id="overview-failed" style="color:var(--fail)">0</b><small>Failed</small></div></div><div class="overview-hero-legend"><span class="overview-legend-item"><i class="overview-legend-dot" style="background:var(--pass)"></i>통과</span><span class="overview-legend-item"><i class="overview-legend-dot" style="background:var(--fail)"></i>실패</span><span class="overview-legend-item"><i class="overview-legend-dot" style="background:var(--warn)"></i>경고 (80%↑)</span></div></div>
+      </div>
+      <div class="overview-card"><div class="overview-trend-title">Run History</div><div class="overview-trend-empty" id="overview-trend">실행 이력 없음</div></div>
+    </div>
+    <div class="overview-kpi-row"><div class="overview-kpi"><span class="overview-kpi-icon">◆</span><div><div class="overview-kpi-label">Appium</div><div class="overview-kpi-value" id="overview-appium">확인 중</div></div></div><div class="overview-kpi"><span class="overview-kpi-icon">◆</span><div><div class="overview-kpi-label">Generated Tests</div><div class="overview-kpi-value" id="overview-generated">0개</div></div></div><div class="overview-kpi"><span class="overview-kpi-icon">◆</span><div><div class="overview-kpi-label">Healing</div><div class="overview-kpi-value" id="overview-healing">0회</div></div></div></div>
+    <div class="overview-card"><div class="overview-log-head"><span>Recent Logs</span><button class="log-clear" onclick="refreshOverview()">↻</button></div><div class="overview-log" id="overview-log">로그 없음</div></div>
+  </div>
+  <div class="grid">
+
+  <!-- 왼쪽: 플랫폼 + 테스트 실행 -->
+  <div class="card" id="view-pipeline">
+    <div class="pipeline-card-head"><div class="card-title">플랫폼 선택 &amp; 파이프라인 실행</div><button id="reset-btn" class="reset-btn" onclick="resetDashboard()">↺ 리셋</button></div>
+
+    <input type="radio" name="platform" id="radio-android" class="platform-radio" value="android" checked>
+    <input type="radio" name="platform" id="radio-ios"     class="platform-radio" value="ios">
+
+    <!-- 진행률 인디케이터 -->
+    <div id="progress-bar" style="display:flex;align-items:center;gap:0;margin-bottom:14px;padding:0 4px">
+      <!-- JS로 동적 렌더링 -->
+    </div>
+
+    <div class="platform-selector">
+      <label for="radio-android" class="pl-label">
+        <span class="pl-icon">🤖</span>
+        <span class="pl-name android">Android</span>
+        <span class="pl-desc">UiAutomator2<br>에뮬레이터 · 실기기</span>
+      </label>
+      <label for="radio-ios" class="pl-label">
+        <span class="pl-icon">🍎</span>
+        <span class="pl-name ios">iOS</span>
+        <span class="pl-desc">XCUITest<br>Simulator · 실기기</span>
+      </label>
+    </div>
+
+    <!-- TC 폴더 선택 -->
+    <div class="tc-folder-bar">
+      <div class="tc-folder-head">
+        <label>실행할 TC 폴더</label>
+        <div class="tc-folder-actions">
+          <button class="tc-folder-action" type="button" onclick="toggleAllTcFolders(true)">전체 선택</button>
+          <button class="tc-folder-action" type="button" onclick="toggleAllTcFolders(false)">전체 해제</button>
+        </div>
+      </div>
+      <div id="tc-folder-list" class="tc-folder-list">
+        <div class="tc-folder-empty">testcases 폴더를 확인 중...</div>
+      </div>
+      <div id="tc-folder-count" class="tc-folder-count" style="margin-top:5px">직렬 실행 순서대로 선택됩니다.</div>
+    </div>
+
+    <!-- 전체 실행 버튼 -->
+    <button class="btn primary" id="btn-run-all" onclick="runAll()" style="width:100%;margin-bottom:14px;justify-content:center;gap:8px;font-size:13px">
+      <span>▶ 전체 실행</span>
+      <span style="font-size:10px;opacity:.7">analyze → generate → lint → execute</span>
+      <div class="spinner"></div>
+    </button>
+
+    <!-- 실행 단계 -->
+    <div class="steps">
+
+      <div class="step-row">
+        <div class="step-num" id="sn-analyze">1</div>
+        <button class="btn" id="btn-analyze" onclick="runStep('analyze')">
+          <span>UI 분석 <span style="color:var(--text3);font-size:10px">01_analyze</span></span>
+          <div class="btn-right">
+            <span class="btn-tip">page_source</span>
+            <div class="spinner"></div>
+          </div>
+        </button>
+        <button class="cancel-btn" id="cancel-analyze" title="실행 취소" onclick="cancelStep('analyze')">✕</button>
+      </div>
+      <div class="step-connector"></div>
+
+      <div class="step-row">
+        <div class="step-num" id="sn-generate">2</div>
+        <button class="btn" id="btn-generate" onclick="runStep('generate')">
+          <span>코드 생성 <span style="color:var(--text3);font-size:10px">02_generate</span></span>
+          <div class="btn-right">
+            <span class="btn-tip">TC scaffold</span>
+            <div class="spinner"></div>
+          </div>
+        </button>
+        <button class="cancel-btn" id="cancel-generate" onclick="cancelStep('generate')">✕</button>
+      </div>
+      <div class="step-connector"></div>
+
+      <div class="step-row">
+        <div class="step-num" id="sn-lint">3</div>
+        <button class="btn" id="btn-lint" onclick="runStep('lint')">
+          <span>린트 검사 <span style="color:var(--text3);font-size:10px">03_lint</span></span>
+          <div class="btn-right">
+            <span class="btn-tip">flake8</span>
+            <div class="spinner"></div>
+          </div>
+        </button>
+        <button class="cancel-btn" id="cancel-lint" onclick="cancelStep('lint')">✕</button>
+      </div>
+      <div class="step-connector"></div>
+
+      <div class="step-row">
+        <div class="step-num" id="sn-execute">4</div>
+        <button class="btn primary" id="btn-execute" onclick="runStep('execute')">
+          <span>테스트 실행 <span style="color:rgba(255,255,255,.5);font-size:10px">05_execute</span></span>
+          <div class="btn-right">
+            <span class="btn-tag">pytest</span>
+            <div class="spinner"></div>
+          </div>
+        </button>
+        <button class="cancel-btn" id="cancel-execute" onclick="cancelStep('execute')">✕</button>
+      </div>
+      <div class="step-connector"></div>
+
+      <div class="step-row">
+        <div class="step-num" id="sn-heal">5</div>
+        <button class="btn heal-btn" id="btn-heal" onclick="runStep('heal')">
+          <span>힐링 <span style="color:rgba(245,158,11,.5);font-size:10px">06_heal</span></span>
+          <div class="btn-right">
+            <span class="btn-tip" style="color:var(--warn)">실패 시 자동 패치</span>
+            <div class="spinner"></div>
+          </div>
+        </button>
+        <button class="cancel-btn" id="cancel-heal" onclick="cancelStep('heal')">✕</button>
+      </div>
+
+    </div>
+
+    <!-- 결과 요약 -->
+    <div id="step-summary" style="display:none;margin-top:12px;padding:8px 12px;
+      border-radius:9px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);
+      font-size:11px;color:#94a3b8;font-family:monospace"></div>
+    <!-- 다음 액션 가이드 배너 -->
+    <div id="guide-banner" style="display:none;margin-top:10px;padding:10px 14px;
+      border-radius:9px;font-size:12px;font-weight:600;position:relative"></div>
+
+    <!-- 로그 -->
+    <div class="log-wrap">
+      <div class="log-header">
+        <span class="log-label">실행 로그</span>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button id="log-toggle" class="log-clear" onclick="toggleLog()">확장</button>
+          <button class="log-clear" onclick="clearLog()">지우기</button>
+        </div>
+      </div>
+      <div class="log-box" id="log-box" style="transition:max-height 0.2s">대기 중...</div>
+    </div>
+
+    <!-- 실패 TC 요약 -->
+    <div class="fail-summary" id="fail-summary">
+      <div class="fail-title">
+        <span>⚠</span><span id="fail-count"></span>개 실패
+      </div>
+      <div id="fail-list"></div>
+    </div>
+  </div>
+
+  <!-- 오른쪽 패널 -->
+  <div class="right-panel">
+
+    <!-- 생성된 파일 -->
+    <div class="card" id="view-tests">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px">
+        <div class="card-title" style="margin-bottom:0">생성된 테스트 파일 실행</div>
+      </div>
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('gen','all',this)">전체</button>
+        <button class="tab" onclick="switchTab('gen','android',this)">Android</button>
+        <button class="tab" onclick="switchTab('gen','ios',this)">iOS</button>
+      </div>
+      <div id="gen-all"  class="tab-content active"><div class="empty">없음</div></div>
+      <div id="gen-android" class="tab-content"><div class="empty">없음</div></div>
+        <div id="gen-ios"     class="tab-content"><div class="empty">없음</div></div>
+    </div>
+
+    <div class="card import-studio" id="view-import">
+      <div id="import-studio-root"><div class="import-loading">Import Studio를 불러오는 중...</div></div>
+    </div>
+
+    <!-- 리포트 -->
+    <div class="card" id="view-reports">
+      <div class="reports-view">
+        <div class="reports-title">테스트 리포트</div>
+        <p class="reports-subtitle">생성된 실행 결과를 확인하고 필요한 리포트만 관리하세요.</p>
+        <div class="report-controls">
+          <input class="report-search" id="report-search-input" type="text" placeholder="리포트 이름 검색">
+          <select id="report-sort"><option value="newest">최신순</option><option value="oldest">오래된순</option><option value="name">파일명순</option></select>
+          <button type="button" id="report-refresh">새로고침</button>
+          <button type="button" id="report-delete-selected" class="report-danger">선택 삭제</button>
+          <span class="report-count" id="report-count">0개 리포트</span>
+        </div>
+        <div class="report-workspace">
+          <section class="report-panel">
+            <div class="report-panel-head"><label class="report-select-all"><input type="checkbox" id="report-select-all">전체 선택</label><span class="report-selection-count" id="report-selection-count">0개 선택</span></div>
+            <div class="report-list" id="report-list"><div class="report-empty">리포트 없음 — 테스트 실행 후 리포트가 여기에 표시됩니다.</div></div>
+            <div class="report-pager"><button id="report-prev" disabled>이전</button><span id="report-page">1 / 1</span><button id="report-next" disabled>다음</button></div>
+          </section>
+          <section class="report-panel report-preview">
+            <div class="report-panel-head"><strong id="report-preview-title">미리보기</strong><button id="report-close" style="display:none" onclick="closeReport()">닫기</button></div>
+            <div class="report-iframe-wrap" id="report-iframe-wrap" style="display:none"><iframe id="report-iframe" title="리포트 미리보기"></iframe></div>
+            <div class="report-empty report-preview-empty" id="report-preview-empty">왼쪽에서 리포트를 열어 확인하세요.</div>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <!-- 실행 히스토리 -->
+    <div class="card history-card" id="view-history">
+      <div class="history-toolbar">
+        <button class="history-reset" type="button" onclick="resetHistory()">▣ 이력 초기화</button>
+      </div>
+      <div class="history-kpis">
+        <div class="history-kpi"><div class="history-kpi-label">총 실행 수</div><div class="history-kpi-value" id="history-total">1</div></div>
+        <div class="history-kpi"><div class="history-kpi-label">평균 PASS RATE</div><div class="history-kpi-value pass" id="history-rate">100%</div></div>
+        <div class="history-kpi"><div class="history-kpi-label">FIRST PASS</div><div class="history-kpi-value pass" id="history-first">1<span class="history-kpi-suffix">/1</span></div></div>
+        <div class="history-kpi"><div class="history-kpi-label">총 힐링 횟수</div><div class="history-kpi-value accent" id="history-heal">0</div></div>
+      </div>
+      <div class="history-filters">
+        <span class="history-filter-label">유형</span>
+        <button class="history-filter active" type="button" data-filter-kind="type" data-filter-value="all">전체</button>
+        <button class="history-filter" type="button" data-filter-kind="type" data-filter-value="pipeline">파이프라인 실행</button>
+        <button class="history-filter" type="button" data-filter-kind="type" data-filter-value="quick">빠른 실행</button>
+        <span class="history-filter-label" style="margin-left:6px">그룹</span>
+        <button class="history-filter group active" type="button" data-filter-kind="group" data-filter-value="all">전체 그룹</button>
+        <button class="history-filter group" type="button" data-filter-kind="group" data-filter-value="customer_login">customer_login</button>
+        <button class="history-filter group" type="button" data-filter-kind="group" data-filter-value="partner_login">partner_login</button>
+        <span class="history-filter-label" style="margin-left:6px">플랫폼</span>
+        <button class="history-filter platform-filter active" type="button" data-filter-kind="platform" data-filter-value="all">전체</button>
+        <button class="history-filter platform-filter" type="button" data-filter-kind="platform" data-filter-value="android">Android</button>
+        <button class="history-filter platform-filter" type="button" data-filter-kind="platform" data-filter-value="ios">iOS</button>
+      </div>
+      <div class="history-table">
+        <div class="history-row header"><span>날짜</span><span>PASS RATE</span><span>통과 / 전체</span><span>유형</span><span>플랫폼</span><span>그룹</span><span>결과</span></div>
+        <div id="history-list">
+          <div class="history-row" data-history-type="quick" data-history-platform="android" data-history-groups="customer_login partner_login">
+            <div class="history-date"><strong>2026-09-06<br>19:57:02</strong></div>
+            <div><div class="history-pass">100%</div><div class="history-progress"><span></span></div></div>
+            <div><span class="history-count">4<small> / 4</small></span><div style="color:var(--text3);font-size:11px;margin-top:3px">10s</div></div>
+            <div><span class="history-type">빠른 실행</span></div>
+            <div><span class="history-platform android">🤖 Android</span></div>
+            <div class="history-groups"><span class="history-group">customer_login</span><span class="history-group">partner_login</span></div>
+            <div><span class="history-result">First Pass</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 컨피그 작성 가이드 -->
+    <div class="card" id="view-config">
+      <div class="card-title">컨피그 작성 가이드</div>
+      <div class="guide-tabs">
+        <button class="guide-tab active" onclick="switchGuide('screens',this)">screens.json</button>
+        <button class="guide-tab" onclick="switchGuide('test_data',this)">test_data.json</button>
+        <button class="guide-tab" onclick="switchGuide('devices',this)">devices.json</button>
+      </div>
+
+      <div id="guide-screens" class="guide-panel active">
+        <div class="guide-desc">화면 정의 파일. 분석 단계에서 어떤 화면을 탐색할지 지정합니다.</div>
+        <pre class="guide-code">{
+  "screen_key": {
+    "description": "화면 설명",
+    "actions": [
+      {"type": "tap",        "target": "element-id-or-text"},
+      {"type": "input_text", "target": "field-id", "value_key": "account.id"}
+    ],
+    "platform": ["android", "ios"]
+  }
+}
+
+/* actions 타입 */
+// "tap"        — 요소 탭
+// "input_text" — 텍스트 입력 (value_key: test_data.json 경로)
+// actions: []  — 앱 초기 화면 그대로 (탐색 불필요)
+
+/* platform 값 */
+// ["android", "ios"] — 양 플랫폼
+// ["android"]        — Android 전용
+// ["ios"]            — iOS 전용</pre>
+      </div>
+
+      <div id="guide-test_data" class="guide-panel">
+        <div class="guide-desc">앱 식별자 및 테스트 입력값. 플랫폼별로 작성합니다.</div>
+        <pre class="guide-code">{
+  "app": {
+    "android": {
+      "package":  "com.example.app",
+      "activity": "com.example.app.MainActivity",
+      "app_path": ""
+    },
+    "ios": {
+      "bundle_id": "com.example.app",
+      "app_path":  ""
+    }
+  }
+}
+
+/* app_path */
+// 비워두면 이미 설치된 앱 사용
+// 절대경로 지정 시 해당 .apk / .ipa 설치 후 실행
+
+/* 테스트 입력값 추가 예시 */
+// screens.json action의 value_key로 참조됨
+// "account": { "id": "user@example.com", "password": "pass" }
+// → value_key: "account.id"  또는  "account.password"</pre>
+      </div>
+
+      <div id="guide-devices" class="guide-panel">
+        <div class="guide-desc">Appium Capabilities 설정. 에뮬레이터/실기기별로 작성합니다.</div>
+        <pre class="guide-code">{
+  "android": {
+    "emulator": {
+      "deviceName":        "Android Emulator",
+      "platformVersion":   "14.0",
+      "automationName":    "UiAutomator2",
+      "avd":               "avd_name",
+      "noReset":           true,
+      "forceAppLaunch":    true,
+      "shouldTerminateApp": true
+    },
+    "real_device": {
+      "deviceName":      "Galaxy S24",
+      "platformVersion": "14.0",
+      "automationName":  "UiAutomator2",
+      "udid":            ""
+    }
+  },
+  "ios": {
+    "simulator": {
+      "deviceName":      "iPhone 16",
+      "platformVersion": "18.5",
+      "automationName":  "XCUITest",
+      "udid":            "simulator-udid"
+    },
+    "real_device": {
+      "deviceName":      "iPhone 16",
+      "platformVersion": "18.5",
+      "automationName":  "XCUITest",
+      "udid":            ""
+    }
+  }
+}
+
+/* udid 확인 */
+// Android emulator: emulator -list-avds
+// Android 연결기기:  adb devices
+// iOS Simulator:    xcrun simctl list devices booted
+// iOS 실기기:        idevice_id -l</pre>
+      </div>
+    </div>
+
+  </div>
+</div>
+</main>
+</div>
+
+<script>
+// ── 상태 ────────────────────────────────────────────────────
+var _pollTimer = null;
+var _currentLog = 'run_execute.txt';
+var _currentStep = null;
+var _initialPlatformSync = true;  // Fix 4: 최초 로드 시 한 번만 플랫폼 동기화
+var _logExpanded = false;
+var _stepStartTime = null;
+function _analyzeFailMsg(){
+  return getPlatform() === 'ios'
+    ? 'Appium 연결 또는 iOS Simulator 상태를 확인하세요. (xcrun simctl list devices booted) 재실행 권장.'
+    : 'Appium 연결 또는 Android 디바이스 상태를 확인하세요. (adb devices) 재실행 권장.';
+}
+var _guideMessages = {
+  analyze:  {ok:"다음: 코드 생성 (2단계)을 실행하세요.",  fail:null},
+  generate: {ok:"다음: 린트 검사 (3단계)를 실행하세요.",  fail:"TC 마크다운 또는 screens.json 설정을 확인하세요."},
+  lint:     {ok:"다음: 테스트 실행 (4단계)을 실행하세요.", fail:"생성된 코드에 문법 오류. 수정 후 lint 재실행 or heal 실행."},
+  execute:  {ok:"다음: 완료. 리포트를 확인하세요.",        fail:"테스트 실패 발생. 아래 실패 목록 확인. heal 실행으로 자동 패치 시도 가능."},
+  heal:     {ok:"파이프라인 완료! 리포트를 확인하세요.",   fail:"자동 패치 실패. 수동 수정 필요."}
+};
+var _nextStep = {
+  analyze:'generate', generate:'lint', lint:'execute', execute:null, heal:null
+};
+// 소프트 순서 강제: 이 단계가 done이어야 다음 단계가 활성화
+var _prereq = {
+  analyze: null, generate:'analyze', lint:'generate', execute:'lint', heal:'execute'
+};
+var STEP_ORDER = ['analyze','generate','lint','execute','heal'];
+var STEP_LABEL = {analyze:'분석',generate:'생성',lint:'린트',execute:'실행',heal:'힐링'};
+var _stepState = {analyze:'idle',generate:'idle',lint:'idle',execute:'idle',heal:'idle'};
+
+function getPlatform(){
+  return document.querySelector('input[name="platform"]:checked').value;
+}
+
+function getTcFolders(){
+  return Array.from(document.querySelectorAll('input[name="tc-folder"]:checked')).map(function(el){ return el.value; });
+}
+function getTcFolder(){
+  return getTcFolders()[0] || '';
+}
+async function refreshOverview(){
+  try{
+    var results=await Promise.all([
+      fetch('/api/state').then(function(r){return r.json();}).catch(function(){return {}; }),
+      fetch('/api/status').then(function(r){return r.json();}).catch(function(){return {}; }),
+      fetch('/api/generated').then(function(r){return r.json();}).catch(function(){return []; }),
+      fetch('/api/run_log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({log:'run_execute.txt'})}).then(function(r){return r.json();}).catch(function(){return {}; })
+    ]);
+    var state=results[0]||{}, status=results[1]||{}, generated=results[2]||[], log=results[3]||{};
+    var summary=(state.execute_results||{}).summary||{};
+    var total=summary.total||0, passed=summary.passed||0, failed=summary.failed||0;
+    var rate=total?Math.round(passed/total*100):0;
+    var set=function(id,value){var el=document.getElementById(id);if(el)el.textContent=value;};
+    set('overview-rate',rate+'%');
+    set('overview-total',total);
+    set('overview-passed',passed);
+    set('overview-failed',failed);
+    set('overview-appium',status.appium?'연결됨':'미기동');
+    set('overview-healing',(state.heal_count||0)+'회');
+    set('overview-generated',generated.reduce(function(n,g){return n+(g.count||0);},0)+'개');
+    var donut=document.getElementById('overview-donut-fill');
+    if(donut) donut.setAttribute('stroke-dasharray',(302*rate/100)+' 302');
+    set('overview-context',total?'최근 '+(state.platform==='ios'?'iOS':'Android')+' 실행':'최근 실행 없음');
+    set('overview-log',log.log||'로그 없음');
+    var trend=document.getElementById('overview-trend');
+    if(trend){
+      trend.className=total?'overview-trend-chart':'overview-trend-empty';
+      trend.innerHTML=(total
+        ? '<svg viewBox="0 0 320 150" preserveAspectRatio="none"><line x1="18" y1="28" x2="302" y2="28" stroke="rgba(140,120,220,.08)"/><line x1="18" y1="74" x2="302" y2="74" stroke="rgba(140,120,220,.08)"/><line x1="18" y1="120" x2="302" y2="120" stroke="rgba(140,120,220,.08)"/><polyline points="18,120 95,95 175,72 250,42 302,28" fill="none" stroke="var(--accent)" stroke-width="2"/><circle cx="302" cy="28" r="4" fill="var(--pass)" style="filter:drop-shadow(0 0 4px var(--pass))"/><text x="302" y="17" text-anchor="end" fill="var(--pass)" font-size="10">'+rate+'%</text><text x="18" y="143" fill="var(--text3)" font-size="9">최근 실행</text><text x="302" y="143" text-anchor="end" fill="var(--text3)" font-size="9">First Pass</text></svg>'
+        : '<div class="overview-trend-empty-message">실행 이력 없음</div>')
+        +'<div class="overview-trend-footer"><span>실행 추이</span><span class="overview-trend-legend"><span class="overview-legend-item"><i class="overview-legend-dot" style="background:var(--pass)"></i>100%</span><span class="overview-legend-item"><i class="overview-legend-dot" style="background:var(--warn)"></i>80%↑</span><span class="overview-legend-item"><i class="overview-legend-dot" style="background:var(--fail)"></i>80%↓</span></span></div>';
+    }
+  }catch(_){
+    // Dashboard remains usable when an optional status/log endpoint is unavailable.
+  }
+}
+function toggleAllTcFolders(checked){
+  document.querySelectorAll('input[name="tc-folder"]').forEach(function(el){ el.checked=checked; });
+  updateTcFolderCount();
+}
+function updateTcFolderCount(){
+  var selected=getTcFolders(), el=document.getElementById('tc-folder-count');
+  if(el) el.textContent=selected.length ? selected.length+'개 폴더를 선택한 순서대로 직렬 실행합니다.' : '실행할 폴더를 선택하세요.';
+}
+
+function selectView(view, item){
+  document.querySelectorAll('.sidebar-item').forEach(function(el){
+    el.classList.toggle('active', el === item);
+  });
+  var grid=document.querySelector('.grid');
+  var pipeline=document.getElementById('view-pipeline');
+  var overview=document.getElementById('view-overview');
+  var rightViews=['tests','import','reports','history','config'];
+  if(!grid || !pipeline) return;
+  if(overview) overview.classList.toggle('view-hidden', view !== 'dashboard');
+  grid.classList.toggle('view-hidden', view === 'dashboard');
+  grid.classList.remove('focus-left','focus-right');
+  pipeline.classList.remove('view-hidden');
+  document.querySelectorAll('.right-panel > .card').forEach(function(card){
+    card.classList.toggle('view-hidden', view !== 'dashboard' && card.id !== 'view-'+view);
+  });
+  if(view === 'pipeline') grid.classList.add('focus-left');
+  if(rightViews.indexOf(view) !== -1) grid.classList.add('focus-right');
+  var main = document.querySelector('.app-main');
+  if(main) main.classList.toggle('dashboard-view', view === 'dashboard');
+  document.body.classList.toggle('quick-mode', view === 'tests');
+  document.body.classList.toggle('report-mode', view === 'reports');
+  document.body.classList.toggle('dashboard-mode', view === 'dashboard');
+  if(main) main.classList.toggle('report-view', view === 'reports');
+  if(main) main.classList.toggle('import-view', view === 'import');
+  if(main) main.classList.toggle('quick-view', view === 'tests');
+  if(main) main.classList.toggle('history-view', view === 'history');
+  if(view === 'dashboard') refreshOverview();
+  if(view === 'tests') refreshStatus();
+  if(main) main.scrollTo({top:0, behavior:'smooth'});
+}
+
+function resetHistory(){
+  if(!window.confirm('실행 히스토리를 초기화할까요?')) return;
+  document.getElementById('history-total').textContent='0';
+  document.getElementById('history-rate').textContent='0%';
+  document.getElementById('history-first').innerHTML='0<span class="history-kpi-suffix">/0</span>';
+  document.getElementById('history-heal').textContent='0';
+  document.getElementById('history-list').innerHTML='<div class="history-empty">실행 이력이 없습니다.</div>';
+  document.querySelectorAll('.history-filter').forEach(function(btn){btn.classList.toggle('active',btn.dataset.filterValue==='all');});
+}
+
+document.addEventListener('click', function(e){
+  if(e.target && e.target.classList.contains('history-filter')){
+    var kind=e.target.dataset.filterKind;
+    var selector=kind==='platform' ? '.history-filter.platform-filter' : kind==='group' ? '.history-filter.group' : '.history-filter:not(.group):not(.platform-filter)';
+    e.target.parentElement.querySelectorAll(selector).forEach(function(btn){btn.classList.remove('active');});
+    e.target.classList.add('active');
+    document.querySelectorAll('.history-row:not(.header)').forEach(function(row){
+      var typeBtn=document.querySelector('.history-filter[data-filter-kind="type"].active');
+      var groupBtn=document.querySelector('.history-filter[data-filter-kind="group"].active');
+      var platformBtn=document.querySelector('.history-filter[data-filter-kind="platform"].active');
+      var groups=(row.dataset.historyGroups||'').split(' ');
+      var visible=(!typeBtn||typeBtn.dataset.filterValue==='all'||row.dataset.historyType===typeBtn.dataset.filterValue)
+        &&(!groupBtn||groupBtn.dataset.filterValue==='all'||groups.indexOf(groupBtn.dataset.filterValue)!==-1)
+        &&(!platformBtn||platformBtn.dataset.filterValue==='all'||row.dataset.historyPlatform===platformBtn.dataset.filterValue);
+      row.style.display=visible?'':'none';
+    });
+  }
+});
+
+function updateStepLocks(){
+  STEP_ORDER.forEach(function(step){
+    var btn = document.getElementById('btn-'+step);
+    if(!btn || btn.classList.contains('loading')) return;
+    var pre = _prereq[step];
+    var locked = pre && _stepState[pre] !== 'done';
+    btn.disabled = locked;
+    btn.title = locked ? ('이전 단계(' + STEP_LABEL[pre] + ')를 먼저 완료하세요') : '';
+    btn.style.opacity = locked ? '0.45' : '';
+  });
+}
+
+function toggleLog(){
+  _logExpanded = !_logExpanded;
+  var box = document.getElementById('log-box');
+  box.style.maxHeight = _logExpanded ? '500px' : '180px';
+  document.getElementById('log-toggle').textContent = _logExpanded ? '축소' : '확장';
+}
+
+function renderProgressBar(){
+  var bar = document.getElementById('progress-bar');
+  if(!bar) return;
+  var doneCount = STEP_ORDER.filter(function(s){ return _stepState[s]==='done'; }).length;
+  var html = '';
+  STEP_ORDER.forEach(function(s, i){
+    var st = _stepState[s];
+    var color = {done:'#10b981',failed:'#f43f5e',running:'#6366f1',idle:'rgba(255,255,255,.15)',skipped:'rgba(255,255,255,.08)'}[st]||'rgba(255,255,255,.15)';
+    var border = st==='skipped' ? '1px dashed rgba(255,255,255,.2)' : 'none';
+    var anim = st==='running' ? 'animation:pulse 1s infinite' : '';
+    html += '<div style="display:flex;flex-direction:column;align-items:center;flex:1;gap:3px">'
+      + '<div style="width:16px;height:16px;border-radius:50%;background:'+color+';border:'+border+';'+anim+';flex-shrink:0"></div>'
+      + '<span style="font-size:11px;color:rgba(255,255,255,.45)">'+STEP_LABEL[s]+'</span>'
+      + '</div>';
+    if(i < STEP_ORDER.length - 1){
+      var lineColor = (_stepState[STEP_ORDER[i]]==='done') ? '#10b981' : 'rgba(255,255,255,.1)';
+      html += '<div style="flex:1;height:2px;background:'+lineColor+';margin-bottom:14px;margin-top:7px"></div>';
+    }
+  });
+  html += '<span style="font-size:12px;color:#8c87a8;margin-left:8px;white-space:nowrap">'+doneCount+'/5</span>';
+  bar.innerHTML = html;
+}
+
+function setStepState(step, state){
+  if(_stepState[step] !== undefined) _stepState[step] = state;
+  renderProgressBar();
+  updateStepLocks();
+}
+
+function setLog(text){
+  var b=document.getElementById('log-box');
+  b.textContent=text;
+  b.scrollTop=b.scrollHeight;
+}
+function clearLog(){
+  document.getElementById('log-box').textContent='';
+  hideFails();
+}
+
+async function resetDashboard(){
+  if(!window.confirm('실행 중인 파이프라인을 중지하고 상태를 초기화할까요?')) return;
+  var btn=document.getElementById('reset-btn');
+  if(btn){ btn.disabled=true; btn.textContent='초기화 중...'; }
+  try{
+    var res=await fetch('/api/reset',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+    var data=await res.json();
+    if(!data.ok) throw new Error(data.error||'초기화 실패');
+    if(_pollTimer){ clearInterval(_pollTimer); _pollTimer=null; }
+    _currentStep=null; _runAllActive=false;
+    STEP_ORDER.forEach(function(step){ _stepState[step]='idle'; setStepNum(step,''); });
+    hideFails(); closeReport(); clearLog(); renderProgressBar(); updateStepLocks();
+    var healRow=document.getElementById('heal-row');
+    var healCount=document.getElementById('heal-cnt');
+    if(healRow) healRow.style.display='none';
+    if(healCount) healCount.textContent='';
+    await Promise.all([refreshStatus(),refreshGenerated(),refreshReports(),refreshTcFolders()]);
+    setLog('대시보드 상태가 초기화되었습니다.\n새 실행을 시작할 수 있습니다.');
+  }catch(err){
+    setLog('초기화 실패: '+err.message);
+  }finally{
+    if(btn){ btn.disabled=false; btn.textContent='↺ 리셋'; }
+  }
+}
+
+// ── 스텝 숫자 상태 ──────────────────────────────────────────
+function setStepNum(step, state){
+  var el=document.getElementById('sn-'+step);
+  if(!el) return;
+  el.className='step-num '+(state||'');
+  // 진행률 인디케이터 동기화
+  var pState = {running:'running', done:'done', failed:'failed', '':'idle'}[state||''] || 'idle';
+  setStepState(step, pState);
+}
+
+// ── 실행 / 취소 ─────────────────────────────────────────────
+var _runAllSteps = ['analyze','generate','lint','execute','heal'];
+var _runAllActive = false;
+
+async function runAll(){
+  if(_runAllActive) return;
+  _runAllActive = true;
+  var btn = document.getElementById('btn-run-all');
+  btn.classList.add('loading');
+  btn.disabled = true;
+  hideGuideBanner();
+  hideFails();
+  clearLog();
+
+  // 모든 스텝을 running 표시로 초기화
+  _runAllSteps.forEach(function(s){ setStepState(s, 'idle'); });
+
+  var platform = getPlatform();
+  var tcFolders = getTcFolders();
+  if(!tcFolders.length){ setLog('[안내] 실행할 TC 폴더를 하나 이상 선택하세요.'); _finishRunAll(false); return; }
+
+  try {
+    var res = await fetch('/api/run_all', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({platform: platform, tc_folders: tcFolders})
+    });
+    var data = await res.json();
+    if(!data.ok){
+      setLog('[오류] ' + (data.error || '알 수 없는 오류'));
+      _finishRunAll(false); return;
+    }
+  } catch(e){
+    setLog('[요청 실패] ' + e.message);
+    _finishRunAll(false); return;
+  }
+
+  // execute까지 순서대로 폴링, 이후 heal은 로그 감지로 처리
+  _pollRunAllStep(0, platform);
+}
+
+function _isHealLogActive(healRound){
+  // run_heal_1.txt ~ run_heal_3.txt 존재 여부로 heal 활성 감지
+  return fetch('/api/run_log', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({log: 'run_heal_' + healRound + '.txt'})})
+    .then(function(r){ return r.json(); })
+    .then(function(d){ return d.ok && d.log.length > 0; })
+    .catch(function(){ return false; });
+}
+
+function _pollRunAllStep(idx, platform){
+  var MAIN_STEPS = ['analyze','generate','lint','execute'];
+  if(idx >= MAIN_STEPS.length){
+    // execute 완료 후 — state에서 실패 여부 즉시 확인
+    _checkNeedHeal(function(needHeal){
+      if(needHeal){ _pollHealRounds(1); }
+      else { _finishRunAll(true); }
+    });
+    return;
+  }
+  var step = MAIN_STEPS[idx];
+  var logFiles = {analyze:'run_analyze.txt', generate:'run_generate.txt', lint:'run_lint.txt', execute:'run_execute.txt'};
+  _currentLog = logFiles[step];
+  _currentStep = step;
+  setStepNum(step, 'running');
+  setLog('[전체실행] ' + (idx+1) + '/' + MAIN_STEPS.length + ' — ' + step + ' 실행 중...\n');
+
+  var prevLen = 0;
+  var timer = setInterval(async function(){
+    try {
+      var r = await fetch('/api/run_log', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({log: logFiles[step]})});
+      var d = await r.json();
+      if(d.ok && d.log.length !== prevLen){ setLog(d.log); prevLen = d.log.length; }
+      if(d.done){
+        clearInterval(timer);
+        var ok = d.exit_code === 0;
+        setStepNum(step, ok ? 'done' : 'failed');
+        if(!ok){
+          showGuideBanner(step, false);
+          _finishRunAll(false);
+        } else {
+          _pollRunAllStep(idx+1, platform);
+        }
+      }
+    } catch(_){}
+  }, 1200);
+}
+
+function _checkNeedHeal(cb){
+  fetch('/api/state').then(function(r){ return r.json(); }).then(function(st){
+    var failed = (((st.execute_results||{}).summary)||{}).failed || 0;
+    cb(failed > 0);
+  }).catch(function(){ cb(false); });
+}
+
+function _pollHealRounds(round){
+  if(round > 3){ _finishRunAll(true); return; }
+  // heal 로그 파일이 생겼는지 최대 8초 대기 (서버가 즉시 heal 없이 끝났을 수도 있음)
+  var waited = 0;
+  var checkTimer = setInterval(async function(){
+    waited += 1000;
+    var healLog = 'run_heal_' + round + '.txt';
+    try {
+      var r = await fetch('/api/run_log', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({log: healLog})});
+      var d = await r.json();
+      if(d.ok && d.log.length > 0){
+        clearInterval(checkTimer);
+        setStepNum('heal', 'running');
+        setLog('[힐링 ' + round + '/3] 실행 중...\n');
+        _pollSingleLog(healLog, 'heal', function(ok){
+          if(!ok){ _finishRunAll(false); return; }
+          // heal 후 execute 재실행 결과 확인
+          var exLog = 'run_execute_' + round + '.txt';
+          _pollSingleLog(exLog, 'execute', function(exOk){
+            if(exOk){ _finishRunAll(true); }
+            else { _pollHealRounds(round + 1); }
+          });
+        });
+      } else if(waited >= 8000){
+        // 8초 내 heal이 시작 안 됐으면 서버가 이미 완료한 것으로 간주
+        clearInterval(checkTimer);
+        _finishRunAll(true);
+      }
+    } catch(_){}
+  }, 1000);
+}
+
+function _pollSingleLog(logName, step, onDone){
+  var prevLen = 0;
+  var timer = setInterval(async function(){
+    try {
+      var r = await fetch('/api/run_log', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({log: logName})});
+      var d = await r.json();
+      if(d.ok && d.log.length !== prevLen){ setLog(d.log); prevLen = d.log.length; }
+      if(d.done){
+        clearInterval(timer);
+        setStepNum(step, d.exit_code === 0 ? 'done' : 'failed');
+        onDone(d.exit_code === 0);
+      }
+    } catch(_){}
+  }, 1200);
+}
+
+function _finishRunAll(success){
+  _runAllActive = false;
+  var btn = document.getElementById('btn-run-all');
+  btn.classList.remove('loading');
+  btn.disabled = false;
+  _currentStep = null;
+  refreshStatus(); refreshGenerated(); refreshReports();
+  if(success) showGuideBanner('execute', true);
+}
+
+async function runStep(step){
+  _stepStartTime = Date.now();
+  hideGuideBanner();
+  var platform = getPlatform();
+  var btnId = 'btn-'+step;
+  var cancelId = 'cancel-'+step;
+  var logFiles = {
+    analyze:'run_analyze.txt', generate:'run_generate.txt',
+    lint:'run_lint.txt', execute:'run_execute.txt', heal:'run_heal.txt'
+  };
+  _currentLog = logFiles[step];
+  _currentStep = step;
+
+  // UI 업데이트
+  var btn = document.getElementById(btnId);
+  btn.classList.add('loading');
+  btn.disabled = true;
+  document.getElementById(cancelId).classList.add('visible');
+  setStepNum(step,'running');
+  setLog('['+step+'] 플랫폼: '+platform+' — 실행 중...\n');
+  hideFails();
+
+  try {
+    var tcFolder = getTcFolder();
+    var res = await fetch('/api/run',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({step, platform, tc_folder: tcFolder})
+    });
+    var data = await res.json();
+    if(!data.ok){
+      setLog('[오류] '+(data.error||'알 수 없는 오류'));
+      finishStep(step, false);
+      return;
+    }
+    setLog('['+step+'] PID: '+data.pid+'\n');
+    startLogPoll(step, _currentLog);
+  } catch(e){
+    setLog('[요청 실패] '+e.message);
+    finishStep(step, false);
+  }
+}
+
+async function cancelStep(step){
+  await fetch('/api/cancel',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({step})
+  });
+  finishStep(step, false);
+  setLog('[취소됨] '+step+' 실행이 중단됐어요.');
+}
+
+function finishStep(step, success){
+  var btn=document.getElementById('btn-'+step);
+  btn.classList.remove('loading');
+  document.getElementById('cancel-'+step).classList.remove('visible');
+  setStepNum(step, success===true?'done': success===false?'failed':'');
+  if(_pollTimer){ clearInterval(_pollTimer); _pollTimer=null; }
+  // Fix 5: 스텝 완료 시 _currentStep 초기화 → 이후 refreshStatus가 플랫폼 동기화 재개
+  _currentStep = null;
+  refreshStatus();
+  refreshGenerated();
+  refreshReports();
+
+  // 소요 시간
+  var elapsed = _stepStartTime ? Math.round((Date.now() - _stepStartTime) / 1000) : 0;
+  // 결과 요약
+  var summary = document.getElementById('step-summary');
+  var summaryText = '[' + step + '] 소요 ' + elapsed + 's';
+  if(step === 'execute' || step === 'heal'){
+    var logText = document.getElementById('log-box').textContent;
+    var passMatch = logText.match(/(\d+) passed/);
+    var failMatch = logText.match(/(\d+) failed/);
+    if(passMatch || failMatch){
+      summaryText += ' | 통과: ' + (passMatch?passMatch[1]:'0') + ' | 실패: ' + (failMatch?failMatch[1]:'0');
+    }
+  }
+  if(step === 'generate'){
+    var logText = document.getElementById('log-box').textContent;
+    var genMatch = logText.match(/(\d+)개/);
+    if(genMatch) summaryText += ' | 생성: ' + genMatch[1] + '개';
+  }
+  summary.textContent = summaryText;
+  summary.style.display = 'block';
+
+  // 가이드 배너
+  showGuideBanner(step, success === true);
+
+  // suggested 버튼 하이라이트
+  document.querySelectorAll('.btn.suggested').forEach(function(b){ b.classList.remove('suggested'); });
+  if(success === true && _nextStep[step]){
+    var nextBtn = document.getElementById('btn-' + _nextStep[step]);
+    if(nextBtn && !nextBtn.disabled) nextBtn.classList.add('suggested');
+  }
+}
+
+// ── 로그 폴링 ────────────────────────────────────────────────
+function startLogPoll(step, logFile){
+  if(_pollTimer) clearInterval(_pollTimer);
+  var prevLen=0;
+  _pollTimer = setInterval(async ()=>{
+    try{
+      var res=await fetch('/api/run_log',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({log:logFile})
+      });
+      var data=await res.json();
+      if(data.ok && data.log.length!==prevLen){
+        setLog(data.log);
+        prevLen=data.log.length;
+        // 실패 파싱
+        if(step==='execute'||step==='heal'){
+          updateFailSummary(data.log);
+        }
+      }
+      if(data.done){
+        clearInterval(_pollTimer);
+        _pollTimer=null;
+        finishStep(step, data.exit_code===0);
+      }
+    }catch(_){}
+  }, 1200);
+  // 최대 10분 타임아웃
+  setTimeout(()=>{ if(_pollTimer){ clearInterval(_pollTimer); _pollTimer=null; finishStep(step,false); }}, 600000);
+}
+
+// ── 실패 요약 ────────────────────────────────────────────────
+function updateFailSummary(logText){
+  var lines=logText.split('\n');
+  var fails=[];
+  var inSummary=false;
+  lines.forEach(function(l){
+    if(l.includes('short test summary info')) inSummary=true;
+    if(inSummary && l.startsWith('FAILED')){
+      var parts=l.replace('FAILED ','').split(' - ');
+      fails.push({tc:parts[0]||'', error:parts[1]||''});
+    }
+    // inline FAILED lines
+    if(!inSummary && l.startsWith('FAILED ')){
+      var parts=l.replace('FAILED ','').split(' - ');
+      var entry={tc:parts[0]||'', error:parts[1]||''};
+      if(!fails.some(function(f){return f.tc===entry.tc;})) fails.push(entry);
+    }
+  });
+  if(!fails.length){ hideFails(); return; }
+  var panel=document.getElementById('fail-summary');
+  var list=document.getElementById('fail-list');
+  document.getElementById('fail-count').textContent=fails.length;
+  list.innerHTML=fails.map(function(f){
+    return '<div class="fail-item"><div class="fail-tc">'+esc(f.tc)+'</div>'
+      +(f.error?'<div class="fail-err">'+esc(f.error)+'</div>':'')+'</div>';
+  }).join('');
+  panel.classList.add('visible');
+}
+function hideFails(){
+  document.getElementById('fail-summary').classList.remove('visible');
+  document.getElementById('fail-list').innerHTML='';
+}
+function esc(s){ var d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+function showGuideBanner(step, success){
+  var banner = document.getElementById('guide-banner');
+  var msgVal = (_guideMessages[step]||{})[success?'ok':'fail'];
+  var msg = (msgVal === null && step === 'analyze' && !success) ? _analyzeFailMsg() : (msgVal || '');
+  if(!msg){ banner.style.display='none'; return; }
+  banner.style.background = success ? 'rgba(16,185,129,.12)' : 'rgba(244,63,94,.12)';
+  banner.style.border = '1px solid ' + (success ? 'rgba(16,185,129,.35)' : 'rgba(244,63,94,.35)');
+  banner.style.color = success ? '#10b981' : '#f43f5e';
+  banner.innerHTML = msg + '<button onclick="hideGuideBanner()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:inherit;cursor:pointer;font-size:14px;opacity:.7">&#x2715;</button>';
+  banner.style.display = 'block';
+}
+function hideGuideBanner(){
+  document.getElementById('guide-banner').style.display='none';
+}
+
+// ── 탭 ──────────────────────────────────────────────────────
+function switchTab(group, key, el){
+  var prefix = group+'-';
+  document.querySelectorAll('[id^="'+prefix+'"]').forEach(function(c){c.classList.remove('active');});
+  document.getElementById(prefix+key).classList.add('active');
+  el.closest('.card').querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
+  el.classList.add('active');
+}
+
+function switchGuide(key, el){
+  document.querySelectorAll('.guide-panel').forEach(function(p){p.classList.remove('active');});
+  document.getElementById('guide-'+key).classList.add('active');
+  el.closest('.card').querySelectorAll('.guide-tab').forEach(function(t){t.classList.remove('active');});
+  el.classList.add('active');
+}
+
+
+// ── API 새로고침 ─────────────────────────────────────────────
+async function refreshStatus(){
+  try{
+    var platform = document.body.classList.contains('quick-mode') ? _quickPlatform : getPlatform();
+    updateAutomationStatus(platform);
+    var [sr,stR]=await Promise.all([
+      fetch('/api/status?platform=' + platform),
+      fetch('/api/state')
+    ]);
+    var st=await sr.json(), state=await stR.json();
+
+    var dA=document.getElementById('dot-appium'), tA=document.getElementById('txt-appium');
+    dA.className='dot '+(st.appium?'on':'off');
+    tA.textContent=st.appium?'Appium 연결됨':'Appium 미기동';
+
+    var dD=document.getElementById('dot-device'), tD=document.getElementById('txt-device');
+    var isIos = (platform === 'ios');
+    var noDevTxt = '디바이스 없음';
+    if(st.device_count>0){ dD.className='dot on'; tD.textContent=st.devices.join(', '); }
+    else{ dD.className='dot off'; tD.textContent=noDevTxt; }
+
+    document.getElementById('txt-step').textContent=state.step||'init';
+
+    var hc=state.heal_count||0;
+    var hr=document.getElementById('heal-row');
+    if(hc>0){
+      hr.style.display='flex';
+      document.getElementById('heal-cnt').textContent=hc;
+    }else{
+      hr.style.display='none';
+      document.getElementById('heal-cnt').textContent='';
+    }
+
+    // 최초 로드 시 pipeline.json 플랫폼으로 라디오 동기화
+    if(state.platform && _initialPlatformSync){
+      var r=document.getElementById('radio-'+state.platform);
+      var changed = r && !r.checked;
+      if(r) r.checked=true;
+      _initialPlatformSync = false;
+      updateAutomationStatus(state.platform);
+      if(changed) setTimeout(refreshStatus, 0);
+    }
+  }catch(_){}
+}
+
+function updateAutomationStatus(platform){
+  var el=document.getElementById('txt-automation');
+  if(!el) return;
+  if(platform === 'ios'){
+    el.textContent='자동화: XCUITest';
+    el.title='iOS · XCUITest · Simulator / 실기기';
+  }else{
+    el.textContent='자동화: ADB';
+    el.title='Android · ADB · UiAutomator2';
+  }
+}
+
+// 라디오 버튼 변경 시 즉시 상태 갱신
+document.addEventListener('change', function(e){
+  if(e.target && e.target.name === 'platform'){
+    updateAutomationStatus(e.target.value);
+    refreshStatus();
+    refreshTcFolders();
+  }
+});
+
+var _quickPlatform='android';
+
+function setQuickPlatform(platform){
+  if(platform!=='android'&&platform!=='ios') return;
+  _quickPlatform=platform;
+  updateAutomationStatus(platform);
+  Promise.all([refreshStatus(),refreshGenerated()]);
+}
+
+async function refreshGenerated(){
+  try{
+    var res=await fetch('/api/generated?platform='+encodeURIComponent(_quickPlatform)); var data=await res.json();
+    window._generatedTests = data;
+    var allHtml='', andHtml='', iosHtml='';
+    data.forEach(function(g){
+      var badge='<span class="gen-badge '+g.platform+'">'+(g.platform==='android'?'🤖':'🍎')+' '+g.platform+'</span>';
+      var block='<div class="gen-item"><div>'+badge+'<span class="gen-count">'+g.count+'개 파일</span></div></div>';
+      block+=g.files.map(function(file){
+        var key=g.platform+':'+file.split('/')[0];
+        return '<label class="quick-group-item"><input type="checkbox" class="quick-group-cb" value="'+esc(key)+'" checked>'
+          +'<span class="quick-group-name">'+esc(key)+'</span><span class="quick-group-count">1개 파일</span></label>';
+      }).join('');
+      allHtml+=block;
+      if(g.platform==='android') andHtml+=block;
+      if(g.platform==='ios') iosHtml+=block;
+    });
+    var groupMap={};
+    data.forEach(function(g){ g.files.forEach(function(file){ var key=g.platform+':'+file.split('/')[0]; (groupMap[key]||(groupMap[key]=[])).push({platform:g.platform,file:file}); }); });
+    var groups=Object.keys(groupMap);
+    var folderHtml=groups.map(function(key){ return '<label class="quick-group-item"><input type="checkbox" class="quick-group-cb" value="'+esc(key)+'" checked onchange="syncQuickSelection()">'
+      +'<span class="quick-group-name">'+esc(key.split(':').slice(1).join(':'))+'</span><span class="quick-group-count">'+groupMap[key].length+'개 파일</span></label>'; }).join('');
+    var quickHtml='<div class="quick-view-title">빠른 실행</div><p class="quick-view-subtitle">선택한 OS의 tests/generated 폴더에 생성된 테스트 코드만 실행합니다.</p>'
+      +'<div class="quick-platform-selector"><button type="button" class="quick-platform-btn '+(_quickPlatform==='android'?'active':'')+'" onclick="setQuickPlatform(\'android\')">🤖 Android</button><button type="button" class="quick-platform-btn '+(_quickPlatform==='ios'?'active':'')+'" onclick="setQuickPlatform(\'ios\')">🍎 iOS</button></div>'
+      +'<div class="quick-select-card"><div class="quick-select-head"><span>'+(_quickPlatform==='android'?'Android':'iOS')+' 테스트 폴더</span><label><input type="checkbox" id="quick-select-all" checked onchange="quickToggleGenerated(this.checked)"> 전체 선택</label></div>'
+      +'<div class="quick-group-list">'+(folderHtml||'<div class="tc-folder-empty">생성된 테스트 폴더가 없습니다.</div>')+'</div>'
+      +'<div class="quick-action-row"><button class="quick-run-action" id="quick-generated-run" onclick="runSelectedGenerated()" '+(!groups.length?'disabled':'')+'>테스트 실행</button><label><input type="checkbox" id="generated-heal"> 힐링 생략</label></div></div>'
+      +'<div id="quick-generated-log" class="quick-log" style="display:none"></div><div id="quick-generated-result"></div>';
+    document.getElementById('gen-all').innerHTML=quickHtml||'<div class="empty">없음</div>';
+    document.getElementById('gen-android').innerHTML=andHtml||'<div class="empty">없음</div>';
+    document.getElementById('gen-ios').innerHTML=iosHtml||'<div class="empty">없음</div>';
+  }catch(_){}
+}
+
+var IMPORT_FIELDS=[['tc_id','TC ID',true],['title','제목',true],['precondition','사전 조건',true],['steps','테스트 단계',true],['expected','예상 결과',true],['priority','우선순위',false],['tags','태그',false],['group','그룹',false]];
+var IMPORT_DEFAULT_MAPPINGS={tc_id:'B열',title:'F열',precondition:'G열',steps:'H열',expected:'I열',priority:'J열'};
+var _importStudio={step:1,files:[],file:'',sheets:[],selectedSheets:[],platforms:['android','ios'],mappings:Object.assign({},IMPORT_DEFAULT_MAPPINGS),policy:'skip-conflict',preview:null,previewFilter:'all',previewLoading:false,previewError:'',loading:false,error:'',result:null};
+var _importPreviewRequest=0;
+
+function importFormatSize(bytes){
+  if(!bytes) return '0 B';
+  if(bytes<1024) return bytes+' B';
+  return (bytes/1024).toFixed(1)+' KB';
+}
+function importFormatDate(value){
+  if(!value) return '';
+  try{return new Date(value).toLocaleDateString('ko-KR');}catch(_){return '';}
+}
+function importWizardHeader(){
+  var labels=['파일 선택','열 매핑','미리보기','안전한 반영','완료'], html='';
+  labels.forEach(function(label,index){
+    var number=index+1, done=number<_importStudio.step, active=number===_importStudio.step;
+    html+='<div class="is-step"><div class="is-step-circle '+(done?'done':active?'active':'')+'">'+(done?'✓':number)+'</div><div class="is-step-label '+(active?'active':'')+'">'+label+'</div></div>';
+    if(number<labels.length) html+='<div class="is-step-line '+(done?'done':'')+'"></div>';
+  });
+  return html;
+}
+function importBottomBar(options){
+  options=options||{};
+  return '<div class="is-bottom"><div class="is-safe-note">원본 파일은 변경되지 않습니다</div><div class="is-spacer"></div>'
+    +(options.count?'<span class="is-count">'+options.count+'</span>':'')
+    +(options.back?'<button class="is-btn" onclick="importStudioPrev()">이전</button>':'')
+    +(options.next?'<button class="is-btn '+(options.success?'success':'primary')+'" onclick="'+options.action+'" '+(options.disabled?'disabled':'')+'>'+options.next+'</button>':'')+'</div>';
+}
+function importEffectivePlatforms(sheetName){
+  var normalized=(sheetName||'').trim().toLowerCase();
+  if(normalized==='android'||normalized==='ios')return _importStudio.platforms.indexOf(normalized)>=0?[normalized]:[];
+  return _importStudio.platforms.slice();
+}
+function importPreviewStats(){
+  var stats={sheetCount:0,sourceRows:0,generatedFiles:0,sheetNames:[],outputPaths:[]};
+  _importStudio.sheets.forEach(function(sheet){
+    if(_importStudio.selectedSheets.indexOf(sheet.name)<0)return;
+    var platforms=importEffectivePlatforms(sheet.name);if(!platforms.length)return;
+    stats.sheetCount++;stats.sourceRows+=sheet.count||0;stats.generatedFiles+=(sheet.count||0)*platforms.length;stats.sheetNames.push(sheet.name);
+    platforms.forEach(function(platform){
+      var normalized=(sheet.name||'').trim().toLowerCase();
+      var path='testcases/'+platform+'/'+((normalized===platform)?'':'{시트명}/');
+      if(stats.outputPaths.indexOf(path)<0)stats.outputPaths.push(path);
+    });
+  });
+  return stats;
+}
+function renderImportStudio(){
+  var root=document.getElementById('import-studio-root'); if(!root)return;
+  var view=document.getElementById('view-import');
+  if(view){view.classList.toggle('is-source-expanded',_importStudio.step===1&&!!_importStudio.file);view.classList.toggle('is-stage-detail',_importStudio.step>=2&&_importStudio.step<=4);view.classList.toggle('is-stage-mapping',_importStudio.step===2);view.classList.toggle('is-stage-preview',_importStudio.step===3);view.classList.toggle('is-stage-commit',_importStudio.step===4);view.classList.toggle('is-stage-complete',_importStudio.step===5);}
+  var body='';
+  if(_importStudio.step===1){
+    var cards=_importStudio.files.map(function(file){
+      var selected=file.name===_importStudio.file;
+      var sheetRows=selected?'<div class="is-file-sheets" onclick="event.stopPropagation()">'+(file.sheets||[]).map(function(sheet){
+        var checked=_importStudio.selectedSheets.indexOf(sheet.name)>=0;
+        return '<label class="is-sheet-row"><input type="checkbox" '+(checked?'checked':'')+' onchange="toggleImportSheet(decodeURIComponent(\''+encodeURIComponent(sheet.name)+'\'),this.checked)"><span class="is-sheet-name">'+esc(sheet.name)+'</span><span class="is-sheet-count">'+sheet.count+'행</span></label>';
+      }).join('')+'</div>':'';
+      return '<div role="checkbox" tabindex="0" aria-checked="'+selected+'" class="is-file-card '+(selected?'selected':'')+'" onclick="selectImportSource(decodeURIComponent(\''+encodeURIComponent(file.name)+'\'))" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();this.click()}"><div class="is-file-head"><div class="is-excel-icon">X</div><div class="is-file-info"><div class="is-file-name">'+esc(file.name)+'</div><div class="is-file-meta">'+importFormatSize(file.size)+' · '+importFormatDate(file.modified_at)+' · '+(file.sheets||[]).length+'개 시트</div></div><div class="is-file-check">'+(selected?'✓':'')+'</div></div>'+sheetRows+'</div>';
+    }).join('');
+    body='<div class="is-content"><p class="is-description">import/ 폴더의 Excel 파일을 선택하고, 가져올 시트와 대상 그룹을 지정하세요.</p><div class="is-file-grid">'+(cards||'<div class="tc-folder-empty">import/ 폴더에 Excel 파일이 없습니다.</div>')+'</div></div>'
+      +importBottomBar({count:_importStudio.selectedSheets.length?'1개 파일 · '+_importStudio.selectedSheets.length+'개 시트 선택됨':'0개 파일 선택됨',next:'다음: 열 매핑 →',action:'importStudioNext()',disabled:!_importStudio.file||!_importStudio.selectedSheets.length});
+  }else if(_importStudio.step===2){
+    var excelColumns=Array.from({length:26},function(_,index){return String.fromCharCode(65+index)+'열';});
+    var mapRows=IMPORT_FIELDS.map(function(field){
+      var key=field[0],label=field[1],required=field[2],value=_importStudio.mappings[key]||'';
+      var options=[''].concat(excelColumns).map(function(column){return '<option value="'+column+'" '+(column===value?'selected':'')+'>'+(column||'— 선택 안 함 —')+'</option>';}).join('');
+      return '<div class="is-map-row"><span class="is-drag">⠿</span><select class="is-map-select" data-field="'+key+'" onchange="setImportMapping(this.dataset.field,this.value)">'+options+'</select><span class="is-map-arrow">→</span><span class="is-map-target">'+label+(required?' <b style="color:#f87171">*</b>':'')+'</span><span class="is-map-ok">'+(value?'✓':'')+'</span></div>';
+    }).join('');
+    var requiredValid=IMPORT_FIELDS.filter(function(field){return field[2];}).every(function(field){return !!_importStudio.mappings[field[0]];});
+    var left='<section class="is-subpanel"><div class="is-subpanel-head"><span class="is-subpanel-title">선택한 파일</span><span class="is-panel-badge">1</span></div><div class="is-subpanel-body"><div class="is-mini-file"><span class="is-mini-excel">X</span><span class="is-mini-name">'+esc(_importStudio.file)+'</span><span class="is-mini-ok">✓</span></div><div class="is-mini-meta">'+_importStudio.selectedSheets.map(esc).join(', ')+'</div><div class="is-platforms"><label><input type="checkbox" value="android" '+(_importStudio.platforms.indexOf('android')>=0?'checked':'')+' onchange="toggleImportPlatform(this.value,this.checked)">Android</label><label><input type="checkbox" value="ios" '+(_importStudio.platforms.indexOf('ios')>=0?'checked':'')+' onchange="toggleImportPlatform(this.value,this.checked)">iOS</label></div></div></section>';
+    var center='<section class="is-subpanel"><div class="is-subpanel-head"><span class="is-subpanel-title">공통 열 매핑</span><span class="is-panel-badge">'+Object.keys(_importStudio.mappings).length+'</span></div><div class="is-map-header"><span></span><span>소스 필드 (Excel)</span><span></span><span>대상 필드 (QA-Native)</span><span></span></div><div class="is-mapping-list">'+mapRows+'</div><div class="is-map-hint">필수 필드(*)를 모두 연결해야 미리보기를 생성할 수 있습니다.</div></section>';
+    var preview=_importStudio.preview||{summary:{},rows:[]},previewSummary=preview.summary||{};
+    var validationMessage=_importStudio.previewLoading?'현재 매핑을 검증하고 있습니다.':_importStudio.previewError?esc(_importStudio.previewError):'상세 테스트 케이스는 다음 미리보기 단계에서 확인할 수 있습니다.';
+    var right='<section class="is-subpanel"><div class="is-subpanel-head"><span class="is-subpanel-title">검증 결과</span><span class="is-panel-badge">'+((preview.rows||[]).length)+'</span></div><div class="is-subpanel-body"><div class="is-kpi-grid"><div class="is-kpi"><div class="is-kpi-label">추가</div><div class="is-kpi-number added">'+(previewSummary.added||0)+'</div></div><div class="is-kpi"><div class="is-kpi-label">업데이트</div><div class="is-kpi-number updated">'+(previewSummary.updated||0)+'</div></div><div class="is-kpi"><div class="is-kpi-label">충돌</div><div class="is-kpi-number conflict">'+(previewSummary.conflict||0)+'</div></div><div class="is-kpi"><div class="is-kpi-label">오류</div><div class="is-kpi-number error">'+(previewSummary.error||0)+'</div></div><div class="is-kpi wide"><div class="is-kpi-label">동일 · 변경 불필요</div><div class="is-kpi-number same">'+(previewSummary.same||0)+'</div></div></div><div class="is-safe-box" style="padding:13px;font-size:11px;line-height:1.6">'+validationMessage+'</div><div class="is-legend"><span><i style="background:#34d399"></i>추가</span><span><i style="background:#60a5fa"></i>업데이트</span><span><i style="background:#fbbf24"></i>충돌</span><span><i style="background:#f87171"></i>오류</span><span><i style="background:#9b97b4"></i>동일</span></div></div></section>';
+    body='<div class="is-content" style="overflow:hidden"><div class="is-step2-layout">'+left+center+right+'</div></div>'+importBottomBar({back:true,next:_importStudio.previewLoading?'검증 중...':'미리보기 생성 →',action:'importStudioNext()',disabled:!requiredValid||!_importStudio.platforms.length||_importStudio.previewLoading||!_importStudio.preview});
+  }else if(_importStudio.step===3){
+    var fullPreview=_importStudio.preview||{summary:{},rows:[]},fullSummary=fullPreview.summary||{},fullRows=fullPreview.rows||[];
+    var fullStatusLabels={added:'추가',updated:'업데이트',conflict:'충돌',error:'오류',same:'동일'};
+    var filters=[['all','전체',fullRows.length],['added','추가',fullSummary.added||0],['updated','업데이트',fullSummary.updated||0],['conflict','충돌',fullSummary.conflict||0],['error','오류',fullSummary.error||0],['same','동일',fullSummary.same||0]];
+    var filterHtml=filters.map(function(filter){return '<button type="button" class="is-filter-btn '+(_importStudio.previewFilter===filter[0]?'active':'')+'" onclick="setImportPreviewFilter(\''+filter[0]+'\')">'+filter[1]+' '+filter[2]+'</button>';}).join('');
+    var visibleRows=fullRows.filter(function(row){return _importStudio.previewFilter==='all'||row.status===_importStudio.previewFilter;});
+    var fullTableRows=visibleRows.map(function(row){return '<tr><td>'+esc(row.tc_id||'-')+'</td><td>'+esc(row.title||'-')+'</td><td>'+esc(row.precondition||'-')+'</td><td>'+esc(row.steps||'-')+'</td><td>'+esc(row.expected||'-')+'</td><td>'+esc(row.group||row.sheet||'-')+'</td><td><span class="is-status-pill '+esc(row.status)+'">'+esc(fullStatusLabels[row.status]||row.status)+'</span></td></tr>';}).join('');
+    if(!fullTableRows)fullTableRows='<tr><td class="is-empty-row" colspan="7">선택한 상태의 테스트 케이스가 없습니다.</td></tr>';
+    body='<div class="is-full-preview"><div class="is-preview-filters">'+filterHtml+'</div><div class="is-full-table-wrap"><table class="is-full-table"><colgroup><col style="width:8%"><col style="width:16%"><col style="width:19%"><col style="width:22%"><col style="width:22%"><col style="width:8%"><col style="width:7%"></colgroup><thead><tr><th>TC ID</th><th>제목</th><th>전제조건</th><th>테스트 단계</th><th>기대결과</th><th>그룹</th><th>상태</th></tr></thead><tbody>'+fullTableRows+'</tbody></table></div></div>'
+      +importBottomBar({back:true,next:'안전한 반영 →',action:'importStudioNext()'});
+  }else if(_importStudio.step===4){
+    var commitStats=importPreviewStats();
+    var platformNames=_importStudio.platforms.map(function(platform){return platform==='ios'?'iOS':'Android';}).join(' · ');
+    var outputPaths=commitStats.outputPaths.join(', ');
+    var policies=[
+      {key:'skip-conflict',badge:'권장',tone:'rec',name:'skip-conflict',desc:'새 파일만 생성하고 동일 경로의 기존 파일은 건너뜁니다.'},
+      {key:'overwrite',badge:'주의',tone:'warn',name:'overwrite',desc:'동일 경로의 기존 Markdown을 Excel 데이터로 덮어씁니다.'}
+    ];
+    var policyCards=policies.map(function(policy){return '<button type="button" class="is-policy-card '+(_importStudio.policy===policy.key?'selected':'')+'" onclick="selectImportPolicy(\''+policy.key+'\')"><span class="is-policy-badge '+policy.tone+'">'+policy.badge+'</span><div class="is-policy-name">'+policy.name+'</div><div class="is-policy-desc">'+policy.desc+'</div></button>';}).join('');
+    body='<div class="is-content"><p class="is-description">반영 정책을 선택하고 생성 범위를 마지막으로 확인하세요.</p><div class="is-policy-grid">'+policyCards+'</div><div class="is-commit-summary"><h3>반영 요약</h3><div class="is-commit-row"><span class="is-commit-label">대상 플랫폼</span><strong>'+platformNames+'</strong></div><div class="is-commit-row"><span class="is-commit-label">적용 시트</span><strong>'+commitStats.sheetNames.map(esc).join(', ')+'</strong></div><div class="is-commit-row"><span class="is-commit-label">원본 TC</span><strong>'+commitStats.sourceRows+'건</strong></div><div class="is-commit-row"><span class="is-commit-label">예상 생성 파일</span><strong>'+commitStats.generatedFiles+'개</strong></div><div class="is-commit-row"><span class="is-commit-label">저장 경로</span><strong>'+outputPaths+'</strong></div></div><div class="is-snapshot-info"><span>◆</span><span>원본 Excel은 변경하지 않습니다. <b>skip-conflict</b> 선택 시 기존 Markdown도 보존됩니다.</span></div></div>'
+      +importBottomBar({back:true,next:_importStudio.loading?'반영 중...':'✓ 반영 시작',action:'commitImportStudio()',disabled:_importStudio.loading,success:true});
+  }else{
+    var result=_importStudio.result||{};
+    body='<div class="is-content"><div class="is-complete"><div class="is-complete-icon">✓</div><h2>Import 완료</h2><p>'+(result.count||0)+'개의 테스트 케이스 Markdown을 생성했습니다.</p><pre>'+esc((result.files||[]).join('\n'))+'</pre></div></div>'
+      +importBottomBar({next:'새 Import 시작',action:'resetImportStudio()'});
+  }
+  root.innerHTML='<div class="is-header"><div class="is-title-row"><div class="is-title">Excel Import Studio</div><button type="button" class="is-reset-btn" onclick="resetImportStudio()" title="Import Studio 입력 초기화">↻ 리셋</button></div><div class="is-wizard">'+importWizardHeader()+'</div></div>'+(_importStudio.error?'<div class="is-error">'+esc(_importStudio.error)+'</div>':'')+'<div class="is-body">'+body+'</div>';
+}
+async function refreshImportFiles(){
+  try{
+    var res=await fetch('/api/import/files'), data=await res.json();
+    var files=data.files||[];
+    _importStudio.files=await Promise.all(files.map(async function(raw){
+      var file=typeof raw==='string'?{name:raw,size:0,modified_at:''}:raw;
+      try{var sr=await fetch('/api/import/sheets?file='+encodeURIComponent(file.name)), sd=await sr.json();file.sheets=sd.sheets||[];}catch(_){file.sheets=[];}
+      return file;
+    }));
+    _importStudio.error=''; renderImportStudio();
+  }catch(err){_importStudio.error='Excel 파일을 불러오지 못했습니다.';renderImportStudio();}
+}
+function selectImportSource(name){
+  var file=_importStudio.files.find(function(item){return item.name===name;}); if(!file)return;
+  if(_importStudio.file===name){_importStudio.file='';_importStudio.sheets=[];_importStudio.selectedSheets=[];}
+  else{_importStudio.file=name;_importStudio.sheets=file.sheets||[];_importStudio.selectedSheets=[];}
+  renderImportStudio();
+}
+function toggleImportSheet(sheet,checked){
+  _importStudio.selectedSheets=_importStudio.selectedSheets.filter(function(item){return item!==sheet;});
+  if(checked)_importStudio.selectedSheets.push(sheet);
+  renderImportStudio();
+}
+function toggleImportPlatform(platform,checked){
+  _importStudio.platforms=_importStudio.platforms.filter(function(item){return item!==platform;});
+  if(checked)_importStudio.platforms.push(platform);
+  renderImportStudio();loadImportPreview();
+}
+function setImportMapping(field,column){
+  if(column)_importStudio.mappings[field]=column;else delete _importStudio.mappings[field];
+  renderImportStudio();loadImportPreview();
+}
+function selectImportPolicy(policy){
+  if(policy!=='skip-conflict'&&policy!=='overwrite')return;
+  _importStudio.policy=policy;renderImportStudio();
+}
+function setImportPreviewFilter(filter){_importStudio.previewFilter=filter;renderImportStudio();}
+function importStudioNext(){if(_importStudio.step===2&&(!_importStudio.preview||_importStudio.previewLoading))return;if(_importStudio.step<4){_importStudio.step++;_importStudio.error='';renderImportStudio();if(_importStudio.step===2)loadImportPreview();}}
+function importStudioPrev(){if(_importStudio.step>1){_importStudio.step--;_importStudio.error='';renderImportStudio();}}
+function resetImportStudio(){_importPreviewRequest++;_importStudio={step:1,files:_importStudio.files,file:'',sheets:[],selectedSheets:[],platforms:['android','ios'],mappings:Object.assign({},IMPORT_DEFAULT_MAPPINGS),policy:'skip-conflict',preview:null,previewFilter:'all',previewLoading:false,previewError:'',loading:false,error:'',result:null};renderImportStudio();}
+async function loadImportPreview(){
+  if(_importStudio.step!==2||!_importStudio.file||!_importStudio.selectedSheets.length||!_importStudio.platforms.length)return;
+  var request=++_importPreviewRequest;_importStudio.previewLoading=true;_importStudio.previewError='';renderImportStudio();
+  try{
+    var res=await fetch('/api/import/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({file:_importStudio.file,sheets:_importStudio.selectedSheets,platforms:_importStudio.platforms,mappings:_importStudio.mappings})});
+    var data=await res.json();if(!data.ok)throw new Error(data.error||'미리보기 실패');
+    if(request===_importPreviewRequest)_importStudio.preview=data;
+  }catch(err){if(request===_importPreviewRequest){_importStudio.preview=null;_importStudio.previewError=err.message||'미리보기에 실패했습니다.';}}
+  finally{if(request===_importPreviewRequest){_importStudio.previewLoading=false;renderImportStudio();}}
+}
+async function commitImportStudio(){
+  _importStudio.loading=true;_importStudio.error='';renderImportStudio();
+  try{
+    var combined={count:0,files:[]};
+    for(var index=0;index<_importStudio.selectedSheets.length;index++){
+      var sheet=_importStudio.selectedSheets[index];
+      var res=await fetch('/api/import/convert',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({file:_importStudio.file,sheet:sheet,platforms:_importStudio.platforms,mappings:_importStudio.mappings,policy:_importStudio.policy})});
+      var data=await res.json();if(!data.ok)throw new Error(data.error||sheet+' 변환 실패');
+      combined.count+=data.count||0;combined.files=combined.files.concat(data.files||[]);
+    }
+    _importStudio.result=combined;_importStudio.step=5;refreshTcFolders();
+  }catch(err){_importStudio.error=err.message||'변환에 실패했습니다.';}finally{_importStudio.loading=false;renderImportStudio();}
+}
+
+function quickToggleGenerated(checked){
+  document.querySelectorAll('.quick-group-cb').forEach(function(cb){ cb.checked=checked; });
+}
+function syncQuickSelection(){
+  var all=document.querySelectorAll('.quick-group-cb'), selected=document.querySelectorAll('.quick-group-cb:checked');
+  var toggle=document.getElementById('quick-select-all');
+  if(toggle) toggle.checked=all.length>0 && all.length===selected.length;
+}
+
+async function runSelectedGenerated(){
+  var keys=Array.from(document.querySelectorAll('.quick-group-cb:checked')).map(function(cb){return cb.value;});
+  var all=(window._generatedTests||[]), files=[];
+  all.forEach(function(g){ g.files.forEach(function(file){ if(keys.indexOf(g.platform+':'+file.split('/')[0])!==-1) files.push({platform:g.platform,file:file}); }); });
+  if(!files.length){ setLog('[안내] 실행할 테스트 폴더를 선택하세요.'); return; }
+  var btn=document.getElementById('quick-generated-run'); if(btn){btn.disabled=true;btn.textContent='실행 중...';}
+  var noHeal=document.getElementById('generated-heal')?.checked === true;
+  var passed=0, failed=0, done=0, groupStats={};
+  var logEl=document.getElementById('quick-generated-log'), resultEl=document.getElementById('quick-generated-result');
+  if(logEl){logEl.style.display='block';logEl.textContent='';}
+  if(resultEl) resultEl.innerHTML='';
+  for(var i=0;i<files.length;i++){
+    var item=files[i];
+    var groupKey=item.platform+':'+item.file.split('/')[0];
+    groupStats[groupKey] = groupStats[groupKey] || {total:0,passed:0,failed:0};
+    groupStats[groupKey].total++;
+    if(logEl) logEl.textContent+='['+(i+1)+'/'+files.length+'] '+item.platform+'/'+item.file+'\\n';
+    var result=await executeGeneratedFile(item.platform,item.file,!noHeal);
+    if(result.ok && result.exit_code===0){ passed++; groupStats[groupKey].passed++; } else { failed++; groupStats[groupKey].failed++; } done++;
+  }
+  var rate=done?Math.round(passed/done*100):0;
+  var groupRows=Object.keys(groupStats).map(function(key){ var g=groupStats[key], ok=g.failed===0;
+    return '<div class="quick-group-result"><span>▸ <i class="quick-result-dot '+(ok?'pass':'fail')+'"></i> '+esc(key.split(':').slice(1).join(':').toUpperCase())+'</span><span>'+g.passed+'/'+g.total+' passed <b class="'+(ok?'pass-text':'fail-text')+'">'+(ok?'PASS':'FAIL')+'</b></span></div>'; }).join('');
+  if(resultEl) resultEl.innerHTML='<div class="quick-result-card"><div class="quick-result-head"><span>실행 결과</span><span class="quick-result-badge '+(failed?'fail':'pass')+'">'+(failed?'FAILED':'ALL PASS')+'</span></div>'
+    +'<div class="quick-result-stats"><div><b>'+done+'</b><small>TOTAL</small></div><div><b class="pass-text">'+passed+'</b><small>PASSED</small></div><div><b class="fail-text">'+failed+'</b><small>FAILED</small></div><div><b class="'+(failed?'fail-text':'pass-text')+'">'+rate+'%</b><small>PASS RATE</small></div></div>'
+    +'<div class="quick-group-results">'+groupRows+'</div>'
+    +'<div class="quick-result-meta">실행: '+new Date().toLocaleString('ko-KR')+' | 힐링: '+(noHeal?'생략':'사용')+'</div></div>';
+  if(btn){btn.disabled=false;btn.textContent='테스트 실행';}
+}
+
+async function runGeneratedFile(platform, file){
+  var noHeal=document.getElementById('generated-heal')?.checked === true;
+  return executeGeneratedFile(platform,file,!noHeal);
+}
+function executeGeneratedFile(platform,file,heal){
+  return new Promise(async function(resolve){
+    try{
+    var res=await fetch('/api/run_test',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({platform:platform,test_file:file,heal:heal})});
+    var data=await res.json();
+    if(!data.ok){ setLog('[오류] '+(data.error||'실행 실패')); resolve({ok:false,exit_code:1}); return; }
+    var logName=data.log;
+    var timer=setInterval(async function(){
+    try{
+      var res=await fetch('/api/run_log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({log:logName})});
+      var data=await res.json();
+      if(data.ok) setLog(data.log||'실행 중...');
+      if(data.done){ clearInterval(timer); refreshStatus(); refreshReports(); refreshGenerated(); resolve(data); }
+    }catch(_){ }
+    },1000);
+    }catch(err){ setLog('[요청 실패] '+err.message); resolve({ok:false,exit_code:1}); }
+  });
+}
+
+var _reports=[], _reportSelected=new Set(), _reportPage=1, _reportSort='newest', _reportSearch='';
+function renderReports(){
+  var list=document.getElementById('report-list'); if(!list) return;
+  var filtered=_reports.filter(function(r){return r.name.toLowerCase().includes(_reportSearch.toLowerCase());}).sort(function(a,b){
+    if(_reportSort==='name') return a.name.localeCompare(b.name);
+    var d=new Date(b.modified_at)-new Date(a.modified_at); return _reportSort==='oldest'?-d:d;
+  });
+  var pages=Math.max(1,Math.ceil(filtered.length/8)); _reportPage=Math.min(_reportPage,pages);
+  var pageItems=filtered.slice((_reportPage-1)*8,_reportPage*8);
+  list.innerHTML=pageItems.map(function(r){return '<div class="report-item" data-name="'+esc(r.name)+'"><input type="checkbox" '+(_reportSelected.has(r.name)?'checked':'')+' onchange="toggleReportSelection(this.dataset.name,this.checked)" data-name="'+esc(r.name)+'"><div class="report-info"><div class="report-name" title="'+esc(r.name)+'">'+esc(r.name)+'</div><div class="report-meta">'+new Date(r.modified_at).toLocaleString('ko-KR')+' · '+Math.round(r.size/1024)+' KB</div></div><div class="report-actions"><button onclick="showReport(this.closest(\'.report-item\').dataset.name)">열기</button><a href="/reports/'+encodeURIComponent(r.name)+'" target="_blank">새 탭</a><button class="report-danger" onclick="deleteReports([this.closest(\'.report-item\').dataset.name])">삭제</button></div></div>';}).join('')||'<div class="report-empty">검색 결과가 없습니다.</div>';
+  document.getElementById('report-count').textContent=filtered.length+'개 리포트';
+  document.getElementById('report-selection-count').textContent=_reportSelected.size+'개 선택';
+  document.getElementById('report-page').textContent=_reportPage+' / '+pages;
+  document.getElementById('report-prev').disabled=_reportPage<=1; document.getElementById('report-next').disabled=_reportPage>=pages;
+  var all=document.getElementById('report-select-all'); all.checked=!!filtered.length && filtered.every(function(r){return _reportSelected.has(r.name);}); all.indeterminate=filtered.some(function(r){return _reportSelected.has(r.name);})&&!all.checked;
+}
+async function refreshReports(){try{var res=await fetch('/api/reports');_reports=await res.json();renderReports();}catch(_){} }
+function toggleReportSelection(name,checked){if(checked)_reportSelected.add(name);else _reportSelected.delete(name);renderReports();}
+function showReport(name){var frame=document.getElementById('report-iframe'),wrap=document.getElementById('report-iframe-wrap'),empty=document.getElementById('report-preview-empty'),title=document.getElementById('report-preview-title'),close=document.getElementById('report-close');if(!frame||!wrap)return;frame.src='/reports/'+encodeURIComponent(name);wrap.style.display='block';empty.style.display='none';title.textContent=name;close.style.display='block';document.querySelectorAll('.report-item').forEach(function(r){r.classList.toggle('is-open',r.dataset.name===name);});}
+function closeReport(){var frame=document.getElementById('report-iframe'),wrap=document.getElementById('report-iframe-wrap'),empty=document.getElementById('report-preview-empty'),title=document.getElementById('report-preview-title'),close=document.getElementById('report-close');if(frame)frame.src='';if(wrap)wrap.style.display='none';if(empty)empty.style.display='flex';if(title)title.textContent='미리보기';if(close)close.style.display='none';}
+function reportConfirmDelete(names){
+  return new Promise(function(resolve){
+    var dialog=document.createElement('dialog'); dialog.className='report-delete-dialog';
+    dialog.innerHTML='<form method="dialog"><h2>리포트 삭제</h2><p>'+(names.length===1?esc(names[0]):names.length+'개 리포트')+'를 삭제하시겠습니까?<br>삭제한 리포트는 복구할 수 없습니다.</p><div class="report-dialog-actions"><button value="cancel" autofocus>취소</button><button value="delete" class="report-danger">삭제</button></div></form>';
+    dialog.addEventListener('close',function(){var ok=dialog.returnValue==='delete';dialog.remove();resolve(ok);},{once:true});
+    document.body.appendChild(dialog); dialog.showModal();
+  });
+}
+async function deleteReports(names){if(!names.length||!(await reportConfirmDelete(names)))return;try{var res=await fetch('/api/reports/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({names:names})});var data=await res.json();if(!res.ok||!data.ok)throw new Error(data.error||'삭제 실패');names.forEach(function(n){_reportSelected.delete(n);});refreshReports();closeReport();}catch(e){alert(e.message);}}
+function initReportControls(){
+  var search=document.getElementById('report-search-input'), sort=document.getElementById('report-sort');
+  if(search) search.oninput=function(){_reportSearch=this.value;_reportPage=1;renderReports();};
+  if(sort) sort.onchange=function(){_reportSort=this.value;_reportPage=1;renderReports();};
+  document.getElementById('report-refresh').onclick=function(){refreshReports();};
+  document.getElementById('report-delete-selected').onclick=function(){deleteReports(Array.from(_reportSelected));};
+  document.getElementById('report-select-all').onchange=function(){var q=_reports.filter(function(r){return r.name.toLowerCase().includes(_reportSearch.toLowerCase());});q.forEach(function(r){this.checked?_reportSelected.add(r.name):_reportSelected.delete(r.name);},this);renderReports();};
+  document.getElementById('report-prev').onclick=function(){_reportPage--;renderReports();};document.getElementById('report-next').onclick=function(){_reportPage++;renderReports();};
+}
+
+// ── TC 폴더 목록 ─────────────────────────────────────────────
+async function refreshTcFolders(){
+  try{
+    var res = await fetch('/api/tc-folders?platform='+encodeURIComponent(getPlatform()));
+    var data = await res.json();
+    var list = document.getElementById('tc-folder-list');
+    if(!list) return;
+    var selected = getTcFolders();
+    var folders = data.folders||[];
+    list.innerHTML = folders.length ? folders.map(function(f){
+      var checked = selected.length ? selected.indexOf(f)!==-1 : true;
+      return '<label class="tc-folder-option"><input type="checkbox" name="tc-folder" value="'+esc(f)+'" '+(checked?'checked':'')+' onchange="updateTcFolderCount()"><span>'+esc(f)+'/</span></label>';
+    }).join('') : '<div class="tc-folder-empty">생성된 TC 폴더가 없습니다.</div>';
+    updateTcFolderCount();
+  }catch(_){}
+}
+
+// ── 초기화 ───────────────────────────────────────────────────
+(async function init(){
+  initReportControls();
+  renderProgressBar();
+  updateStepLocks();
+  refreshOverview();
+  await Promise.all([refreshStatus(),refreshGenerated(),refreshReports(),refreshTcFolders(),refreshImportFiles()]);
+  setInterval(refreshStatus, 6000);
+  setInterval(refreshGenerated, 10000);
+  setInterval(refreshReports, 15000);
+  setInterval(refreshTcFolders, 15000);
+  setInterval(refreshImportFiles, 15000);
+})();
+</script>
+</body>
+</html>

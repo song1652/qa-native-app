@@ -991,6 +991,10 @@ def main():
         #   testcases/foo/tc_001.md  →  tests/generated/android/foo/tc_001.py
         #   testcases/tc_001.md      →  tests/generated/android/tc_001.py
         rel_parent = md_path.parent.relative_to(TESTCASES_DIR)
+        # testcases/android, testcases/ios are platform roots. Mirror only the
+        # group path below them into tests/generated/{platform}.
+        if rel_parent.parts and rel_parent.parts[0] == platform:
+            rel_parent = Path(*rel_parent.parts[1:])
         subfolder_depth = len(rel_parent.parts)
 
         out_dir = TESTS_DIR / platform / rel_parent

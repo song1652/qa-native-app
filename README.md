@@ -70,6 +70,44 @@ python agents/dashboard/serve.py
 
 브라우저에서 <http://localhost:8767>을 엽니다. 대시보드에는 Appium 연결, Android/iOS 플랫폼, 디바이스 연결, 분석·생성·린트·실행·힐링 단계, 로그, 생성 테스트, 리포트, 실행 히스토리가 표시됩니다.
 
+### Excel Import Studio
+
+`import/` 폴더의 `.xlsx` 테스트 케이스를 5단계 위저드로 가져옵니다.
+
+현재 Markdown 테스트 케이스를 Import Studio 형식의 Excel로 다시 만들려면 다음 명령을 사용합니다.
+
+```bash
+python scripts/export_testcases_excel.py
+```
+
+기본 결과는 `import/qa_native_app_testcases.xlsx`이며 `전체`, `android`, `ios` 시트를 포함합니다.
+
+```text
+파일·시트 선택 → 열 매핑 → 미리보기 → 안전한 반영 → 완료
+```
+
+- 파일 카드에서 가져올 시트를 하나 이상 선택합니다.
+- 열 매핑에서는 Excel `A열~Z열`을 TC ID, 제목, 사전 조건, 테스트 단계, 예상 결과 등의 QA-Native 필드에 연결합니다.
+- 매핑 또는 대상 플랫폼을 변경하면 우측 검증 패널이 Excel을 다시 분석해 추가·업데이트·충돌·오류 수를 즉시 갱신합니다.
+- 열 매핑 우측에는 상태 집계만 표시하고, 다음 미리보기 단계에서 전체 TC를 상태별로 필터링해 전제조건·단계·기대결과·그룹까지 확인합니다.
+- 기본 매핑은 `TC ID=B열`, `제목=F열`, `사전 조건=G열`, `테스트 단계=H열`, `예상 결과=I열`, `우선순위=J열`입니다.
+- 필수 필드 5개가 모두 연결되어야 미리보기 단계로 이동할 수 있습니다.
+- Android/iOS를 모두 선택하면 같은 TC를 플랫폼별 Markdown으로 분리해 저장합니다.
+- 시트명이 `android` 또는 `ios`이면 해당 플랫폼에만 반영하며 `testcases/{platform}/` 바로 아래에 저장합니다.
+- 안전한 반영에서는 기존 파일을 보존하는 `skip-conflict`(기본값) 또는 덮어쓰는 `overwrite`를 선택합니다.
+- 원본 Excel 파일은 변경하지 않습니다.
+
+```text
+import/{파일}.xlsx
+  ├─ Android → testcases/android/{시트명}/tc_*.md
+  └─ iOS     → testcases/ios/{시트명}/tc_*.md
+
+testcases/android/{시트명}/ → tests/generated/android/{시트명}/
+testcases/ios/{시트명}/     → tests/generated/ios/{시트명}/
+```
+
+서로 다른 시트에서 같은 TC 번호를 사용해도 시트별 하위 폴더로 분리되므로 파일이 덮어써지지 않습니다. 빠른 실행은 선택한 OS의 `tests/generated/{platform}`만 조회합니다.
+
 ### CLI 실행
 
 ```bash
@@ -100,7 +138,7 @@ Jira 설정은 `qa-native-fixed`와 공유하지 않습니다. URL, 이메일, �
 
 ## 테스트 케이스와 locator 흐름
 
-테스트 케이스는 `testcases/{app}/tc_*.md`에 작성합니다. 최종 실행 locator의 기준값은 `config/locators.json`에서 관리합니다.
+테스트 케이스는 `testcases/{platform}/{group}/tc_*.md`에 작성합니다. `{platform}`은 `android` 또는 `ios`이고, Import Studio에서는 `{group}`에 Excel 시트명이 사용됩니다. 최종 실행 locator의 기준값은 `config/locators.json`에서 관리합니다.
 
 ```text
 TC Markdown → target_ref + config/locators.json
@@ -116,6 +154,8 @@ DOM을 모르는 상태에서 locator를 추측해 코드를 확정하지 않습
 | 경로 | 역할 |
 |---|---|
 | `agents/dashboard/serve.py` | 대시보드 서버와 파이프라인 API |
+| `agents/dashboard/dashboard.html` | 대시보드 UI와 Import Studio 위저드 |
+| `scripts/import_excel.py` | Excel 열 매핑과 OS별 TC Markdown 변환 |
 | `scripts/01_analyze.py` | Appium native UI hierarchy 수집 |
 | `scripts/02_generate.py` | TC Markdown → pytest 코드 생성 |
 | `scripts/03_lint.py` | 생성 코드 lint 검사 |
@@ -125,6 +165,7 @@ DOM을 모르는 상태에서 locator를 추측해 코드를 확정하지 않습
 | `config/locators.json` | 플랫폼별 locator source of truth |
 | `state/pipeline.json` | 단계별 상태와 UI hierarchy snapshot |
 | `docs/LOCATOR_HEALING.md` | locator healing 운영 정책 |
+| `DESIGN.md` | 대시보드와 Import Studio 디자인 계약 |
 
 ## 산출물 및 제한사항
 

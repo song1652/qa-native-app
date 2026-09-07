@@ -25,6 +25,30 @@
 
 대시보드의 전체 실행은 위 순서의 단일 파이프라인입니다. 제품에는 단일/병렬 실행 유형을 별도로 노출하지 않습니다.
 
+플랫폼별 TC 입력과 생성 코드는 다음 경로를 사용합니다.
+
+```text
+testcases/android/{group}/ → tests/generated/android/{group}/
+testcases/ios/{group}/     → tests/generated/ios/{group}/
+```
+
+대시보드에서 Android를 선택하면 `testcases/android`만, iOS를 선택하면 `testcases/ios`만 실행 대상으로 노출합니다. 플랫폼 루트는 생성 결과에 다시 중첩하지 않습니다.
+
+## Excel Import Studio
+
+- 흐름: `파일·시트 선택 → 열 매핑 → 미리보기 → 안전한 반영 → 완료`
+- 입력 파일은 `import/*.xlsx`에 두며 원본을 수정하지 않습니다.
+- 파일을 선택한 뒤 카드 내부에서 하나 이상의 시트를 선택해야 합니다.
+- 필수 매핑은 `tc_id`, `title`, `precondition`, `steps`, `expected`입니다.
+- 선택한 Excel 열 매핑은 `scripts/import_excel.py` 변환에 실제로 전달되어야 합니다.
+- `/api/import/preview`는 현재 매핑과 플랫폼을 기준으로 상태 집계와 전체 TC 상세 데이터를 반환하며, 열 매핑 화면 변경 시 다시 호출합니다.
+- 미리보기 단계는 `전체/추가/업데이트/충돌/오류/동일` 필터와 전체 TC 상세 테이블을 제공하며 열 매핑 화면에는 중복 미니 테이블을 노출하지 않습니다.
+- Android는 `testcases/android/{sheet}/`, iOS는 `testcases/ios/{sheet}/`에 별도 Markdown을 생성합니다.
+- 단, 시트명 자체가 `android` 또는 `ios`이면 같은 OS에만 반영하고 플랫폼 루트 바로 아래에 생성하여 중첩 플랫폼 폴더를 만들지 않습니다.
+- 두 플랫폼을 선택하면 플랫폼별 파일을 각각 생성하고 각 Markdown의 `## 플랫폼`에는 하나의 OS만 기록합니다.
+- 파일명 충돌은 시트별 하위 폴더로 방지합니다.
+- 안전한 반영의 기본 정책은 `skip-conflict`이며 기존 Markdown을 보존합니다. 명시적으로 `overwrite`를 선택하면 동일 경로 파일을 덮어씁니다.
+
 ## Locator 작업 규칙
 
 1. Appium Inspector 또는 native hierarchy에서 요소 속성을 확인합니다.
@@ -80,8 +104,9 @@ python scripts/05_execute.py --platform ios
 config/locators.json       # locator source of truth
 config/{devices,screens,test_data}.json
 scripts/                   # 분석·생성·린트·실행·힐링
-testcases/                 # 입력 TC Markdown
-tests/generated/           # 생성 코드
+import/                    # Import Studio Excel 입력
+testcases/{android,ios}/   # OS별 입력 TC Markdown
+tests/generated/{android,ios}/ # OS별 생성 코드
 tests/reports/             # 실행 리포트
 state/pipeline.json        # 실행 상태와 snapshot
 logs/                      # 단계별 로그
