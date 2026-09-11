@@ -431,6 +431,34 @@ button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(
 }
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;
   animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}
+/* ── Capture Studio ───────────────────────────────── */
+.cs-label{display:block;font-size:10px;color:var(--text3);margin-bottom:4px;font-weight:600}
+.cs-input{width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font:13px inherit;box-sizing:border-box}
+.cs-input:focus{outline:none;border-color:rgba(167,139,250,.55)}
+.cs-select{width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font:13px inherit;cursor:pointer}
+.cs-btn{padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text2);font:600 11px inherit;cursor:pointer;transition:background .15s}
+.cs-btn:hover{background:rgba(139,92,246,.1);border-color:rgba(139,92,246,.4);color:var(--text)}
+.cs-btn.primary{background:rgba(139,92,246,.2);border-color:rgba(139,92,246,.5);color:#c4b5fd}
+.cs-btn.primary:hover{background:rgba(139,92,246,.35)}
+.cs-btn.active{background:rgba(167,139,250,.18);border-color:rgba(167,139,250,.5);color:#c4b5fd}
+.cs-btn:disabled{opacity:.4;cursor:not-allowed}
+.cs-section{padding-bottom:18px;border-bottom:1px solid var(--border);margin-bottom:18px}
+.cs-section:last-child{border-bottom:none}
+.cs-action-row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-bottom:1px solid rgba(140,120,220,.08);font-size:11px}
+.cs-action-row:last-child{border-bottom:none}
+.cs-action-idx{width:22px;color:var(--text3);font-weight:700;flex-shrink:0}
+.cs-action-icon{width:16px;text-align:center;flex-shrink:0}
+.cs-action-body{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cs-action-ctx{font-size:10px;color:var(--text3);flex-shrink:0}
+.cs-loc-card{padding:8px;border:1px solid var(--border);border-radius:6px;margin-bottom:6px;background:rgba(12,10,36,.28)}
+.cs-loc-card.recommended{border-color:rgba(52,211,153,.3)}
+.cs-loc-strategy{font-size:10px;color:var(--text3);margin-bottom:2px}
+.cs-loc-value{font-family:monospace;font-size:11px;color:var(--text);word-break:break-all}
+.cs-loc-stars{color:#a78bfa;font-size:11px;letter-spacing:1px}
+.cs-loc-badge{display:inline-block;padding:2px 7px;border-radius:8px;font-size:9px;font-weight:700}
+.cs-loc-badge.stable{background:rgba(52,211,153,.12);color:#34d399}
+.cs-loc-badge.medium{background:rgba(251,191,36,.12);color:#fbbf24}
+.cs-loc-badge.low{background:rgba(248,113,113,.12);color:#f87171}
 </style>
 </head>
 <body class="dashboard-mode">
@@ -492,6 +520,12 @@ button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(
       <div class="sidebar-label">설정</div>
       <div class="sidebar-item" data-view="config" onclick="selectView('config',this)">
         <span class="sidebar-dot"></span><span>Appium 설정</span>
+      </div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Capture</div>
+      <div class="sidebar-item" data-view="capture" onclick="selectView('capture',this)" id="sidebar-capture">
+        <span class="sidebar-dot" style="background:rgba(167,139,250,.4)"></span><span>Capture Studio</span>
       </div>
     </div>
   </aside>
@@ -848,6 +882,138 @@ button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(
       </div>
     </div>
 
+    <!-- ─── Capture Studio ─────────────────────────── -->
+    <div class="card view-hidden" id="view-capture">
+      <div class="card-title" style="display:flex;align-items:center;gap:10px">
+        <span style="color:#a78bfa">⬡</span> Capture Studio
+        <span id="cs-session-badge" style="display:none;padding:3px 9px;border-radius:12px;background:rgba(167,139,250,.15);color:#a78bfa;font-size:11px;font-weight:700">● 세션 실행 중</span>
+      </div>
+
+      <!-- 1단계: 세션 설정 -->
+      <div id="cs-setup" class="cs-section">
+        <div class="card-subtitle" style="margin-bottom:14px">1단계 — 세션 설정</div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+          <div>
+            <label class="cs-label">OS</label>
+            <select id="cs-platform" class="cs-select">
+              <option value="android">Android</option>
+              <option value="ios" disabled title="iOS는 후속 범위입니다">iOS (후속 범위)</option>
+            </select>
+          </div>
+          <div>
+            <label class="cs-label">실행 대상</label>
+            <select id="cs-target" class="cs-select">
+              <option value="emulator">Emulator / Simulator</option>
+              <option value="device">실제 디바이스</option>
+            </select>
+          </div>
+          <div>
+            <label class="cs-label">App Package</label>
+            <input type="text" id="cs-pkg" class="cs-input" placeholder="com.example.app">
+          </div>
+          <div>
+            <label class="cs-label">App Activity</label>
+            <input type="text" id="cs-activity" class="cs-input" placeholder=".MainActivity">
+          </div>
+          <div>
+            <label class="cs-label">TC 그룹명</label>
+            <input type="text" id="cs-group" class="cs-input" placeholder="settings (미입력 시 앱 이름 사용)">
+          </div>
+          <div>
+            <label class="cs-label">MJPEG 포트</label>
+            <input type="number" id="cs-mjpeg-port" class="cs-input" value="8093" min="1024" max="65535">
+          </div>
+        </div>
+
+        <div id="cs-setup-status" style="margin-bottom:10px;font-size:12px;color:var(--text3)">연결 상태를 확인하세요.</div>
+
+        <div style="display:flex;gap:10px;align-items:center">
+          <button class="cs-btn" onclick="csCheckEnv()">환경 확인</button>
+          <button class="cs-btn primary" id="cs-start-btn" onclick="csStartSession()" disabled>세션 시작</button>
+        </div>
+      </div>
+
+      <!-- 2단계: 화면 탐색 + 미러링 (세션 시작 후 표시) -->
+      <div id="cs-workspace" style="display:none;margin-top:20px">
+        <div class="card-subtitle" style="margin-bottom:10px">2–4단계 — 화면 탐색 · 동작 기록 · Locator 검토</div>
+
+        <!-- 3열 레이아웃 -->
+        <div style="display:grid;grid-template-columns:280px 1fr 260px;gap:12px;min-height:420px">
+
+          <!-- 왼쪽: MJPEG 미러링 -->
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="font-size:11px;color:var(--text3);font-weight:600">디바이스 화면</div>
+            <div id="cs-mirror-container" style="border:1px solid var(--border);border-radius:8px;overflow:hidden;background:#000;aspect-ratio:9/18;position:relative">
+              <img id="cs-mirror-img" src="" alt="미러링" style="width:100%;height:100%;object-fit:contain;display:none" onclick="csMirrorClick(event)">
+              <div id="cs-mirror-placeholder" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text3);font-size:12px;gap:6px">
+                <span style="font-size:28px">📱</span>
+                <span>세션 시작 후 미러링 연결</span>
+                <span style="font-size:10px">MJPEG: <span id="cs-mjpeg-url">-</span></span>
+              </div>
+              <div id="cs-crosshair" style="display:none;position:absolute;pointer-events:none;width:16px;height:16px;border:2px solid #a78bfa;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 4px rgba(167,139,250,.25)"></div>
+            </div>
+            <div style="display:flex;gap:6px">
+              <button class="cs-btn" id="cs-mirror-connect" onclick="csMirrorConnect()" style="flex:1">미러링 연결</button>
+              <button class="cs-btn" id="cs-refresh-hierarchy" onclick="csRefreshHierarchy()" style="flex:1">Hierarchy 새로고침</button>
+            </div>
+          </div>
+
+          <!-- 가운데: Hierarchy 트리 -->
+          <div style="display:flex;flex-direction:column;gap:8px;min-width:0">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="font-size:11px;color:var(--text3);font-weight:600">Hierarchy</div>
+              <div style="display:flex;gap:4px">
+                <button class="cs-btn active" id="cs-ctx-native" onclick="csSetContext('native',this)" style="padding:3px 9px;font-size:10px">Native</button>
+                <button class="cs-btn" id="cs-ctx-webview" onclick="csSetContext('webview',this)" style="padding:3px 9px;font-size:10px" disabled>WebView</button>
+              </div>
+            </div>
+            <div id="cs-hierarchy-tree" style="flex:1;border:1px solid var(--border);border-radius:8px;padding:10px;overflow-y:auto;font-size:11px;font-family:monospace;background:rgba(8,7,27,.28);color:var(--text2);min-height:300px">
+              <span style="color:var(--text3)">Hierarchy를 로드하면 여기에 표시됩니다.</span>
+            </div>
+          </div>
+
+          <!-- 오른쪽: 선택 요소 상세 + Locator 후보 -->
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="font-size:11px;color:var(--text3);font-weight:600">선택 요소 상세</div>
+            <div id="cs-element-detail" style="border:1px solid var(--border);border-radius:8px;padding:10px;font-size:11px;background:rgba(8,7,27,.28);min-height:120px;color:var(--text2)">
+              <span style="color:var(--text3)">요소를 선택하세요.</span>
+            </div>
+            <div style="font-size:11px;color:var(--text3);font-weight:600">Locator 후보</div>
+            <div id="cs-locators" style="border:1px solid var(--border);border-radius:8px;padding:10px;font-size:11px;background:rgba(8,7,27,.28);min-height:120px;color:var(--text2)">
+              <span style="color:var(--text3)">요소 선택 후 후보가 표시됩니다.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Timeline -->
+        <div style="margin-top:14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div style="font-size:11px;color:var(--text3);font-weight:600">Action Timeline</div>
+            <div style="display:flex;gap:8px">
+              <button class="cs-btn" id="cs-record-btn" onclick="csToggleRecord()" style="padding:4px 12px;font-size:11px">● 녹화 시작</button>
+              <button class="cs-btn" onclick="csClearActions()" style="padding:4px 10px;font-size:11px">초기화</button>
+            </div>
+          </div>
+          <div id="cs-timeline" style="border:1px solid var(--border);border-radius:8px;padding:8px 12px;max-height:180px;overflow-y:auto;background:rgba(8,7,27,.28);font-size:11px;color:var(--text2)">
+            <span id="cs-timeline-empty" style="color:var(--text3)">녹화를 시작하고 요소를 탭하세요.</span>
+          </div>
+        </div>
+
+        <!-- 저장 영역 -->
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <input type="text" id="cs-tc-id" class="cs-input" placeholder="TC ID (예: tc_001)" style="width:160px">
+            <input type="text" id="cs-tc-title" class="cs-input" placeholder="TC 제목" style="flex:1;min-width:200px">
+            <button class="cs-btn" onclick="csPreviewTC()" style="padding:6px 14px">미리보기</button>
+            <button class="cs-btn primary" onclick="csSaveTC()" id="cs-save-btn" style="padding:6px 16px">저장 및 생성</button>
+            <button class="cs-btn" onclick="csEndSession()" style="padding:6px 12px;color:var(--fail);border-color:rgba(251,113,133,.35)">세션 종료</button>
+          </div>
+          <div id="cs-save-status" style="margin-top:8px;font-size:12px;color:var(--text3)"></div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 </main>
@@ -1000,7 +1166,7 @@ function selectView(view, item){
   var grid=document.querySelector('.grid');
   var pipeline=document.getElementById('view-pipeline');
   var overview=document.getElementById('view-overview');
-  var rightViews=['tests','import','reports','history','config'];
+  var rightViews=['tests','import','reports','history','config','capture'];
   if(!grid || !pipeline) return;
   if(overview) overview.classList.toggle('view-hidden', view !== 'dashboard');
   grid.classList.toggle('view-hidden', view === 'dashboard');
@@ -2187,6 +2353,291 @@ async function refreshTcFolders(){
   setInterval(refreshTcFolders, 15000);
   setInterval(refreshImportFiles, 15000);
 })();
+
+// ── Capture Studio ────────────────────────────────────────────
+var _cs = {
+  sessionId: '',
+  recording: false,
+  context: 'native',
+  actions: [],
+  approvedLocators: {},
+  mirrorConnected: false,
+  wsTimeline: null,
+};
+
+function csInit() {
+  // Capture 탭 선택 시 세션 상태 복원
+  fetch('/capture/session').then(function(r){ return r.json(); }).then(function(d){
+    if(d.active && d.session){
+      _cs.sessionId = d.session.session_id || '';
+      _cs.actions = d.session.actions || [];
+      if(_cs.sessionId){
+        document.getElementById('cs-setup').style.display='none';
+        document.getElementById('cs-workspace').style.display='block';
+        document.getElementById('cs-session-badge').style.display='';
+        csRenderTimeline();
+        csMirrorConnect();
+      }
+    }
+  }).catch(function(){});
+  csConnectWsTimeline();
+}
+
+function csConnectWsTimeline() {
+  if(_cs.wsTimeline) return;
+  try {
+    var ws = new WebSocket('ws://localhost:' + location.port + '/ws/timeline');
+    ws.onmessage = function(e) {
+      try {
+        var evt = JSON.parse(e.data);
+        if(evt.type === 'action_added' && evt.action){
+          _cs.actions.push(evt.action);
+          csRenderTimeline();
+        }
+      } catch(err){}
+    };
+    ws.onclose = function(){ _cs.wsTimeline = null; };
+    _cs.wsTimeline = ws;
+    // keepalive ping
+    setInterval(function(){ if(_cs.wsTimeline && _cs.wsTimeline.readyState===1) _cs.wsTimeline.send('ping'); }, 20000);
+  } catch(err){}
+}
+
+function csCheckEnv() {
+  var statusEl = document.getElementById('cs-setup-status');
+  statusEl.textContent = '환경 확인 중...';
+  statusEl.style.color = 'var(--text3)';
+  var port = parseInt(document.getElementById('cs-mjpeg-port').value) || 8093;
+  Promise.all([
+    fetch('/api/check/appium').then(function(r){ return r.json(); }).catch(function(){ return {ok:false}; }),
+    fetch('/api/check/mjpeg?port=' + port).then(function(r){ return r.json(); }).catch(function(){ return {ok:false}; }),
+  ]).then(function(results) {
+    var appiumOk = results[0].ok;
+    var mjpegOk = results[1].ok;
+    var msgs = [];
+    if(appiumOk) msgs.push('✅ Appium 연결됨');
+    else msgs.push('❌ Appium 미응답 (appium --allow-insecure=adb_screen_streaming)');
+    if(mjpegOk) msgs.push('✅ MJPEG 포트 ' + port + ' 응답');
+    else msgs.push('⚠️ MJPEG 포트 미응답 — 세션 시작 후 활성화됩니다');
+
+    statusEl.innerHTML = msgs.join('<br>');
+    statusEl.style.color = appiumOk ? 'var(--pass)' : 'var(--fail)';
+    document.getElementById('cs-start-btn').disabled = !appiumOk;
+  });
+}
+
+function csStartSession() {
+  var platform = document.getElementById('cs-platform').value;
+  var target = document.getElementById('cs-target').value;
+  var pkg = document.getElementById('cs-pkg').value.trim();
+  var activity = document.getElementById('cs-activity').value.trim();
+  var group = document.getElementById('cs-group').value.trim() || pkg.split('.').pop() || 'default';
+  var mjpegPort = parseInt(document.getElementById('cs-mjpeg-port').value) || 8093;
+
+  if(!pkg){ alert('App Package를 입력하세요.'); return; }
+
+  var statusEl = document.getElementById('cs-setup-status');
+  statusEl.textContent = '세션 시작 중...';
+  document.getElementById('cs-start-btn').disabled = true;
+
+  fetch('/capture/session', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({platform, target, app_package:pkg, app_activity:activity, tc_group:group, mjpeg_port:mjpegPort})
+  }).then(function(r){ return r.json(); }).then(function(d){
+    if(d.ok){
+      _cs.sessionId = d.session_id;
+      _cs.actions = [];
+      document.getElementById('cs-setup').style.display='none';
+      document.getElementById('cs-workspace').style.display='block';
+      document.getElementById('cs-session-badge').style.display='';
+      document.getElementById('cs-mjpeg-url').textContent = d.mjpeg_url || '';
+      csRenderTimeline();
+      csMirrorConnect();
+    } else {
+      statusEl.textContent = '❌ ' + (d.error || '세션 시작 실패');
+      statusEl.style.color = 'var(--fail)';
+      document.getElementById('cs-start-btn').disabled = false;
+    }
+  }).catch(function(err){
+    statusEl.textContent = '❌ 네트워크 오류: ' + err;
+    statusEl.style.color = 'var(--fail)';
+    document.getElementById('cs-start-btn').disabled = false;
+  });
+}
+
+function csMirrorConnect() {
+  var port = parseInt(document.getElementById('cs-mjpeg-port').value) || 8093;
+  var img = document.getElementById('cs-mirror-img');
+  var placeholder = document.getElementById('cs-mirror-placeholder');
+  var ts = new Date().getTime();
+  img.src = 'http://localhost:' + port + '/?' + ts;
+  img.style.display = 'block';
+  placeholder.style.display = 'none';
+  _cs.mirrorConnected = true;
+}
+
+function csMirrorClick(event) {
+  if(!_cs.recording) return;
+  var img = document.getElementById('cs-mirror-img');
+  var rect = img.getBoundingClientRect();
+  var x = Math.round(event.clientX - rect.left);
+  var y = Math.round(event.clientY - rect.top);
+  var imgW = rect.width;
+
+  // 십자선 표시
+  var ch = document.getElementById('cs-crosshair');
+  if(ch){ ch.style.display='block'; ch.style.left=x+'px'; ch.style.top=y+'px'; }
+
+  // 디바이스 실제 너비 (기본 1080 — 실제 연결 시 hierarchy에서 읽어야 함)
+  var displayW = 1080;
+
+  fetch('/capture/tap', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({session_id:_cs.sessionId, x:x, y:y, img_width:Math.round(imgW), display_width:displayW, context:_cs.context})
+  }).then(function(r){ return r.json(); }).then(function(d){
+    if(!d.ok) csStatusMsg('tap 실패: ' + (d.error||''));
+  }).catch(function(err){ csStatusMsg('오류: ' + err); });
+}
+
+function csSetContext(ctx, btn) {
+  _cs.context = ctx;
+  document.getElementById('cs-ctx-native').classList.toggle('active', ctx==='native');
+  document.getElementById('cs-ctx-webview').classList.toggle('active', ctx==='webview');
+}
+
+function csRefreshHierarchy() {
+  fetch('/capture/hierarchy?session_id=' + encodeURIComponent(_cs.sessionId) + '&context=' + _cs.context)
+    .then(function(r){ return r.json(); }).then(function(d){
+      var tree = document.getElementById('cs-hierarchy-tree');
+      if(d.hierarchy){
+        // 간단한 XML 표시 (실제 트리 렌더링은 후속 구현)
+        tree.textContent = d.hierarchy.substring(0, 8000);
+      } else {
+        tree.innerHTML = '<span style="color:var(--text3)">hierarchy 없음</span>';
+      }
+    }).catch(function(err){
+      document.getElementById('cs-hierarchy-tree').textContent = '오류: ' + err;
+    });
+}
+
+function csToggleRecord() {
+  _cs.recording = !_cs.recording;
+  var btn = document.getElementById('cs-record-btn');
+  btn.textContent = _cs.recording ? '⏸ 일시정지' : '● 녹화 시작';
+  btn.style.color = _cs.recording ? '#f87171' : '';
+  btn.style.borderColor = _cs.recording ? 'rgba(248,113,113,.4)' : '';
+}
+
+function csClearActions() {
+  if(!confirm('Action Timeline을 초기화하시겠습니까?')) return;
+  _cs.actions = [];
+  csRenderTimeline();
+}
+
+var _CS_ACTION_ICONS = {tap:'👆',input:'⌨️',back:'⬅️',context_switch:'🔄',assertion:'✅'};
+
+function csRenderTimeline() {
+  var el = document.getElementById('cs-timeline');
+  var empty = document.getElementById('cs-timeline-empty');
+  if(!_cs.actions.length){
+    if(empty) empty.style.display='';
+    el.innerHTML = '<span id="cs-timeline-empty" style="color:var(--text3)">녹화를 시작하고 요소를 탭하세요.</span>';
+    return;
+  }
+  el.innerHTML = _cs.actions.map(function(a){
+    var icon = _CS_ACTION_ICONS[a.action] || '·';
+    var body = a.action + (a.target_ref ? ' → ' + a.target_ref : '') + (a.device_x !== undefined ? ' (' + a.device_x + ',' + a.device_y + ')' : '');
+    return '<div class="cs-action-row">'
+      + '<span class="cs-action-idx">' + a.index + '</span>'
+      + '<span class="cs-action-icon">' + icon + '</span>'
+      + '<span class="cs-action-body">' + esc(body) + '</span>'
+      + '<span class="cs-action-ctx">' + esc(a.context||'') + '</span>'
+      + '</div>';
+  }).join('');
+}
+
+function csPreviewTC() {
+  var tcId = document.getElementById('cs-tc-id').value.trim() || 'tc_preview';
+  var title = document.getElementById('cs-tc-title').value.trim() || '(제목 없음)';
+  var steps = _cs.actions.map(function(a,i){ return (i+1)+'. '+a.action+(a.target_ref?' → '+a.target_ref:''); });
+  var md = '# ' + tcId + ': ' + title + '\n\n## 단계\n\n' + steps.join('\n') + '\n\n## 기대결과\n\n_(기대 결과를 입력하세요)_';
+  alert('=== Markdown TC 미리보기 ===\n\n' + md);
+}
+
+function csSaveTC() {
+  var tcId = document.getElementById('cs-tc-id').value.trim();
+  var title = document.getElementById('cs-tc-title').value.trim();
+  if(!tcId || !title){ alert('TC ID와 제목을 입력하세요.'); return; }
+  if(!_cs.actions.length){ alert('기록된 Action이 없습니다.'); return; }
+
+  var steps = _cs.actions.map(function(a){ return a.action+(a.target_ref?' → '+a.target_ref:''); });
+  document.getElementById('cs-save-btn').disabled = true;
+  document.getElementById('cs-save-status').textContent = '저장 중...';
+
+  fetch('/capture/save', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      session_id: _cs.sessionId,
+      tc_id: tcId,
+      title: title,
+      platform: document.getElementById('cs-platform').value,
+      tc_group: document.getElementById('cs-group').value.trim() || 'default',
+      steps: steps,
+      expected: steps.map(function(){ return ''; }),
+      approved_locators: _cs.approvedLocators,
+    })
+  }).then(function(r){ return r.json(); }).then(function(d){
+    document.getElementById('cs-save-btn').disabled = false;
+    if(d.ok){
+      var msg = '✅ 저장 완료: ' + d.tc_file;
+      if(d.quality_tag) msg += ' ⚠️ 품질 낮음: 기대 결과가 없습니다.';
+      document.getElementById('cs-save-status').textContent = msg;
+      document.getElementById('cs-save-status').style.color = d.quality_tag ? 'var(--warn)' : 'var(--pass)';
+    } else {
+      document.getElementById('cs-save-status').textContent = '❌ ' + (d.error||'저장 실패');
+      document.getElementById('cs-save-status').style.color = 'var(--fail)';
+    }
+  }).catch(function(err){
+    document.getElementById('cs-save-btn').disabled = false;
+    document.getElementById('cs-save-status').textContent = '❌ 오류: ' + err;
+    document.getElementById('cs-save-status').style.color = 'var(--fail)';
+  });
+}
+
+function csEndSession() {
+  if(!confirm('Capture 세션을 종료하시겠습니까? 저장하지 않은 기록은 유실됩니다.')) return;
+  fetch('/capture/end', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({session_id: _cs.sessionId})
+  }).then(function(r){ return r.json(); }).then(function(d){
+    _cs.sessionId = '';
+    _cs.actions = [];
+    _cs.recording = false;
+    document.getElementById('cs-setup').style.display='block';
+    document.getElementById('cs-workspace').style.display='none';
+    document.getElementById('cs-session-badge').style.display='none';
+    document.getElementById('cs-start-btn').disabled = false;
+    document.getElementById('cs-setup-status').textContent = '세션이 종료되었습니다.';
+  });
+}
+
+function csStatusMsg(msg) {
+  var el = document.getElementById('cs-save-status');
+  if(el){ el.textContent = msg; }
+}
+
+// Capture Studio 탭 선택 시 초기화
+var _csInitialized = false;
+var _origSelectView = typeof selectView === 'function' ? selectView : null;
+// selectView 함수 후킹 (Capture 탭 선택 감지)
+document.addEventListener('DOMContentLoaded', function(){
+  var captureItem = document.getElementById('sidebar-capture');
+  if(captureItem){
+    captureItem.addEventListener('click', function(){
+      if(!_csInitialized){ _csInitialized=true; csInit(); }
+    });
+  }
+});
 </script>
 </body>
 </html>
