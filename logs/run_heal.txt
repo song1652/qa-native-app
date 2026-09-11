@@ -1,0 +1,2 @@
+[06_heal] platform=android
+[06_heal] heal할 항목 없음 — execute_results.errors가 비어 있습니다.

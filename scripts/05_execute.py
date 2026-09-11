@@ -306,6 +306,7 @@ def main():
     parser.add_argument("--record", action="store_true",
                         help="Record emulator screen during test run (requires --report)")
     args = parser.parse_args()
+    report_stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
 
     # 디바이스 연결 가드
     if args.platform == "android":
@@ -350,7 +351,7 @@ def main():
 
     use_json_report = _has_json_report_plugin()
     cmd = [
-        "python", "-m", "pytest", str(test_target), "-v",
+        sys.executable, "-m", "pytest", str(test_target), "-v",
         f"--junit-xml={JUNIT_XML}",
     ]
     if use_json_report:
@@ -366,7 +367,8 @@ def main():
     if not args.no_report:
         report_dir = ROOT / "tests" / "reports"
         report_dir.mkdir(parents=True, exist_ok=True)
-        cmd += [f"--html={report_dir}/report_{platform}.html", "--self-contained-html"]
+        report_name = f"report_{platform}_{report_stamp}.html"
+        cmd += [f"--html={report_dir / report_name}", "--self-contained-html"]
 
     # Screen recording
     rec_proc = None
@@ -421,13 +423,14 @@ def main():
 
     # HTML report — --no-report 플래그가 없으면 자동 생성
     if not args.no_report:
-        _generate_html_report(state, platform, video_path)
+        _generate_html_report(state, platform, video_path, report_stamp)
 
     sys.exit(result.returncode)
 
 
 def _generate_html_report(state: dict, platform: str,
-                           video_path: "Path | None" = None):
+                           video_path: "Path | None" = None,
+                           report_stamp: str | None = None):
     """Generate HTML report using report_html.parse_pipeline_to_groups + build_report."""
     import importlib.util
     report_html_path = Path(__file__).parent / "report_html.py"
@@ -462,7 +465,8 @@ def _generate_html_report(state: dict, platform: str,
         video_path=rel_video, platform=platform
     )
 
-    report_path = REPORTS_DIR / f"report_{platform}.html"
+    stamp = report_stamp or datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
+    report_path = REPORTS_DIR / f"report_{platform}_{stamp}.html"
     report_path.write_text(html_content, encoding="utf-8")
     print(f"[05_execute] HTML report saved: {report_path}")
 

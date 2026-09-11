@@ -1,0 +1,16 @@
+{
+  "session_id": "",
+  "platform": "",
+  "target": "",
+  "app_package": "",
+  "app_activity": "",
+  "bundle_id": "",
+  "tc_group": "",
+  "mjpeg_port": 8093,
+  "active": false,
+  "started_at": "",
+  "last_activity_at": "",
+  "ended_at": "",
+  "end_reason": "",
+  "actions": []
+}

@@ -1,6 +1,6 @@
 # QA Automation — Native App
 
-Appium 기반 Android/iOS 네이티브 앱 테스트 자동화 프로젝트입니다. 대시보드 또는 CLI에서 UI hierarchy 분석, 테스트 코드 생성, 린트, 실행, locator healing을 하나의 파이프라인으로 수행합니다.
+Appium 기반 Android/iOS 앱 테스트 자동화 프로젝트입니다. native 화면을 기본으로 실행하고, 실제 WebView context가 감지된 화면만 Playwright DOM locator를 선택적으로 사용합니다.
 
 ## 현재 파이프라인
 
@@ -42,17 +42,17 @@ export PATH="$PATH:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator"
 - `config/test_data.json`: Android package/activity, iOS bundle ID/app path
 - `config/devices.json`: Android emulator 또는 device, iOS simulator 또는 device capability
 - `config/screens.json`: 분석 대상 화면과 화면 이동 action
-- `config/locators.json`: 테스트 대상 native locator의 기준값
+- `config/locators.json`: native/WebView locator의 기준값
 - `config/jira_config.json`: 이 제품 전용 Jira 프로젝트/이슈 설정
 
-locator는 `strategy`와 `value`를 명시합니다.
+locator는 Appium용 `strategy`와 `value`를 유지하며 `surface`를 지정할 수 있습니다. `auto`는 native를 먼저 찾고 실패한 경우에만 실제 WebView context를 확인합니다.
 
 ```json
 {
   "schema_version": 1,
   "targets": {
     "login.username_field": {
-      "android": {"strategy": "ID", "value": "com.example:id/username"},
+      "android": {"surface": "auto", "strategy": "ID", "value": "com.example:id/username", "webview": {"strategy": "label", "value": "아이디"}},
       "ios": {"strategy": "ACCESSIBILITY_ID", "value": "username"}
     }
   }
@@ -60,6 +60,8 @@ locator는 `strategy`와 `value`를 명시합니다.
 ```
 
 권장 locator 우선순위는 Android `ID`/accessibility, iOS `ACCESSIBILITY_ID`/predicate 또는 class chain, XPath는 마지막 수단입니다. Inspector에서 확인한 값을 registry에 저장한 뒤 코드를 생성합니다.
+
+WebView가 없는 앱과 화면에서는 Playwright를 시작하지 않습니다. Android Chromium WebView를 Playwright로 제어하려면 CDP endpoint를 `PLAYWRIGHT_WEBVIEW_CDP_URL`에 설정합니다. CDP를 사용할 수 없는 iOS WKWebView 등의 환경은 Appium WebView context로 동일 locator를 실행합니다.
 
 ### Appium 서버 및 대시보드
 
@@ -147,7 +149,7 @@ TC Markdown → target_ref + config/locators.json
             → 유일 후보만 registry 갱신
 ```
 
-DOM을 모르는 상태에서 locator를 추측해 코드를 확정하지 않습니다. `01_analyze.py`와 `06_heal.py`는 Appium `page_source`로 native hierarchy를 수집합니다. 자세한 정책은 [docs/LOCATOR_HEALING.md](docs/LOCATOR_HEALING.md)를 참고하세요.
+DOM을 모르는 상태에서 locator를 추측해 코드를 확정하지 않습니다. `01_analyze.py`는 native XML과 감지된 WebView DOM을 분리해 저장하고, `06_heal.py`도 locator의 surface 안에서만 후보를 찾습니다. 자세한 정책은 [docs/LOCATOR_HEALING.md](docs/LOCATOR_HEALING.md)를 참고하세요.
 
 ## 주요 파일
 
@@ -164,7 +166,10 @@ DOM을 모르는 상태에서 locator를 추측해 코드를 확정하지 않습
 | `scripts/locator_registry.py` | locator 정규화·registry·후보 탐색 공통 모듈 |
 | `config/locators.json` | 플랫폼별 locator source of truth |
 | `state/pipeline.json` | 단계별 상태와 UI hierarchy snapshot |
+| `docs/PRD.md` | 요소 중심 Capture Studio 제품 요구사항 |
 | `docs/LOCATOR_HEALING.md` | locator healing 운영 정책 |
+| `docs/CAPTURE_STUDIO_PLAN.md` | 반수동 Capture Studio 기획·화면·상태 계약 |
+| `docs/mockups/capture_studio.html` | 브라우저에서 확인하는 Capture Studio 인터랙티브 목업 |
 | `DESIGN.md` | 대시보드와 Import Studio 디자인 계약 |
 
 ## 산출물 및 제한사항

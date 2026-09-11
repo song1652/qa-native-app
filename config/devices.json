@@ -2,9 +2,9 @@
   "android": {
     "emulator": {
       "deviceName": "Android Emulator",
-      "platformVersion": "14.0",
+      "platformVersion": "15.0",
       "automationName": "UiAutomator2",
-      "avd": "calculator_test",
+      "avd": "Pixel_7_Android15",
       "noReset": true,
       "forceAppLaunch": true,
       "shouldTerminateApp": true

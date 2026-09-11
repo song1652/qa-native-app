@@ -1,0 +1,24 @@
+[05_execute] TC 폴더 지정: tests/generated/android/hybrid_webview
+[05_execute] Using pytest-json-report for result parsing.
+[05_execute] Running: /Users/junghoyoung/qa-native-app/.venv/bin/python -m pytest /Users/junghoyoung/qa-native-app/tests/generated/android/hybrid_webview -v --junit-xml=/Users/junghoyoung/qa-native-app/state/pytest_report.xml --json-report --json-report-file=/Users/junghoyoung/qa-native-app/state/pytest_report.json --html=/Users/junghoyoung/qa-native-app/tests/reports/report_android_20260907_185242_773.html --self-contained-html
+============================= test session starts ==============================
+platform darwin -- Python 3.14.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/junghoyoung/qa-native-app/.venv/bin/python
+cachedir: .pytest_cache
+metadata: {'Python': '3.14.2', 'Platform': 'macOS-14.6.1-arm64-arm-64bit-Mach-O', 'Packages': {'pytest': '9.1.1', 'pluggy': '1.6.0'}, 'Plugins': {'json-report': '1.5.0', 'metadata': '3.1.1', 'html': '4.2.0'}}
+rootdir: /Users/junghoyoung/qa-native-app
+configfile: setup.cfg
+plugins: json-report-1.5.0, metadata-3.1.1, html-4.2.0
+collecting ... collected 3 items
+
+tests/generated/android/hybrid_webview/tc_004_ApiDemos_네이티브_WebView_탐지.py::TestApidemos네이티브Webview탐지::test_native_header_and_webview_content_are_detected PASSED [ 33%]
+tests/generated/android/hybrid_webview/tc_005_ApiDemos_WebView_텍스트_입력.py::TestApidemosWebview텍스트입력::test_webview_text_input_after_native_detection PASSED [ 66%]
+tests/generated/android/hybrid_webview/tc_006_ApiDemos_WebView_링크_이동.py::TestApidemosWebview링크이동::test_webview_link_navigation_and_native_restore PASSED [100%]
+
+- generated xml file: /Users/junghoyoung/qa-native-app/state/pytest_report.xml -
+--------------------------------- JSON report ----------------------------------
+report saved to: /Users/junghoyoung/qa-native-app/state/pytest_report.json
+- Generated html report: file:///Users/junghoyoung/qa-native-app/tests/reports/report_android_20260907_185242_773.html -
+========================= 3 passed in 96.84s (0:01:36) =========================
+[05_execute] Parsing JSON report results...
+[05_execute] Results: 3 passed, 0 failed / 3 total
+[05_execute] HTML report saved: /Users/junghoyoung/qa-native-app/tests/reports/report_android_20260907_185242_773.html

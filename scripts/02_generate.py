@@ -10,9 +10,11 @@ Usage:
 import argparse
 import json
 import os
+import pprint
 import re
 import shutil
 import sys
+import textwrap
 from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
@@ -322,8 +324,7 @@ from pathlib import Path
 from appium import webdriver
 from appium.options.android.uiautomator2.base import UiAutomator2Options
 from appium.webdriver.common.appiumby import AppiumBy
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC"""
+from scripts.hybrid_runtime import HybridSession"""
 
 
 def _build_ios_imports() -> str:
@@ -335,8 +336,7 @@ from pathlib import Path
 from appium import webdriver
 from appium.options.ios.xcuitest.base import XCUITestOptions
 from appium.webdriver.common.appiumby import AppiumBy
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC"""
+from scripts.hybrid_runtime import HybridSession"""
 
 
 def _build_android_helpers(tc_number: str, tc_slug: str,
@@ -453,6 +453,7 @@ def _build_setup_android(precondition: str, has_credentials: bool) -> str:
         + guard
         + creds
         + "        self.driver = _build_driver()\n"
+        + "        self.hybrid = HybridSession(self.driver)\n"
     )
 
 
@@ -472,12 +473,15 @@ def _build_setup_ios(precondition: str, has_credentials: bool) -> str:
         + guard
         + creds
         + "        self.driver = _build_driver()\n"
+        + "        self.hybrid = HybridSession(self.driver)\n"
     )
 
 
 def _build_teardown() -> str:
     return (
         "    def teardown_method(self):\n"
+        "        if hasattr(self, \"hybrid\"):\n"
+        "            self.hybrid.close()\n"
         "        if hasattr(self, \"driver\") and self.driver:\n"
         "            self.driver.quit()\n"
     )
@@ -509,32 +513,70 @@ def _build_test_method(block: dict, tc_number: str, idx: int,
     # docstring — 기대결과 요약
     if expected:
         # 짧게 요약 (첫 60자)
-        summary = expected[:80].replace('"', "'")
+        summary = expected[:55].replace('"', "'")
         lines.append(f'        """{summary}"""')
-
-    lines.append("        driver = self.driver")
-    lines.append("")
 
     # 단계별 주석 + 코드 생성
     # 사용된 셀렉터를 추적해 AppiumBy 호출로 변환
     sel_const_map = {v: _sel_const_name(k) for k, v in selectors.items()}
 
     for step_text in steps:
-        lines.append(f"        # {step_text}")
+        lines.extend(
+            "        # " + part
+            for part in textwrap.wrap(step_text, width=84) or [""]
+        )
+
+        # hybrid context 처리
+        if "NATIVE_APP" in step_text and "context로 다시 전환" in step_text:
+            lines.append('        if self.driver.current_context != "NATIVE_APP":')
+            lines.append('            self.driver.switch_to.context("NATIVE_APP")')
+
+        elif "NATIVE_APP" in step_text and "context에서 실행" in step_text:
+            lines.append('        assert self.driver.current_context == "NATIVE_APP"')
+
+        elif "context 목록" in step_text and "조회" in step_text:
+            lines.append("        assert self.driver.contexts")
+
+        elif "WEBVIEW_" in step_text and "context가 존재" in step_text:
+            context_match = re.search(r"`(WEBVIEW_[^`]+)`", step_text)
+            context_name = context_match.group(1) if context_match else "WEBVIEW"
+            lines.append(
+                f"        assert {context_name!r} in self.hybrid.webview_contexts"
+            )
+
+        elif "WebView context" in step_text and "전환" in step_text:
+            lines.append("        assert self.hybrid.webview_contexts")
+
+        elif "기존 값을 지운다" in step_text:
+            sel = _find_selector_for_step(step_text, selectors)
+            if sel:
+                const = sel_const_map.get(sel, repr(sel))
+                by = _appiumby_for(sel, locator_specs)
+                lines.append(f"        self._find({by}, {const}).clear()")
+            else:
+                lines.append("        # TODO: 입력 초기화 대상을 특정할 수 없음")
+
+        elif "입력한다" in step_text:
+            sel = _find_selector_for_step(step_text, selectors)
+            value_match = re.search(r"`([^`]+)`", step_text)
+            if sel and value_match:
+                const = sel_const_map.get(sel, repr(sel))
+                by = _appiumby_for(sel, locator_specs)
+                lines.append(
+                    f"        self._find({by}, {const}).send_keys("
+                    f"{value_match.group(1)!r})"
+                )
+            else:
+                lines.append("        # TODO: 입력 대상 또는 값을 특정할 수 없음")
 
         # credentials 처리 — valid/invalid 판단
-        if "credentials.valid.username" in step_text:
+        elif "credentials.valid.username" in step_text:
             sel = _get_step_selector(step_text, selectors,
                                      ["username"], "username_field")
             const = sel_const_map.get(sel, f'"{sel}"')
             lines.append(
-                "        el = WebDriverWait(driver, 10).until("
+                f"        el = self._find({_appiumby_for(sel, locator_specs)}, {const})"
             )
-            lines.append(
-                f"            EC.presence_of_element_located("
-                f"({_appiumby_for(sel, locator_specs)}, {const}))"
-            )
-            lines.append("        )")
             lines.append("        el.clear()")
             lines.append("        el.send_keys(self._valid[\"username\"])")
 
@@ -543,13 +585,8 @@ def _build_test_method(block: dict, tc_number: str, idx: int,
                                      ["username"], "username_field")
             const = sel_const_map.get(sel, f'"{sel}"')
             lines.append(
-                "        el = WebDriverWait(driver, 10).until("
+                f"        el = self._find({_appiumby_for(sel, locator_specs)}, {const})"
             )
-            lines.append(
-                f"            EC.presence_of_element_located("
-                f"({_appiumby_for(sel, locator_specs)}, {const}))"
-            )
-            lines.append("        )")
             lines.append("        el.clear()")
             lines.append("        el.send_keys(self._invalid[\"username\"])")
 
@@ -558,13 +595,8 @@ def _build_test_method(block: dict, tc_number: str, idx: int,
                                      ["password"], "password_field")
             const = sel_const_map.get(sel, f'"{sel}"')
             lines.append(
-                "        el = WebDriverWait(driver, 10).until("
+                f"        el = self._find({_appiumby_for(sel, locator_specs)}, {const})"
             )
-            lines.append(
-                f"            EC.presence_of_element_located("
-                f"({_appiumby_for(sel, locator_specs)}, {const}))"
-            )
-            lines.append("        )")
             lines.append("        el.clear()")
             lines.append("        el.send_keys(self._valid[\"password\"])")
 
@@ -573,13 +605,8 @@ def _build_test_method(block: dict, tc_number: str, idx: int,
                                      ["password"], "password_field")
             const = sel_const_map.get(sel, f'"{sel}"')
             lines.append(
-                "        el = WebDriverWait(driver, 10).until("
+                f"        el = self._find({_appiumby_for(sel, locator_specs)}, {const})"
             )
-            lines.append(
-                f"            EC.presence_of_element_located("
-                f"({_appiumby_for(sel, locator_specs)}, {const}))"
-            )
-            lines.append("        )")
             lines.append("        el.clear()")
             lines.append("        el.send_keys(self._invalid[\"password\"])")
 
@@ -589,51 +616,30 @@ def _build_test_method(block: dict, tc_number: str, idx: int,
             if sel:
                 const = sel_const_map.get(sel, f'"{sel}"')
                 by = _appiumby_for(sel, locator_specs)
-                lines.append(
-                    "        WebDriverWait(driver, 10).until("
-                )
-                lines.append(
-                    f"            EC.presence_of_element_located("
-                    f"({by}, {const}))"
-                )
-                lines.append("        ).click()")
+                lines.append(f"        self._find({by}, {const}).click()")
             else:
                 lines.append(
                     "        # TODO: 셀렉터 힌트에서 탭 대상을 특정할 수 없음"
                 )
                 lines.append(
-                    "        WebDriverWait(driver, 10).until("
+                    "        self._find(AppiumBy.ACCESSIBILITY_ID, "
+                    "\"{PLACEHOLDER}\").click()"
                 )
-                lines.append(
-                    "            EC.presence_of_element_located("
-                    "(AppiumBy.ACCESSIBILITY_ID, \"{PLACEHOLDER}\"))"
-                )
-                lines.append("        ).click()")
 
         elif "확인한다" in step_text or "존재하는지" in step_text:
             sel = _find_selector_for_step(step_text, selectors)
             if sel:
                 const = sel_const_map.get(sel, f'"{sel}"')
                 by = _appiumby_for(sel, locator_specs)
-                lines.append(
-                    "        WebDriverWait(driver, 10).until("
-                )
-                lines.append(
-                    f"            EC.presence_of_element_located(({by}, {const}))"
-                )
-                lines.append("        )")
+                lines.append(f"        self._find({by}, {const})")
             else:
                 lines.append(
                     "        # TODO: 셀렉터 힌트에서 확인 대상을 특정할 수 없음"
                 )
                 lines.append(
-                    "        WebDriverWait(driver, 10).until("
+                    "        self._find(AppiumBy.ACCESSIBILITY_ID, "
+                    "\"{PLACEHOLDER}\")"
                 )
-                lines.append(
-                    '            EC.presence_of_element_located('
-                    '(AppiumBy.ACCESSIBILITY_ID, "{PLACEHOLDER}"))'
-                )
-                lines.append("        )")
         else:
             lines.append(
                 "        # TODO: 단계를 자동 변환하지 못했습니다 — 직접 구현 필요"
@@ -741,18 +747,11 @@ def _build_assert(expected: str, selectors: dict,
         for val in matched:
             const = sel_const_map.get(val, f'"{val}"')
             by = _appiumby_for(val, locator_specs)
-            lines.append(
-                "        assert_el = WebDriverWait(driver, 10).until("
-            )
-            lines.append(
-                f"            EC.presence_of_element_located("
-                f"({by}, {const}))"
-            )
-            lines.append("        )")
+            lines.append(f"        assert_el = self._find({by}, {const})")
             lines.append(
                 "        assert assert_el.is_displayed(), ("
             )
-            short = expected[:100].replace('"', "'")
+            short = expected[:55].replace('"', "'")
             lines.append(f'            "{short}"')
             lines.append("        )")
     else:
@@ -762,14 +761,11 @@ def _build_assert(expected: str, selectors: dict,
             " — {PLACEHOLDER}를 실제 셀렉터로 교체하세요"
         )
         lines.append(
-            "        assert_el = WebDriverWait(driver, 10).until("
-        )
-        lines.append(
-            "            EC.presence_of_element_located("
-            "(AppiumBy.ACCESSIBILITY_ID, \"{PLACEHOLDER}\")))"
+            "        assert_el = self._find(AppiumBy.ACCESSIBILITY_ID, "
+            "\"{PLACEHOLDER}\")"
         )
         lines.append("        assert assert_el.is_displayed(), (")
-        short = expected[:100].replace('"', "'") if expected else "Expected element"
+        short = expected[:55].replace('"', "'") if expected else "Expected element"
         lines.append(f'            "{short}"')
         lines.append("        )")
 
@@ -845,6 +841,7 @@ def generate_test_file(meta: dict, platform: str,
     sel_lines.append("# Selectors — generated from config/locators.json.")
     sel_lines.append("# Healing updates the registry, then regeneration updates this file.")
     sel_lines.append("# " + "-" * 74)
+    runtime_specs = {}
     for key, val in all_selectors.items():
         const_name = _sel_const_name(key)
         spec = locator_specs[key]
@@ -860,15 +857,28 @@ def generate_test_file(meta: dict, platform: str,
             hint_strategy = hints[const_name]["strategy"]
             spec = {"value": hint_val, "strategy": hint_strategy}
             sel_lines.append(
-                f'{const_name} = "{hint_val}"'
-                f"  # target_ref: {tc_slug}.{key} / healed: AppiumBy.{hint_strategy}"
+                f"# target_ref: {tc_slug}.{key} / healed: "
+                f"AppiumBy.{hint_strategy}"
             )
+            sel_lines.append(f'{const_name} = {hint_val!r}')
         else:
             sel_lines.append(
-                f'{const_name} = "{spec["value"]}"'
-                f"  # target_ref: {tc_slug}.{key} / AppiumBy.{spec['strategy']}"
+                f"# target_ref: {tc_slug}.{key} / AppiumBy.{spec['strategy']}"
             )
+            sel_lines.append(f'{const_name} = {spec["value"]!r}')
         locator_specs[key] = spec
+        runtime_specs[spec["value"]] = {
+            "surface": spec.get("surface", "auto"),
+            "webview": spec.get("webview"),
+        }
+
+    formatted_specs = pprint.pformat(
+        runtime_specs, width=68, sort_dicts=False
+    )
+    formatted_specs = formatted_specs.replace(
+        "\n", "\n" + " " * len("LOCATOR_SURFACES = ")
+    )
+    sel_lines.append(f"LOCATOR_SURFACES = {formatted_specs}")
 
     sel_block = "\n".join(sel_lines)
 
@@ -906,6 +916,15 @@ def generate_test_file(meta: dict, platform: str,
         f"{setup}"
         f"\n"
         f"{teardown}"
+        f"\n"
+        "    def _find(self, by, value):\n"
+        "        spec = LOCATOR_SURFACES.get(value, {})\n"
+        "        return self.hybrid.find(\n"
+        "            by,\n"
+        "            value,\n"
+        "            surface=spec.get(\"surface\", \"auto\"),\n"
+        "            webview=spec.get(\"webview\"),\n"
+        "        )\n"
         f"\n"
         f"{methods_joined}\n"
     )

@@ -1,8 +1,8 @@
 {
-  "main": {
-    "description": "계산기 메인 화면",
+  "hybrid_webview": {
+    "description": "ApiDemos native 헤더와 WebView 콘텐츠 화면",
     "precondition": "app_launch",
     "actions": [],
-    "platform": ["android", "ios"]
+    "platform": ["android"]
   }
 }

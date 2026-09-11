@@ -17,8 +17,8 @@
 01_analyze → 02_generate → 03_lint → 05_execute → 06_heal
 ```
 
-- `01_analyze.py`: Appium `page_source`로 native UI hierarchy 수집
-- `02_generate.py`: TC Markdown과 locator registry를 이용한 플랫폼별 pytest 생성
+- `01_analyze.py`: Appium native hierarchy와 감지된 WebView DOM을 분리 수집
+- `02_generate.py`: native 우선·선택적 Playwright WebView pytest 생성
 - `03_lint.py`: 생성 코드 flake8 검사
 - `05_execute.py`: pytest/Appium 실행 및 리포트 저장
 - `06_heal.py`: 실패 직전 최신 hierarchy를 다시 수집하고 유일 후보만 healing
@@ -54,7 +54,7 @@ testcases/ios/{group}/     → tests/generated/ios/{group}/
 1. Appium Inspector 또는 native hierarchy에서 요소 속성을 확인합니다.
 2. 확인한 플랫폼별 locator를 `config/locators.json`에 저장합니다.
 3. strict 생성으로 registry 누락을 차단합니다.
-4. 실패 시 `06_heal.py`가 최신 Appium `page_source`에서 후보를 찾습니다.
+4. 실패 시 `06_heal.py`가 locator surface에 따라 native XML 또는 WebView DOM에서 후보를 찾습니다.
 5. 후보가 유일하고 신뢰도가 높을 때만 registry를 갱신합니다.
 6. 후보가 모호하거나 snapshot이 없으면 자동 변경하지 않고 실패 상태로 남깁니다.
 
@@ -75,7 +75,7 @@ python scripts/02_generate.py --platform ios --strict-locators
 | `config/locators.json` | 플랫폼별 target locator registry |
 | `config/jira_config.json` | 이 제품 전용 Jira 프로젝트/이슈 설정 |
 
-`config/locators.json` target key는 기본적으로 `{tc_slug}.{selector_key}` 형식이며, entry는 플랫폼별 `strategy`와 `value`를 가집니다.
+`config/locators.json` target key는 `{tc_slug}.{selector_key}` 형식입니다. entry의 `surface`는 `auto`(native 우선), `native`, `webview` 중 하나이며 WebView locator는 `webview` 객체에 별도로 둡니다. WebView가 감지되지 않으면 Playwright를 시작하지 않으며, CDP 미지원 WebView는 Appium context로 실행합니다.
 
 대시보드 전체 실행이 healing 3회 후에도 실패하면 `scripts/jira_reporter.py`가 이 프로젝트의 Jira 설정으로 Bug를 생성하고 스크린샷/영상을 첨부합니다. `JIRA_TOKEN`이 없으면 Jira 보고만 건너뛰며 테스트 결과는 유지합니다. Jira 설정은 다른 제품과 공유하지 않습니다.
 

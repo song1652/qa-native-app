@@ -36,12 +36,16 @@ def _parse_tc_meta_from_md(filepath: str) -> dict:
     md_path = None
     try:
         gen_idx = next(i for i, x in enumerate(parts) if x == "generated")
-        if len(parts) > gen_idx + 3:
-            subfolder = parts[gen_idx + 2]
-            candidate = TESTCASES_DIR / subfolder / f"{stem}.md"
-            if candidate.exists():
-                md_path = candidate
-    except StopIteration:
+        generated_platform = parts[gen_idx + 1] if len(parts) > gen_idx + 1 else ""
+        relative_parts = parts[gen_idx + 2:]
+        if generated_platform in ("android", "ios"):
+            candidate = TESTCASES_DIR / generated_platform / Path(*relative_parts)
+        else:
+            candidate = TESTCASES_DIR / Path(*relative_parts)
+        candidate = candidate.with_suffix(".md")
+        if candidate.exists():
+            md_path = candidate
+    except (StopIteration, IndexError):
         pass
 
     if md_path is None:
@@ -56,9 +60,23 @@ def _parse_tc_meta_from_md(filepath: str) -> dict:
             break
 
     if md_path is None:
-        return {"steps": [], "expected": ""}
+        return {"title": stem, "precondition": [], "steps": [], "expected": ""}
 
     text = md_path.read_text(encoding="utf-8")
+
+    title_match = re.search(r"^#\s+(.+?)\s*$", text, re.MULTILINE)
+    title = title_match.group(1).strip() if title_match else stem
+
+    precondition_match = re.search(
+        r"##\s*(?:전제조건|전제 조건|Precondition)\s*\n(.*?)(?=\n##|\Z)",
+        text, re.DOTALL | re.IGNORECASE,
+    )
+    precondition = []
+    if precondition_match:
+        for line in precondition_match.group(1).splitlines():
+            clean = re.sub(r"^\s*[-*]\s*", "", line).strip()
+            if clean:
+                precondition.append(clean)
 
     steps_match = re.search(r"###\s*단계\s*\n(.*?)(?=\n###|\Z)", text, re.DOTALL)
     steps = []
@@ -75,9 +93,14 @@ def _parse_tc_meta_from_md(filepath: str) -> dict:
             clean = re.sub(r"^-\s*", "", line).strip()
             if clean:
                 expected_lines.append(clean)
-    expected = " ".join(expected_lines)
+    expected = "\n".join(expected_lines)
 
-    return {"steps": steps, "expected": expected}
+    return {
+        "title": title,
+        "precondition": precondition,
+        "steps": steps,
+        "expected": expected,
+    }
 
 
 _UNKNOWN_SCREEN = "other"
@@ -88,8 +111,10 @@ def _extract_screen(filepath: str) -> str:
     parts = Path(filepath).parts
     try:
         gen_idx = next(i for i, p in enumerate(parts) if p == "generated")
-        if len(parts) > gen_idx + 3:
-            subfolder = parts[gen_idx + 2]
+        generated_platform = parts[gen_idx + 1] if len(parts) > gen_idx + 1 else ""
+        group_idx = gen_idx + 2
+        if len(parts) > group_idx:
+            subfolder = parts[group_idx]
             if not subfolder.startswith("_") and not subfolder.startswith("."):
                 return subfolder
     except StopIteration:
@@ -123,10 +148,12 @@ def parse_pipeline_to_groups(pipeline_state: dict) -> list:
         tc_meta = _parse_tc_meta_from_md(filepath)
         g["cases"].append({
             "file": filepath,
+            "title": tc_meta["title"],
             "test": entry.get("test", ""),
             "outcome": "failed",
             "error": entry.get("error", ""),
             "screenshot": entry.get("screenshot", ""),
+            "precondition": tc_meta["precondition"],
             "steps": tc_meta["steps"],
             "expected": tc_meta["expected"],
         })
@@ -135,14 +162,17 @@ def parse_pipeline_to_groups(pipeline_state: dict) -> list:
         screen = _extract_screen(filepath)
         g = _get_group(screen)
         g["passed"] += 1
+        tc_meta = _parse_tc_meta_from_md(filepath)
         g["cases"].append({
             "file": filepath,
+            "title": tc_meta["title"],
             "test": "",
             "outcome": "passed",
             "error": "",
             "screenshot": "",
-            "steps": [],
-            "expected": "",
+            "precondition": tc_meta["precondition"],
+            "steps": tc_meta["steps"],
+            "expected": tc_meta["expected"],
         })
 
     ordered_screens = [s for s in _KNOWN_SCREENS if s in groups]
@@ -159,7 +189,8 @@ def parse_pipeline_to_groups(pipeline_state: dict) -> list:
             uid = f"{screen}_{idx}"
             rows_html += case_row(
                 {
-                    "title": case["file"],
+                    "title": case.get("title", case["file"]),
+                    "precondition": case.get("precondition", []),
                     "steps": case.get("steps", []),
                     "expected": case.get("expected", "") or case.get("error", ""),
                     "error": case.get("error", ""),
@@ -243,6 +274,7 @@ def case_row(case: dict, uid: str, outcome) -> str:
     badge_txt = _txt_map.get(outcome, "FAIL")
 
     title = case.get("title", "untitled")
+    precondition = case.get("precondition", [])
     steps = case.get("steps", [])
     expected = case.get("expected", "")
     error_msg = case.get("error", "")
@@ -254,6 +286,8 @@ def case_row(case: dict, uid: str, outcome) -> str:
 
     exp_lines = [_esc(_strip_prefix(ln)) for ln in expected.splitlines() if ln.strip()]
     exp_content = "<br>".join(exp_lines) if exp_lines else "-"
+    pre_lines = [_esc(_strip_prefix(ln)) for ln in precondition if str(ln).strip()]
+    pre_content = "<br>".join(pre_lines) if pre_lines else "-"
 
     error_section = ""
     if outcome == "failed" and error_msg:
@@ -279,6 +313,10 @@ def case_row(case: dict, uid: str, outcome) -> str:
         f'    </div>'
         f'  </div>'
         f'  <div class="case-detail" id="detail_{uid}">'
+        f'    <div class="detail-row">'
+        f'      <span class="detail-label">Precondition</span>'
+        f'      <span class="detail-val">{pre_content}</span>'
+        f'    </div>'
         f'    <div class="detail-row">'
         f'      <span class="detail-label">Steps</span>'
         f'      <span class="detail-val"><ol class="steps-list">{steps_html}</ol></span>'
@@ -366,6 +404,7 @@ def report_css() -> str:
   .logo-text{font-size:17px;font-weight:800;font-family:'Outfit',-apple-system,sans-serif;letter-spacing:-.5px}
   .logo-sub{font-size:12px;color:var(--text3);margin-top:4px}
   .nav-section{padding:0 12px}
+  .nav-section ul{display:flex;flex-direction:column;gap:7px}
   .nav-label{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;padding:0 8px;margin-bottom:8px}
   .nav-item{font-size:14px;color:var(--text2);padding:10px 12px;border-radius:var(--radius-sm);cursor:pointer;transition:all .15s;list-style:none;font-weight:500;display:flex;align-items:center;gap:10px}
   .nav-item:hover{background:var(--surface2);color:var(--text);backdrop-filter:blur(20px)}
@@ -422,9 +461,7 @@ def report_css() -> str:
   .pager button:not(:disabled):hover{border-color:var(--accent);color:var(--text);background:rgba(99,102,241,.1)}
   .case-list{padding:8px 0}
   .case-item{border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s}
-  .case-item.pass{cursor:default}
-  .case-item.pass .chevron{display:none}
-  .case-item.pass .case-detail{display:none !important}
+  .case-item.pass{cursor:pointer}
   .case-item:last-child{border-bottom:none}
   .case-item:hover{background:rgba(255,255,255,.04)}
   .case-header{display:flex;align-items:center;gap:12px;padding:10px 20px}

@@ -1,0 +1,79 @@
+- generic [active] [ref=f6e1]:
+  - generic [ref=f6e2]:
+    - text: ● LIVE
+    - heading "QA CONTROL CENTER" [level=1] [ref=f6e4]
+  - generic "실행 상태" [ref=f6e5]:
+    - generic [ref=f6e6]: 확인 중...
+    - generic [ref=f6e10]: 확인 중...
+    - generic "Android · ADB · UiAutomator2" [ref=f6e15]: "자동화: ADB"
+    - generic [ref=f6e17]:
+      - text: "파이프라인:"
+      - generic [ref=f6e18]: "-"
+  - generic [ref=f6e20]:
+    - complementary "주 메뉴" [ref=f6e21]:
+      - generic [ref=f6e22]:
+        - generic [ref=f6e23]: 개요
+        - generic [ref=f6e24] [cursor=pointer]: Dashboard
+      - generic [ref=f6e27]:
+        - generic [ref=f6e28]: Import
+        - generic [ref=f6e29] [cursor=pointer]: Import Studio
+      - generic [ref=f6e32]:
+        - generic [ref=f6e33]: 파이프라인
+        - generic [ref=f6e34] [cursor=pointer]: 파이프라인 실행
+        - generic [ref=f6e37] [cursor=pointer]: 빠른 실행
+      - generic [ref=f6e40]:
+        - generic [ref=f6e41]: 테스트 결과
+        - generic [ref=f6e42] [cursor=pointer]: 리포트 목록
+        - generic [ref=f6e45] [cursor=pointer]: 실행 히스토리
+      - generic [ref=f6e48]:
+        - generic [ref=f6e49]: 설정
+        - generic [ref=f6e50] [cursor=pointer]: Appium 설정
+    - main [ref=f6e53]:
+      - generic [ref=f6e54]:
+        - generic [ref=f6e55]: Dashboard
+        - generic [ref=f6e56]:
+          - generic [ref=f6e57]:
+            - img [ref=f6e58]:
+              - generic [ref=f6e61]: 0%
+              - generic [ref=f6e62]: PASS RATE
+            - generic [ref=f6e63]:
+              - generic [ref=f6e64]: 최근 실행 없음
+              - generic [ref=f6e65]:
+                - generic [ref=f6e66]:
+                  - generic [ref=f6e67]: "0"
+                  - generic [ref=f6e68]: Total
+                - generic [ref=f6e69]:
+                  - generic [ref=f6e70]: "0"
+                  - generic [ref=f6e71]: Passed
+                - generic [ref=f6e72]:
+                  - generic [ref=f6e73]: "0"
+                  - generic [ref=f6e74]: Failed
+              - generic [ref=f6e75]:
+                - generic [ref=f6e76]: 통과
+                - generic [ref=f6e78]: 실패
+                - generic [ref=f6e80]: 경고 (80%↑)
+          - generic [ref=f6e82]:
+            - generic [ref=f6e83]: Run History
+            - generic [ref=f6e84]: 실행 이력 없음
+        - generic [ref=f6e85]:
+          - generic [ref=f6e86]:
+            - generic [ref=f6e87]: ◆
+            - generic [ref=f6e88]:
+              - generic [ref=f6e89]: Appium
+              - generic [ref=f6e90]: 확인 중
+          - generic [ref=f6e91]:
+            - generic [ref=f6e92]: ◆
+            - generic [ref=f6e93]:
+              - generic [ref=f6e94]: Generated Tests
+              - generic [ref=f6e95]: 0개
+          - generic [ref=f6e96]:
+            - generic [ref=f6e97]: ◆
+            - generic [ref=f6e98]:
+              - generic [ref=f6e99]: Healing
+              - generic [ref=f6e100]: 0회
+        - generic [ref=f6e101]:
+          - generic [ref=f6e102]:
+            - generic [ref=f6e103]: Recent Logs
+            - button "↻" [ref=f6e104] [cursor=pointer]
+          - generic [ref=f6e105]: 로그 없음
+  - text: "\"\"\""
