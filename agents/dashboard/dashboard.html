@@ -2117,8 +2117,11 @@ async function runSelectedGenerated(){
     var folderCases=caseResults.filter(function(item){return item.platform===platform&&item.file.split('/')[0]===folder;});
     var cases=folderCases.map(function(item,index){
       var fileName=formatQuickCaseName(item.file);
+      var healBtn = !item.passed
+        ? '<button type="button" class="cs-btn" style="padding:2px 8px;font-size:10px;margin-left:auto;flex-shrink:0" onclick="event.stopPropagation();csOpenHealReview(\''+esc(item.platform)+'\',\''+esc(item.file)+'\')" title="Capture Studio에서 Locator 재확인">🔍 재확인</button>'
+        : '';
       return '<div class="quick-folder-case" data-result="'+(item.passed?'pass':'fail')+'">'
-        +'<button type="button" class="quick-folder-case-row" data-platform="'+esc(item.platform)+'" data-file="'+esc(item.file)+'" onclick="toggleQuickCaseDetail(this)"><span>'+(index+1)+'</span><span>'+esc(fileName)+' <small>▼</small></span><span class="quick-folder-case-status '+(item.passed?'pass':'fail')+'">● '+(item.passed?'PASS':'FAIL')+'</span></button>'
+        +'<div style="display:flex;align-items:center;gap:0"><button type="button" class="quick-folder-case-row" data-platform="'+esc(item.platform)+'" data-file="'+esc(item.file)+'" onclick="toggleQuickCaseDetail(this)" style="flex:1"><span>'+(index+1)+'</span><span>'+esc(fileName)+' <small>▼</small></span><span class="quick-folder-case-status '+(item.passed?'pass':'fail')+'">● '+(item.passed?'PASS':'FAIL')+'</span></button>'+healBtn+'</div>'
         +'<span class="quick-case-detail">불러오는 중...</span></div>';
     }).join('');
     return '<div class="quick-folder-result"><button type="button" class="quick-folder-head" onclick="toggleQuickFolderResult(this)"><span class="quick-folder-title"><span class="quick-folder-arrow">▶</span><i class="quick-result-dot '+(stats.failed?'fail':'pass')+'"></i>'+esc(folder.replace(/_/g,' ').toUpperCase())+'</span><span class="quick-folder-summary">'+stats.passed+'/'+stats.total+' passed <b class="quick-folder-badge '+(stats.failed?'fail':'pass')+'">'+(stats.failed?'FAIL':'PASS')+'</b></span></button>'
@@ -2624,6 +2627,48 @@ function csEndSession() {
 function csStatusMsg(msg) {
   var el = document.getElementById('cs-save-status');
   if(el){ el.textContent = msg; }
+}
+
+// ── Healing 재확인: Locator 검토 재진입 ──────────────────────
+async function csOpenHealReview(platform, testFile) {
+  // 1. Capture Studio 탭으로 이동
+  var captureItem = document.querySelector('.sidebar-item[data-view=capture]');
+  selectView('capture', captureItem);
+  if(!_csInitialized){ _csInitialized=true; await csInit(); }
+
+  // 2. 재확인 모드 표시
+  var badge = document.getElementById('cs-session-badge');
+  if(badge){ badge.textContent='🔍 Locator 재확인 모드'; badge.style.display=''; }
+
+  // 3. 해당 TC의 actions.json 로드 시도
+  //    파일명에서 TC 슬러그 추출: tests/generated/android/settings/tc_001_xxx.py
+  var tcFile = testFile.replace(/^.*\//, '').replace(/\.py$/, '') + '.md';
+  var folder = testFile.includes('/') ? testFile.split('/').slice(0,-1).join('/') : '';
+
+  // 4. 워크스페이스 표시 (세션 없어도 재확인 모드 진입)
+  document.getElementById('cs-setup').style.display='none';
+  document.getElementById('cs-workspace').style.display='block';
+
+  // 5. 재확인 안내 메시지
+  var saveStatus = document.getElementById('cs-save-status');
+  if(saveStatus){
+    saveStatus.textContent = '🔍 재확인 모드: ' + testFile + ' — 실패한 Locator를 선택하고 승인하세요.';
+    saveStatus.style.color = '#a78bfa';
+  }
+
+  // 6. 4단계 Locator 검토 패널 강조
+  var locatorsEl = document.getElementById('cs-locators');
+  if(locatorsEl){
+    locatorsEl.innerHTML = '<div style="color:#a78bfa;font-weight:600;margin-bottom:8px">🔍 Healing 재확인</div>'
+      + '<div style="color:var(--text2);font-size:11px">파일: ' + esc(testFile) + '</div>'
+      + '<div style="color:var(--text3);font-size:11px;margin-top:6px">Appium 세션을 시작하고 실패 화면으로 이동한 뒤<br>요소를 선택하면 Locator 후보가 여기에 표시됩니다.</div>';
+  }
+
+  // 7. TC 정보 미리 채우기
+  var tcIdEl = document.getElementById('cs-tc-id');
+  var titleEl = document.getElementById('cs-tc-title');
+  if(tcIdEl) tcIdEl.value = testFile.replace(/^.*\//, '').replace(/\.py$/, '');
+  if(titleEl) titleEl.value = platform + ' / ' + testFile.replace(/^.*\//, '');
 }
 
 // Capture Studio 탭 선택 시 초기화
