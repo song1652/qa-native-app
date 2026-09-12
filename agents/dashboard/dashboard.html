@@ -89,7 +89,7 @@ h1{font-size:21px;font-weight:800;letter-spacing:.2px;
 .quick-mode .app-main{overflow:auto}
 .report-mode .app-main{overflow:hidden;padding-bottom:24px}
 .app-main>.grid{max-width:920px;margin:0 auto}
-.app-main.report-view>.grid,.app-main.import-view>.grid{max-width:none;margin:0}
+.app-main.report-view>.grid,.app-main.import-view>.grid,.app-main.capture-view>.grid{max-width:none;margin:0}
 .app-main.dashboard-view>.grid{display:none}
 body.dashboard-mode .app-layout{height:calc(100vh - 100px)}
 .overview-view{max-width:920px;margin:0 auto;padding:0 0 24px}
@@ -197,6 +197,7 @@ body.dashboard-mode .app-layout{height:calc(100vh - 100px)}
 
 /* 스피너 */
 @keyframes spin{to{transform:rotate(360deg)}}
+@keyframes cs-hl-pulse{0%,100%{box-shadow:0 0 0 1px rgba(167,139,250,.6),inset 0 0 0 1px rgba(167,139,250,.3)}50%{box-shadow:0 0 0 3px rgba(167,139,250,.9),inset 0 0 0 1px rgba(167,139,250,.5)}}
 .spinner{display:none;width:12px;height:12px;border:2px solid rgba(255,255,255,.2);
   border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
 .btn.loading .spinner{display:inline-block}
@@ -459,6 +460,19 @@ button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(
 .cs-loc-badge.stable{background:rgba(52,211,153,.12);color:#34d399}
 .cs-loc-badge.medium{background:rgba(251,191,36,.12);color:#fbbf24}
 .cs-loc-badge.low{background:rgba(248,113,113,.12);color:#f87171}
+/* ── Hierarchy Tree ── */
+.cs-tree-node{line-height:1.2;min-width:max-content}
+.cs-tree-header{display:flex;align-items:center;gap:5px;padding:3px 6px;border-radius:4px;cursor:pointer;user-select:none}
+.cs-tree-header:hover{background:rgba(167,139,250,.12)}
+.cs-tree-header.selected{background:rgba(167,139,250,.22);outline:1px solid rgba(167,139,250,.4)}
+.cs-tree-toggle{font-size:9px;width:12px;flex-shrink:0;color:var(--text3);cursor:pointer;text-align:center}
+.cs-tree-label{font-size:11px;color:var(--text);white-space:nowrap}
+.cs-tree-bounds{font-size:9px;color:var(--text3);flex-shrink:0;font-family:monospace}
+.cs-tree-children{border-left:1px solid rgba(140,120,220,.18);margin-left:12px}
+/* ── Element Detail ── */
+.cs-detail-attr{display:flex;gap:8px;margin-bottom:4px;font-size:11px;align-items:flex-start}
+.cs-detail-key{color:var(--text3);min-width:94px;flex-shrink:0;font-size:10px;padding-top:1px}
+.cs-detail-val{color:var(--text);font-family:monospace;word-break:break-all;flex:1}
 </style>
 </head>
 <body class="dashboard-mode">
@@ -896,9 +910,9 @@ button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
           <div>
             <label class="cs-label">OS</label>
-            <select id="cs-platform" class="cs-select">
+            <select id="cs-platform" class="cs-select" onchange="csPlatformToggle()">
               <option value="android">Android</option>
-              <option value="ios" disabled title="iOS는 후속 범위입니다">iOS (후속 범위)</option>
+              <option value="ios">iOS</option>
             </select>
           </div>
           <div>
@@ -908,19 +922,31 @@ button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(
               <option value="device">실제 디바이스</option>
             </select>
           </div>
-          <div>
+          <!-- Android 전용 필드 -->
+          <div id="cs-field-pkg">
             <label class="cs-label">App Package</label>
             <input type="text" id="cs-pkg" class="cs-input" placeholder="com.example.app">
           </div>
-          <div>
-            <label class="cs-label">App Activity</label>
-            <input type="text" id="cs-activity" class="cs-input" placeholder=".MainActivity">
+          <div id="cs-field-activity">
+            <label class="cs-label">App Activity <span style="color:var(--text3);font-size:10px;font-weight:400">대소문자 정확히 (예: .Settings, .MainActivity)</span></label>
+            <input type="text" id="cs-activity" class="cs-input" placeholder=".MainActivity (대소문자 구분)">
           </div>
+          <!-- iOS 전용 필드 (기본 hidden) -->
+          <div id="cs-field-bundle-id" style="display:none">
+            <label class="cs-label">Bundle ID</label>
+            <input type="text" id="cs-bundle-id" class="cs-input" placeholder="com.example.App">
+          </div>
+          <div id="cs-field-device-name" style="display:none">
+            <label class="cs-label">Device Name</label>
+            <input type="text" id="cs-device-name" class="cs-input" placeholder="iPhone 15 (xcrun simctl list)">
+          </div>
+          <!-- 공통 필드 -->
           <div>
             <label class="cs-label">TC 그룹명</label>
-            <input type="text" id="cs-group" class="cs-input" placeholder="settings (미입력 시 앱 이름 사용)">
+            <input type="text" id="cs-group" class="cs-input" placeholder="예: settings, login, onboarding">
+            <div style="font-size:10px;color:var(--text3);margin-top:3px">폴더 이름이 됩니다 — <code style="font-size:9px">testcases/{platform}/<b>그룹명</b>/</code> 에 저장. 미입력 시 'default'</div>
           </div>
-          <div>
+          <div id="cs-field-mjpeg-port">
             <label class="cs-label">MJPEG 포트</label>
             <input type="number" id="cs-mjpeg-port" class="cs-input" value="8093" min="1024" max="65535">
           </div>
@@ -939,10 +965,10 @@ button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(
         <div class="card-subtitle" style="margin-bottom:10px">2–4단계 — 화면 탐색 · 동작 기록 · Locator 검토</div>
 
         <!-- 3열 레이아웃 -->
-        <div style="display:grid;grid-template-columns:280px 1fr 260px;gap:12px;min-height:420px">
+        <div style="display:grid;grid-template-columns:220px 1fr 300px;grid-template-rows:1fr;gap:12px;align-items:stretch;height:calc(100vh - 250px);min-height:520px;overflow:hidden">
 
           <!-- 왼쪽: MJPEG 미러링 -->
-          <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;flex-direction:column;gap:8px;min-height:0">
             <div style="font-size:11px;color:var(--text3);font-weight:600">디바이스 화면</div>
             <div id="cs-mirror-container" style="border:1px solid var(--border);border-radius:8px;overflow:hidden;background:#000;aspect-ratio:9/18;position:relative">
               <img id="cs-mirror-img" src="" alt="미러링" style="width:100%;height:100%;object-fit:contain;display:none" onclick="csMirrorClick(event)">
@@ -952,6 +978,13 @@ button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(
                 <span style="font-size:10px">MJPEG: <span id="cs-mjpeg-url">-</span></span>
               </div>
               <div id="cs-crosshair" style="display:none;position:absolute;pointer-events:none;width:16px;height:16px;border:2px solid #a78bfa;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 4px rgba(167,139,250,.25)"></div>
+              <!-- 요소 선택 하이라이트 박스 -->
+              <!-- hover 하이라이트 (파란색, 애니메이션 없음) -->
+              <div id="cs-hover-highlight" style="display:none;position:absolute;pointer-events:none;border:2px solid #60a5fa;background:rgba(96,165,250,.15);box-sizing:border-box;transition:left .06s,top .06s,width .06s,height .06s"></div>
+              <!-- 선택 하이라이트 (보라색, 펄스 애니메이션) -->
+              <div id="cs-element-highlight" style="display:none;position:absolute;pointer-events:none;border:3px solid #a78bfa;background:rgba(167,139,250,.25);box-sizing:border-box;box-shadow:0 0 0 1px rgba(167,139,250,.6),inset 0 0 0 1px rgba(167,139,250,.3);transition:left .1s,top .1s,width .1s,height .1s;animation:cs-hl-pulse 1.2s ease-in-out infinite"></div>
+              <!-- 선택 요소 레이블 -->
+              <div id="cs-element-highlight-label" style="display:none;position:absolute;pointer-events:none;background:#7c3aed;color:#fff;font-size:9px;font-weight:600;padding:2px 6px;border-radius:3px;white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis;line-height:16px;box-shadow:0 1px 4px rgba(0,0,0,.5)"></div>
             </div>
             <div style="display:flex;gap:6px">
               <button class="cs-btn" id="cs-mirror-connect" onclick="csMirrorConnect()" style="flex:1">미러링 연결</button>
@@ -960,29 +993,99 @@ button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(
           </div>
 
           <!-- 가운데: Hierarchy 트리 -->
-          <div style="display:flex;flex-direction:column;gap:8px;min-width:0">
-            <div style="display:flex;align-items:center;gap:8px">
+          <div style="display:flex;flex-direction:column;gap:8px;min-width:0;min-height:0">
+            <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
               <div style="font-size:11px;color:var(--text3);font-weight:600">Hierarchy</div>
               <div style="display:flex;gap:4px">
                 <button class="cs-btn active" id="cs-ctx-native" onclick="csSetContext('native',this)" style="padding:3px 9px;font-size:10px">Native</button>
                 <button class="cs-btn" id="cs-ctx-webview" onclick="csSetContext('webview',this)" style="padding:3px 9px;font-size:10px" disabled>WebView</button>
               </div>
             </div>
-            <div id="cs-hierarchy-tree" style="flex:1;border:1px solid var(--border);border-radius:8px;padding:10px;overflow-y:auto;font-size:11px;font-family:monospace;background:rgba(8,7,27,.28);color:var(--text2);min-height:300px">
+            <div id="cs-hierarchy-tree" style="flex:1;min-height:0;border:1px solid var(--border);border-radius:8px;padding:10px;overflow:auto;font-size:11px;font-family:monospace;background:rgba(8,7,27,.28);color:var(--text2)">
               <span style="color:var(--text3)">Hierarchy를 로드하면 여기에 표시됩니다.</span>
             </div>
           </div>
 
-          <!-- 오른쪽: 선택 요소 상세 + Locator 후보 -->
-          <div style="display:flex;flex-direction:column;gap:8px">
-            <div style="font-size:11px;color:var(--text3);font-weight:600">선택 요소 상세</div>
-            <div id="cs-element-detail" style="border:1px solid var(--border);border-radius:8px;padding:10px;font-size:11px;background:rgba(8,7,27,.28);min-height:120px;color:var(--text2)">
-              <span style="color:var(--text3)">요소를 선택하세요.</span>
+          <!-- 오른쪽: 선택 요소 상세 + Locator 후보 + Step 추가 -->
+          <div class="right-col-inner" style="display:flex;flex-direction:column;gap:8px;min-height:0;overflow-y:auto">
+
+            <!-- Step 추가 — 항상 표시 -->
+            <div style="font-size:11px;color:var(--text3);font-weight:600;letter-spacing:.5px;text-transform:uppercase">Step 추가</div>
+
+            <!-- 요소 미선택 안내 -->
+            <div id="cs-step-hint" style="border:1px dashed rgba(167,139,250,.35);border-radius:8px;padding:12px 10px;text-align:center;color:var(--text3);font-size:11px;line-height:1.6">
+              ← 트리에서 요소를 클릭하면<br>여기서 스텝을 추가할 수 있습니다
             </div>
-            <div style="font-size:11px;color:var(--text3);font-weight:600">Locator 후보</div>
-            <div id="cs-locators" style="border:1px solid var(--border);border-radius:8px;padding:10px;font-size:11px;background:rgba(8,7,27,.28);min-height:120px;color:var(--text2)">
-              <span style="color:var(--text3)">요소 선택 후 후보가 표시됩니다.</span>
+
+            <!-- Step 추가 버튼 그룹 (요소 선택 후 표시) -->
+            <div id="cs-add-step-section" style="display:none">
+              <!-- 선택 요소 요약 -->
+              <div id="cs-selected-summary" style="display:flex;align-items:center;gap:6px;padding:6px 9px;border-radius:6px;background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.25);margin-bottom:8px;font-size:11px;color:var(--text2);min-width:0">
+                <span style="color:#a78bfa;font-size:13px">◉</span>
+                <span id="cs-selected-label" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">선택된 요소</span>
+              </div>
+              <!-- 동작 버튼 -->
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:6px">
+                <button class="cs-btn" onclick="csAddStep('tap')" style="padding:7px 4px;font-size:11px;text-align:center">
+                  👆 탭
+                </button>
+                <button class="cs-btn" onclick="csAddStepInput()" style="padding:7px 4px;font-size:11px;text-align:center">
+                  ⌨ 입력
+                </button>
+                <button class="cs-btn" onclick="csToggleAssertMenu()" id="cs-assert-btn" style="padding:7px 4px;font-size:11px;text-align:center">
+                  ✓ 검증
+                </button>
+              </div>
+              <!-- 입력 텍스트 -->
+              <div id="cs-step-input-area" style="display:none;margin-top:6px">
+                <input type="text" id="cs-step-input-val" class="cs-input" placeholder="입력할 텍스트" style="width:100%;font-size:11px">
+                <div style="margin-top:4px;display:flex;gap:6px">
+                  <button class="cs-btn primary" onclick="csConfirmInput()" style="padding:2px 10px;font-size:10px">확인</button>
+                  <button class="cs-btn" onclick="csCancelStepInput()" style="padding:2px 10px;font-size:10px">취소</button>
+                </div>
+              </div>
+              <!-- 검증 메뉴 -->
+              <div id="cs-assert-menu" style="display:none;margin-top:6px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:6px;padding:6px">
+                <div style="font-size:10px;color:var(--text3);margin-bottom:4px">검증 유형 선택</div>
+                <button class="cs-btn" onclick="csAddAssert('text_visible')" style="display:block;width:100%;text-align:left;padding:4px 8px;font-size:10px;margin-bottom:3px">📝 텍스트 확인</button>
+                <button class="cs-btn" onclick="csAddAssert('element_present')" style="display:block;width:100%;text-align:left;padding:4px 8px;font-size:10px;margin-bottom:3px">✅ 요소 존재 확인</button>
+                <button class="cs-btn" onclick="csAddAssert('element_absent')" style="display:block;width:100%;text-align:left;padding:4px 8px;font-size:10px">❌ 요소 없음 확인</button>
+              </div>
+              <!-- 텍스트 확인 값 입력 -->
+              <div id="cs-assert-text-area" style="display:none;margin-top:6px">
+                <input type="text" id="cs-assert-text-val" class="cs-input" placeholder="확인할 텍스트" style="width:100%;font-size:11px">
+                <div style="margin-top:4px;display:flex;gap:6px">
+                  <button class="cs-btn primary" onclick="csConfirmAssertText()" style="padding:2px 10px;font-size:10px">확인</button>
+                  <button class="cs-btn" onclick="csCancelAssert()" style="padding:2px 10px;font-size:10px">취소</button>
+                </div>
+              </div>
             </div>
+
+            <!-- 요소 없이 추가 가능한 직접 스텝 -->
+            <div style="border-top:1px solid var(--border);padding-top:8px">
+              <div style="font-size:10px;color:var(--text3);margin-bottom:6px">요소 없이 추가</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
+                <button class="cs-btn" onclick="csAddDirectStep('back')" style="padding:5px;font-size:10px;text-align:center">← Back</button>
+                <button class="cs-btn" onclick="csAddDirectStep('scroll_down')" style="padding:5px;font-size:10px;text-align:center">↓ 스크롤</button>
+                <button class="cs-btn" onclick="csAddDirectStep('scroll_up')" style="padding:5px;font-size:10px;text-align:center">↑ 스크롤</button>
+                <button class="cs-btn" onclick="csAddDirectStep('wait')" style="padding:5px;font-size:10px;text-align:center">⏱ 대기</button>
+              </div>
+            </div>
+
+            <div style="border-top:1px solid var(--border);padding-top:8px">
+              <div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:6px">선택 요소 상세</div>
+              <div id="cs-element-detail" style="border:1px solid var(--border);border-radius:8px;padding:10px;font-size:11px;background:rgba(8,7,27,.28);color:var(--text2)">
+                <span style="color:var(--text3)">요소를 선택하세요.</span>
+              </div>
+            </div>
+
+            <div>
+              <div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:6px">Locator 후보</div>
+              <div id="cs-locators" style="border:1px solid var(--border);border-radius:8px;padding:10px;font-size:11px;background:rgba(8,7,27,.28);color:var(--text2)">
+                <span style="color:var(--text3)">요소 선택 후 후보가 표시됩니다.</span>
+              </div>
+            </div>
+
           </div>
         </div>
 
@@ -991,12 +1094,12 @@ button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
             <div style="font-size:11px;color:var(--text3);font-weight:600">Action Timeline</div>
             <div style="display:flex;gap:8px">
-              <button class="cs-btn" id="cs-record-btn" onclick="csToggleRecord()" style="padding:4px 12px;font-size:11px">● 녹화 시작</button>
+              <button class="cs-btn" onclick="csSendBack()" style="padding:4px 10px;font-size:11px" title="Back 버튼 스텝 추가">⬅ Back</button>
               <button class="cs-btn" onclick="csClearActions()" style="padding:4px 10px;font-size:11px">초기화</button>
             </div>
           </div>
           <div id="cs-timeline" style="border:1px solid var(--border);border-radius:8px;padding:8px 12px;max-height:180px;overflow-y:auto;background:rgba(8,7,27,.28);font-size:11px;color:var(--text2)">
-            <span id="cs-timeline-empty" style="color:var(--text3)">녹화를 시작하고 요소를 탭하세요.</span>
+            <span id="cs-timeline-empty" style="color:var(--text3)">트리에서 요소를 선택하고 스텝을 추가하세요.</span>
           </div>
         </div>
 
@@ -1184,6 +1287,7 @@ function selectView(view, item){
   document.body.classList.toggle('dashboard-mode', view === 'dashboard');
   if(main) main.classList.toggle('report-view', view === 'reports');
   if(main) main.classList.toggle('import-view', view === 'import');
+  if(main) main.classList.toggle('capture-view', view === 'capture');
   if(main) main.classList.toggle('quick-view', view === 'tests');
   if(main) main.classList.toggle('history-view', view === 'history');
   if(view === 'dashboard') refreshOverview();
@@ -2064,20 +2168,29 @@ async function commitImportStudio(){
 }
 
 function quickToggleGenerated(checked){
-  document.querySelectorAll('.quick-group-cb').forEach(function(cb){ cb.checked=checked; });
+  document.querySelectorAll('.quick-group-list .quick-group-cb').forEach(function(cb){ cb.checked=checked; });
 }
 function syncQuickSelection(){
-  var all=document.querySelectorAll('.quick-group-cb'), selected=document.querySelectorAll('.quick-group-cb:checked');
+  var all=document.querySelectorAll('.quick-group-list .quick-group-cb'), selected=document.querySelectorAll('.quick-group-list .quick-group-cb:checked');
   var toggle=document.getElementById('quick-select-all');
   if(toggle) toggle.checked=all.length>0 && all.length===selected.length;
 }
 
 async function runSelectedGenerated(){
-  var keys=Array.from(document.querySelectorAll('.quick-group-cb:checked')).map(function(cb){return cb.value;});
+  var keys=Array.from(document.querySelectorAll('.quick-group-list .quick-group-cb:checked')).map(function(cb){return cb.value;});
   var all=(window._generatedTests||[]), groups=[];
   all.forEach(function(g){
-    var selectedFiles=g.files.filter(function(file){return keys.indexOf(g.platform+':'+file.split('/')[0])!==-1;});
-    if(selectedFiles.length) groups.push({platform:g.platform,folder:selectedFiles[0].split('/')[0],files:selectedFiles});
+    // 폴더별로 개별 그룹 생성 — 여러 폴더를 하나로 묶으면 첫 번째 폴더만 실행되는 버그 방지
+    var folderMap={};
+    g.files.forEach(function(file){
+      var folder=file.split('/')[0];
+      var k=g.platform+':'+folder;
+      if(keys.indexOf(k)!==-1){
+        if(!folderMap[folder]) folderMap[folder]={platform:g.platform,folder:folder,files:[]};
+        folderMap[folder].files.push(file);
+      }
+    });
+    Object.keys(folderMap).forEach(function(folder){groups.push(folderMap[folder]);});
   });
   var files=groups.reduce(function(acc,g){return acc.concat(g.files.map(function(file){return {platform:g.platform,file:file};}));},[]);
   if(!files.length){ setLog('[안내] 실행할 테스트 폴더를 선택하세요.'); return; }
@@ -2146,6 +2259,9 @@ async function runSelectedGenerated(){
   window._quickRunLogEl=null;
   window._quickRunLogWrap=null;
   window._quickRunActive=false;
+  // 대시보드 KPI·히스토리 뷰 갱신
+  refreshOverview();
+  renderRunHistory();
 }
 
 async function toggleQuickCaseDetail(button){
@@ -2211,7 +2327,7 @@ function resetQuickRun(){
   if(logEl) logEl.textContent='';
   if(logWrap) logWrap.style.display='none';
   if(statusEl){statusEl.className='quick-run-status';statusEl.textContent='';}
-  if(btn){btn.disabled=document.querySelectorAll('.quick-group-cb:checked').length===0;btn.textContent='테스트 실행';}
+  if(btn){btn.disabled=document.querySelectorAll('.quick-group-list .quick-group-cb:checked').length===0;btn.textContent='테스트 실행';}
   window._quickRunLogEl=null;
   window._quickRunLogWrap=null;
   window._quickRunResultVisible=false;
@@ -2227,7 +2343,12 @@ function toggleQuickLog(){
 }
 function clearQuickLog(){
   var log=document.getElementById('quick-generated-log');
+  var wrap=document.getElementById('quick-generated-log-wrap');
   if(log) log.textContent='';
+  if(wrap) wrap.style.display='none';
+  // 실행 중이더라도 로그 참조를 끊어 폴링이 숨겨진 영역을 업데이트하지 않도록
+  window._quickRunLogEl=null;
+  window._quickRunLogWrap=null;
   try{localStorage.removeItem('qa-native-app.quick-log.'+_quickPlatform);localStorage.removeItem('qa-native-app.quick-live-log.'+_quickPlatform);}catch(_){ }
 }
 
@@ -2363,10 +2484,66 @@ var _cs = {
   recording: false,
   context: 'native',
   actions: [],
-  approvedLocators: {},
+  approvedLocators: [],
+  selectedNodeAttrs: null,
   mirrorConnected: false,
   wsTimeline: null,
+  screenshotMode: 'mjpeg',   // 'mjpeg' | 'poll'
+  pollTimer: null,            // iOS polling setInterval handle
+  screenWatcher: null,        // 화면 전환 감지 타이머
+  screenHash: null,           // 마지막으로 확인한 page_source 해시
+  screenHashTs: 0,            // 마지막 hierarchy 새로고침 시각
 };
+
+// ── 화면 전환 감지기 ─────────────────────────────────────────────
+// 4초마다 page_source 해시를 확인 → 변경되면 hierarchy 자동 새로고침
+// hierarchy 새로고침이 최근 3초 이내에 있었으면 스킵 (중복 방지)
+function csStartScreenWatcher() {
+  csStopScreenWatcher();
+  _cs.screenHash = null;
+  _cs.screenHashTs = 0;
+  _cs.screenWatcher = setInterval(function() {
+    if (!_cs.sessionId) return;
+    fetch('/capture/page_source_hash')
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (!d.ok || !d.hash) return;
+        if (_cs.screenHash && _cs.screenHash !== d.hash) {
+          // 화면이 바뀜 — hierarchy 새로고침 (쿨다운 3초)
+          var now = Date.now();
+          if (now - _cs.screenHashTs > 3000) {
+            _cs.screenHashTs = now;
+            csRefreshHierarchy();
+          }
+        }
+        _cs.screenHash = d.hash;
+      })
+      .catch(function(){});
+  }, 4000);
+}
+function csStopScreenWatcher() {
+  if (_cs.screenWatcher) { clearInterval(_cs.screenWatcher); _cs.screenWatcher = null; }
+  _cs.screenHash = null;
+}
+
+// CSS grid align-items:stretch가 높이 동기화를 담당하므로 JS sync 불필요
+function csSyncPanelHeight() { /* noop: CSS stretch handles this */ }
+var _csMirrorObserver = null;
+function csStartMirrorObserver() { /* noop: CSS stretch handles this */ }
+
+function csPlatformToggle() {
+  var isIos = document.getElementById('cs-platform').value === 'ios';
+  // Android 전용 필드
+  ['cs-field-pkg', 'cs-field-activity', 'cs-field-mjpeg-port'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.style.display = isIos ? 'none' : '';
+  });
+  // iOS 전용 필드
+  ['cs-field-bundle-id', 'cs-field-device-name'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.style.display = isIos ? '' : 'none';
+  });
+}
 
 function csInit() {
   // Capture 탭 선택 시 세션 상태 복원
@@ -2374,16 +2551,96 @@ function csInit() {
     if(d.active && d.session){
       _cs.sessionId = d.session.session_id || '';
       _cs.actions = d.session.actions || [];
+      var port = d.session.mjpeg_port || 8093;
+      _cs.screenshotMode = d.session.screenshot_mode || 'mjpeg';
       if(_cs.sessionId){
-        document.getElementById('cs-setup').style.display='none';
-        document.getElementById('cs-workspace').style.display='block';
-        document.getElementById('cs-session-badge').style.display='';
-        csRenderTimeline();
-        csMirrorConnect();
+        // OS 복원 및 폼 토글
+        var platEl = document.getElementById('cs-platform');
+        var savedPlatform = d.session.platform || 'android';
+        if(platEl) platEl.value = savedPlatform;
+        csPlatformToggle();
+        // 폼 값 복원
+        var pkgEl = document.getElementById('cs-pkg');
+        var actEl = document.getElementById('cs-activity');
+        var grpEl = document.getElementById('cs-group');
+        var portEl = document.getElementById('cs-mjpeg-port');
+        var bundleEl = document.getElementById('cs-bundle-id');
+        var devNameEl = document.getElementById('cs-device-name');
+        if(pkgEl && !pkgEl.value) pkgEl.value = d.session.app_package || '';
+        if(actEl && !actEl.value) actEl.value = d.session.app_activity || '';
+        if(grpEl && !grpEl.value) grpEl.value = d.session.tc_group || '';
+        if(portEl) portEl.value = port;
+        if(bundleEl && !bundleEl.value) bundleEl.value = d.session.bundle_id || '';
+        if(devNameEl && !devNameEl.value) devNameEl.value = d.session.device_name || '';
+
+        // 드라이버 상태 확인 후 분기
+        fetch('/capture/driver_alive').then(function(r2){ return r2.json(); }).then(function(d2){
+          var statusEl2 = document.getElementById('cs-setup-status');
+          if(d2.alive){
+            // 드라이버 살아있음 → workspace로 이동
+            document.getElementById('cs-setup').style.display='none';
+            document.getElementById('cs-workspace').style.display='block'; setTimeout(function(){ csStartMirrorObserver(); csSyncPanelHeight(); }, 100);
+            document.getElementById('cs-session-badge').style.display='';
+            csRenderTimeline();
+            csMirrorConnect();
+            var saveStatus = document.getElementById('cs-save-status');
+            if(saveStatus){ saveStatus.textContent = '✅ 세션 복원됨 (드라이버 연결)'; saveStatus.style.color='var(--pass)'; }
+            setTimeout(function(){ csRefreshHierarchy(); }, 600);
+          } else {
+            // 드라이버 죽음 → setup 화면 유지, 안내 메시지 + 버튼 표시
+            if(statusEl2){
+              statusEl2.innerHTML = '⚠️ 이전 세션이 있지만 서버 재시작으로 드라이버가 끊겼습니다.<br>'
+                + '<div style="margin-top:6px;display:flex;gap:8px">'
+                + '<button class="cs-btn primary" onclick="csReLaunchFromSetup()" style="padding:4px 14px;font-size:11px">▶ 앱 재실행</button>'
+                + '<button class="cs-btn" onclick="csForceNewSession()" style="padding:4px 14px;font-size:11px;color:var(--text3)">새 세션 시작</button>'
+                + '</div>';
+              statusEl2.style.color='#fbbf24';
+            }
+            document.getElementById('cs-session-badge').style.display='';
+          }
+        }).catch(function(){
+          // driver_alive 호출 실패 → 그냥 setup 화면 유지
+        });
       }
     }
   }).catch(function(){});
   csConnectWsTimeline();
+}
+
+function csReLaunch() {
+  var saveStatus = document.getElementById('cs-save-status');
+  var _reIsIos = (_cs.screenshotMode === 'poll');
+  var _reTimeoutMs = _reIsIos ? 180000 : 45000;
+  var _reStartTs = Date.now();
+  saveStatus.textContent = '📱 앱 재실행 중...'; saveStatus.style.color='#a78bfa';
+  var _reProgressTimer = setInterval(function(){
+    var s = Math.round((Date.now() - _reStartTs) / 1000);
+    saveStatus.textContent = '📱 앱 재실행 중… (' + s + '초 경과' + (_reIsIos ? ' / 최대 180초' : '') + ')';
+  }, 2000);
+  var _launchCtrl = new AbortController();
+  var _launchTimer = setTimeout(function(){ _launchCtrl.abort(); }, _reTimeoutMs);
+  fetch('/capture/launch', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({session_id: _cs.sessionId}),
+    signal: _launchCtrl.signal
+  }).then(function(r){ clearTimeout(_launchTimer); clearInterval(_reProgressTimer); return r.json(); }).then(function(d){
+    if(d.ok){
+      saveStatus.textContent = '✅ 앱 재실행됨 — 미러링 재연결 중';
+      saveStatus.style.color='var(--pass)';
+      csMirrorConnect();
+      setTimeout(csRefreshHierarchy, 1500);
+    } else {
+      saveStatus.textContent = '❌ 재실행 실패: ' + (d.error||'알 수 없는 오류');
+      saveStatus.style.color='var(--fail)';
+    }
+  }).catch(function(err){
+    clearTimeout(_launchTimer); clearInterval(_reProgressTimer);
+    var s2 = Math.round((Date.now() - _reStartTs) / 1000);
+    saveStatus.textContent = err && err.name==='AbortError'
+      ? '⏱ 재실행 ' + s2 + '초 초과 — Appium/디바이스 상태를 확인하세요'
+      : '❌ 오류: ' + err;
+    saveStatus.style.color='var(--fail)';
+  });
 }
 
 function csConnectWsTimeline() {
@@ -2410,18 +2667,31 @@ function csCheckEnv() {
   var statusEl = document.getElementById('cs-setup-status');
   statusEl.textContent = '환경 확인 중...';
   statusEl.style.color = 'var(--text3)';
-  var port = parseInt(document.getElementById('cs-mjpeg-port').value) || 8093;
-  Promise.all([
+  var platform = document.getElementById('cs-platform').value;
+  var isIos = platform === 'ios';
+
+  var checks = [
     fetch('/api/check/appium').then(function(r){ return r.json(); }).catch(function(){ return {ok:false}; }),
-    fetch('/api/check/mjpeg?port=' + port).then(function(r){ return r.json(); }).catch(function(){ return {ok:false}; }),
-  ]).then(function(results) {
+  ];
+  if(!isIos) {
+    var port = parseInt(document.getElementById('cs-mjpeg-port').value) || 8093;
+    checks.push(fetch('/api/check/mjpeg?port=' + port).then(function(r){ return r.json(); }).catch(function(){ return {ok:false}; }));
+  }
+
+  Promise.all(checks).then(function(results) {
     var appiumOk = results[0].ok;
-    var mjpegOk = results[1].ok;
     var msgs = [];
     if(appiumOk) msgs.push('✅ Appium 연결됨');
-    else msgs.push('❌ Appium 미응답 (appium --allow-insecure=adb_screen_streaming)');
-    if(mjpegOk) msgs.push('✅ MJPEG 포트 ' + port + ' 응답');
-    else msgs.push('⚠️ MJPEG 포트 미응답 — 세션 시작 후 활성화됩니다');
+    else msgs.push('❌ Appium 미응답 (appium --address 0.0.0.0 --port 4723)');
+
+    if(!isIos) {
+      var port2 = parseInt(document.getElementById('cs-mjpeg-port').value) || 8093;
+      var mjpegOk = results[1] && results[1].ok;
+      if(mjpegOk) msgs.push('✅ MJPEG 포트 ' + port2 + ' 응답');
+      else msgs.push('⚠️ MJPEG 포트 미응답 — 세션 시작 후 활성화됩니다 (--allow-insecure=uiautomator2:adb_screen_streaming 필요)');
+    } else {
+      msgs.push('ℹ️ iOS는 screenshot polling 방식 사용 (MJPEG 불필요)');
+    }
 
     statusEl.innerHTML = msgs.join('<br>');
     statusEl.style.color = appiumOk ? 'var(--pass)' : 'var(--fail)';
@@ -2431,13 +2701,25 @@ function csCheckEnv() {
 
 function csStartSession() {
   var platform = document.getElementById('cs-platform').value;
+  var isIos = platform === 'ios';
   var target = document.getElementById('cs-target').value;
-  var pkg = document.getElementById('cs-pkg').value.trim();
-  var activity = document.getElementById('cs-activity').value.trim();
-  var group = document.getElementById('cs-group').value.trim() || pkg.split('.').pop() || 'default';
+  var group = document.getElementById('cs-group').value.trim();
   var mjpegPort = parseInt(document.getElementById('cs-mjpeg-port').value) || 8093;
 
-  if(!pkg){ alert('App Package를 입력하세요.'); return; }
+  var body;
+  if(isIos) {
+    var bundleId = document.getElementById('cs-bundle-id').value.trim();
+    var deviceName = document.getElementById('cs-device-name').value.trim() || 'iPhone Simulator';
+    if(!bundleId){ alert('Bundle ID를 입력하세요.'); return; }
+    group = group || bundleId.split('.').pop() || 'default';
+    body = {platform: platform, target: target, bundle_id: bundleId, device_name: deviceName, tc_group: group};
+  } else {
+    var pkg = document.getElementById('cs-pkg').value.trim();
+    var activity = document.getElementById('cs-activity').value.trim();
+    if(!pkg){ alert('App Package를 입력하세요.'); return; }
+    group = group || pkg.split('.').pop() || 'default';
+    body = {platform: platform, target: target, app_package: pkg, app_activity: activity, tc_group: group, mjpeg_port: mjpegPort};
+  }
 
   var statusEl = document.getElementById('cs-setup-status');
   statusEl.textContent = '세션 시작 중...';
@@ -2445,17 +2727,94 @@ function csStartSession() {
 
   fetch('/capture/session', {
     method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({platform, target, app_package:pkg, app_activity:activity, tc_group:group, mjpeg_port:mjpegPort})
+    body: JSON.stringify(body)
   }).then(function(r){ return r.json(); }).then(function(d){
     if(d.ok){
       _cs.sessionId = d.session_id;
       _cs.actions = [];
-      document.getElementById('cs-setup').style.display='none';
-      document.getElementById('cs-workspace').style.display='block';
-      document.getElementById('cs-session-badge').style.display='';
-      document.getElementById('cs-mjpeg-url').textContent = d.mjpeg_url || '';
+      _cs.screenshotMode = d.screenshot_mode || (isIos ? 'poll' : 'mjpeg');
+      var _mjpegUrlEl = document.getElementById('cs-mjpeg-url');
+      if(_mjpegUrlEl) _mjpegUrlEl.textContent = d.mjpeg_url || (isIos ? '(polling)' : '');
       csRenderTimeline();
-      csMirrorConnect();
+
+      // ── 앱 실행 단계 ──
+      // iOS WDA 초기화는 최초 빌드 시 2~3분 소요 가능 → 180초 대기, Android는 45초
+      var _launchTimeoutMs = isIos ? 180000 : 45000;
+      var _launchStartTs   = Date.now();
+
+      // iOS 대기 중 경과 시간을 실시간으로 표시 (매 2초 갱신)
+      var _launchProgressTimer = null;
+      function _updateLaunchStatus() {
+        var elapsed = Math.round((Date.now() - _launchStartTs) / 1000);
+        if (isIos) {
+          statusEl.textContent = '📱 iOS 앱 실행 중… WDA 초기화 대기 중 (' + elapsed + '초 경과 / 최대 180초)';
+        } else {
+          statusEl.textContent = '📱 앱 실행 중… (' + elapsed + '초 경과)';
+        }
+        statusEl.style.color = '#a78bfa';
+      }
+      _updateLaunchStatus();
+      _launchProgressTimer = setInterval(_updateLaunchStatus, 2000);
+
+      var _launchCtrl = new AbortController();
+      var _launchTimer = setTimeout(function(){ _launchCtrl.abort(); }, _launchTimeoutMs);
+      fetch('/capture/launch', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({session_id: d.session_id}),
+        signal: _launchCtrl.signal
+      }).then(function(r2){ clearTimeout(_launchTimer); clearInterval(_launchProgressTimer); return r2.json(); }).then(function(d2){
+        if(d2.ok){
+          var modeLabel = (_cs.screenshotMode === 'poll') ? 'screenshot polling' : 'MJPEG 스트리밍';
+          var elapsed2 = Math.round((Date.now() - _launchStartTs) / 1000);
+          statusEl.textContent = '✅ 앱 실행됨 (Appium: ' + (d2.appium_session_id||'').substring(0,8) + '...) — ' + modeLabel + ' 시작 (' + elapsed2 + '초)';
+          statusEl.style.color = 'var(--pass)';
+          // 워크스페이스 전환
+          document.getElementById('cs-setup').style.display='none';
+          document.getElementById('cs-workspace').style.display='block'; setTimeout(function(){ csStartMirrorObserver(); csSyncPanelHeight(); }, 100);
+          document.getElementById('cs-session-badge').style.display='';
+          // MJPEG 미러 연결
+          csMirrorConnect();
+          // 초기 hierarchy 로드
+          setTimeout(function(){ csRefreshHierarchy(); }, 1500);
+          // 화면 전환 자동 감지 시작
+          setTimeout(csStartScreenWatcher, 3000);
+          // WebSocket 연결
+          csConnectWsTimeline();
+        } else {
+          // 백엔드가 이미 친화적 메시지를 반환 (_friendly_appium_error) → 그대로 표시
+          var errMsg = d2.error || '알 수 없는 오류가 발생했습니다.';
+          statusEl.textContent = '⚠️ 앱 실행 실패: ' + errMsg;
+          statusEl.style.color = 'var(--fail)';
+          // 세션은 생성됐으므로 워크스페이스는 진입 허용
+          document.getElementById('cs-setup').style.display='none';
+          document.getElementById('cs-workspace').style.display='block'; setTimeout(function(){ csStartMirrorObserver(); csSyncPanelHeight(); }, 100);
+          document.getElementById('cs-session-badge').style.display='';
+          document.getElementById('cs-save-status').textContent = '⚠️ Appium 미연결 — 오류 메시지를 확인하고 세션을 재시작하세요';
+          document.getElementById('cs-save-status').style.color = '#fbbf24';
+          // 실패해도 미러링 자동 시도 (iOS polling은 WDA 준비 후 자동 복구)
+          csMirrorConnect();
+        }
+      }).catch(function(err2){
+        clearTimeout(_launchTimer);
+        clearInterval(_launchProgressTimer);
+        var elapsed3 = Math.round((Date.now() - _launchStartTs) / 1000);
+        var msg;
+        if (err2 && err2.name === 'AbortError') {
+          msg = isIos
+            ? '⏱ iOS WDA 초기화 ' + elapsed3 + '초 초과 — Appium을 재시작하거나 시뮬레이터 이름(Device Name)을 확인하세요'
+            : '⏱ 앱 실행 ' + elapsed3 + '초 초과 — Appium 서버와 에뮬레이터 상태를 확인하세요';
+        } else {
+          msg = '⚠️ 앱 실행 오류: ' + err2;
+        }
+        statusEl.textContent = msg;
+        statusEl.style.color = '#fbbf24';
+        document.getElementById('cs-setup').style.display='none';
+        document.getElementById('cs-workspace').style.display='block'; setTimeout(function(){ csStartMirrorObserver(); csSyncPanelHeight(); }, 100);
+        document.getElementById('cs-session-badge').style.display='';
+        document.getElementById('cs-start-btn').disabled = false;
+        // catch에서도 미러링 자동 시도
+        csMirrorConnect();
+      });
     } else {
       statusEl.textContent = '❌ ' + (d.error || '세션 시작 실패');
       statusEl.style.color = 'var(--fail)';
@@ -2469,36 +2828,151 @@ function csStartSession() {
 }
 
 function csMirrorConnect() {
-  var port = parseInt(document.getElementById('cs-mjpeg-port').value) || 8093;
   var img = document.getElementById('cs-mirror-img');
   var placeholder = document.getElementById('cs-mirror-placeholder');
-  var ts = new Date().getTime();
-  img.src = 'http://localhost:' + port + '/?' + ts;
-  img.style.display = 'block';
-  placeholder.style.display = 'none';
-  _cs.mirrorConnected = true;
+
+  // 기존 polling 타이머 정리
+  if(_cs.pollTimer) { clearInterval(_cs.pollTimer); _cs.pollTimer = null; }
+
+  if(_cs.screenshotMode === 'poll') {
+    // ── iOS polling 방식 ──────────────────────────────────────
+    img.onerror = null;
+    img.onload = null;
+    // 첫 스크린샷 수신 전까지 로딩 표시 (img는 숨김)
+    img.style.display = 'none';
+    var _existingErr = placeholder.querySelector('.cs-mirror-error');
+    if(_existingErr) _existingErr.remove();
+    var _loadDiv = placeholder.querySelector('.cs-mirror-loading');
+    if(!_loadDiv){
+      _loadDiv = document.createElement('div');
+      _loadDiv.className = 'cs-mirror-loading';
+      _loadDiv.style.cssText = 'color:var(--text3);text-align:center;padding:12px;font-size:11px';
+      _loadDiv.innerHTML = '⏳ iOS 화면 로딩 중...<br><span style="font-size:10px">WDA 안정화 대기</span>';
+      placeholder.appendChild(_loadDiv);
+    }
+    placeholder.style.display = '';
+
+    var _pollFailCount = 0;
+    var _POLL_FAIL_THRESHOLD = 25; // 25회 연속 실패 후 에러 표시 (약 30초 — WDA 안정화 여유)
+    var _firstFrame = true;
+
+    function doPoll() {
+      fetch('/capture/screenshot').then(function(r){ return r.json(); }).then(function(d){
+        if(d.ok && d.data){
+          _pollFailCount = 0; // 성공 시 실패 카운터 초기화
+          img.src = 'data:image/png;base64,' + d.data;
+          // 첫 프레임 수신 시 로딩 제거 후 img 표시
+          if(_firstFrame){
+            _firstFrame = false;
+            var ld = placeholder.querySelector('.cs-mirror-loading');
+            if(ld) ld.remove();
+          }
+          placeholder.style.display = 'none';
+          img.style.display = 'block';
+          // 에러 오버레이 자동 제거 (self-healing)
+          var prev = placeholder.querySelector('.cs-mirror-error');
+          if(prev) prev.remove();
+        } else {
+          _pollFailCount++;
+          // 임계값 초과 시에만 에러 UI 표시 (로딩 표시도 제거)
+          if(_pollFailCount >= _POLL_FAIL_THRESHOLD){
+            img.style.display = 'none';
+            placeholder.style.display = '';
+            var ld2 = placeholder.querySelector('.cs-mirror-loading');
+            if(ld2) ld2.remove();
+            var prev2 = placeholder.querySelector('.cs-mirror-error');
+            if(!prev2){
+              var errDiv = document.createElement('div');
+              errDiv.className = 'cs-mirror-error';
+              errDiv.style.cssText = 'color:var(--fail);text-align:center;padding:12px';
+              errDiv.innerHTML = '❌ iOS 스크린샷 실패<br>'
+                + '<span style="font-size:10px;color:var(--text3)">Appium 세션이 끊겼습니다</span><br><br>'
+                + '<button class="cs-btn primary" onclick="csReLaunch()" style="padding:4px 12px;font-size:11px;margin-bottom:4px">🔄 세션 재연결</button><br>'
+                + '<button class="cs-btn" onclick="csMirrorConnect()" style="padding:4px 12px;font-size:11px">📷 미러링만 재시도</button>';
+              placeholder.appendChild(errDiv);
+            }
+          }
+          // 임계값 미만: 로딩 표시 유지, 에러 오버레이 없음
+        }
+      }).catch(function(){
+        _pollFailCount++;
+      });
+    }
+    doPoll();
+    _cs.pollTimer = setInterval(doPoll, 1200);
+    _cs.mirrorConnected = true;
+
+  } else {
+    // ── Android MJPEG 방식 ─────────────────────────────────────
+    var port = parseInt(document.getElementById('cs-mjpeg-port').value) || 8093;
+    var ts = new Date().getTime();
+
+    img.onerror = function() {
+      img.style.display = 'none';
+      placeholder.style.display = '';
+      // 기존 에러 오버레이가 있으면 제거 (cs-mjpeg-url span은 보존)
+      var prev = placeholder.querySelector('.cs-mirror-error');
+      if(prev) prev.remove();
+      var errDiv = document.createElement('div');
+      errDiv.className = 'cs-mirror-error';
+      errDiv.style.cssText = 'color:var(--fail);text-align:center;padding:12px';
+      errDiv.innerHTML = '❌ MJPEG 연결 실패 (포트 ' + port + ')<br>'
+        + '<span style="font-size:10px;color:var(--text3)">Appium 세션이 시작된 후 아래 버튼으로 재시도</span><br><br>'
+        + '<button class="cs-btn" onclick="csMirrorConnect()" style="padding:4px 12px;font-size:11px">🔄 재연결</button>';
+      placeholder.appendChild(errDiv);
+    };
+    img.onload = function() {
+      placeholder.style.display = 'none';
+      img.style.display = 'block';
+    };
+    img.src = 'http://localhost:' + port + '/?' + ts;
+    img.style.display = 'block';
+    placeholder.style.display = 'none';
+    _cs.mirrorConnected = true;
+  }
 }
 
 function csMirrorClick(event) {
-  if(!_cs.recording) return;
   var img = document.getElementById('cs-mirror-img');
   var rect = img.getBoundingClientRect();
-  var x = Math.round(event.clientX - rect.left);
-  var y = Math.round(event.clientY - rect.top);
+  var imgX = Math.round(event.clientX - rect.left);
+  var imgY = Math.round(event.clientY - rect.top);
   var imgW = rect.width;
+  var imgH = rect.height;
 
   // 십자선 표시
   var ch = document.getElementById('cs-crosshair');
-  if(ch){ ch.style.display='block'; ch.style.left=x+'px'; ch.style.top=y+'px'; }
+  if (ch) { ch.style.display='block'; ch.style.left=imgX+'px'; ch.style.top=imgY+'px'; }
 
-  // 디바이스 실제 너비 (기본 1080 — 실제 연결 시 hierarchy에서 읽어야 함)
-  var displayW = 1080;
+  // 디바이스 실제 너비: _csGetDeviceDimensions() 로 통합 읽기 (Android/iOS 공통)
+  var _dims = _csGetDeviceDimensions();
+  var displayW = _dims.w;
+  var _hierLoaded = !!_csHierarchyDom;
 
+  // hierarchy 미로드 시 좌표 기본값(1080) 사용 — 사용자에게 알림
+  if (!_hierLoaded) {
+    csStatusMsg('⚠️ Hierarchy가 로드되지 않았습니다. 좌표가 부정확할 수 있습니다 — 잠시 후 Hierarchy 새로고침을 눌러주세요.');
+  }
+
+  // 이미지 → 디바이스 좌표 (MJPEG aspect 유지 가정)
+  var scale = displayW / imgW;
+  var devX = Math.round(imgX * scale);
+  var devY = Math.round(imgY * scale);
+
+  // Hierarchy에서 해당 좌표 노드 찾아 트리 하이라이트 + element detail 업데이트
+  if (_csHierarchyDom) {
+    var hitNode = csFindSmallestNodeAt(devX, devY, _csHierarchyDom.documentElement);
+    if (hitNode) csHighlightNodeInTree(hitNode);
+  }
+
+  // 미러 클릭은 항상 Appium에 탭 전달 (녹화 상태 무관)
   fetch('/capture/tap', {
     method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({session_id:_cs.sessionId, x:x, y:y, img_width:Math.round(imgW), display_width:displayW, context:_cs.context})
+    body: JSON.stringify({session_id:_cs.sessionId, x:imgX, y:imgY, img_width:Math.round(imgW), display_width:displayW, context:_cs.context})
   }).then(function(r){ return r.json(); }).then(function(d){
-    if(!d.ok) csStatusMsg('tap 실패: ' + (d.error||''));
+    if (!d.ok) {
+      csStatusMsg('⚠️ ' + (d.error || 'tap 실패'));
+    }
   }).catch(function(err){ csStatusMsg('오류: ' + err); });
 }
 
@@ -2508,15 +2982,610 @@ function csSetContext(ctx, btn) {
   document.getElementById('cs-ctx-webview').classList.toggle('active', ctx==='webview');
 }
 
+// ── Hierarchy XML Tree ─────────────────────────────────────────────────
+var _csHierarchyDom = null;   // parsed DOMDocument
+var _csNodeIdMap = {};        // nodeId (string) → XML element
+
+function csParseXMLBounds(boundsStr) {
+  // Android: "[x1,y1][x2,y2]"
+  var m = boundsStr && boundsStr.match(/\[(-?\d+),(-?\d+)\]\[(-?\d+),(-?\d+)\]/);
+  if (!m) return null;
+  return { x1: +m[1], y1: +m[2], x2: +m[3], y2: +m[4] };
+}
+
+function csParseNodeBounds(xmlNode) {
+  // Android: bounds attribute
+  var b = csParseXMLBounds(xmlNode.getAttribute('bounds'));
+  if (b) return b;
+  // iOS: x, y, width, height attributes
+  var x = xmlNode.getAttribute('x'), y = xmlNode.getAttribute('y');
+  var w = xmlNode.getAttribute('width'), h = xmlNode.getAttribute('height');
+  if (x !== null && y !== null && w !== null && h !== null) {
+    return { x1: +x, y1: +y, x2: +x + +w, y2: +y + +h };
+  }
+  return null;
+}
+
+/**
+ * 디바이스 논리 해상도 반환.
+ * iOS: AppiumAUT 루트에 width/height 없음 → 첫 번째 자식(Application)에서 읽음.
+ * Android: 루트 bounds 또는 width/height 속성 사용.
+ */
+function _csGetDeviceDimensions() {
+  if (!_csHierarchyDom) return { w: 1080, h: 2400 };
+  var root = _csHierarchyDom.documentElement;
+
+  // 1) 루트 직접 읽기 (Android 방식)
+  var rw = parseInt(root.getAttribute('width'));
+  var rh = parseInt(root.getAttribute('height'));
+  if (rw > 0 && rh > 0) return { w: rw, h: rh };
+
+  // 2) 루트 bounds 속성 (Android fallback)
+  var rb = csParseNodeBounds(root);
+  if (rb) {
+    var bw = rb.x2 - rb.x1, bh = rb.y2 - rb.y1;
+    if (bw > 0 && bh > 0) return { w: bw, h: bh };
+  }
+
+  // 3) iOS: AppiumAUT 자식(Application)에서 읽기
+  for (var i = 0; i < root.children.length; i++) {
+    var child = root.children[i];
+    var cw = parseInt(child.getAttribute('width'));
+    var ch = parseInt(child.getAttribute('height'));
+    if (cw > 0 && ch > 0) return { w: cw, h: ch };
+    var cb = csParseNodeBounds(child);
+    if (cb) {
+      var cbw = cb.x2 - cb.x1, cbh = cb.y2 - cb.y1;
+      if (cbw > 0 && cbh > 0) return { w: cbw, h: cbh };
+    }
+  }
+
+  return { w: 1080, h: 2400 }; // 최후 fallback
+}
+
+function csNodeShortLabel(node) {
+  // Android: class / resource-id / text / content-desc
+  // iOS:     type  / name         / label / value
+  var cls  = (node.getAttribute('class') || '').split('.').pop();
+  var type = (node.getAttribute('type')  || '').replace('XCUIElementType', '');
+  var rid  = node.getAttribute('resource-id') || '';
+  var txt  = (node.getAttribute('text')   || '').trim();
+  var cid  = (node.getAttribute('content-desc') || '').trim();
+  var name = (node.getAttribute('name')   || '').trim();
+  var lbl  = (node.getAttribute('label')  || '').trim();
+
+  var tag   = cls || type || node.tagName || 'node';
+  var annot = rid  ? ' #' + rid.split('/').pop()
+            : cid  ? ' "' + cid.substring(0, 18)  + '"'
+            : txt  ? ' "' + txt.substring(0, 18)  + '"'
+            : name ? ' "' + name.substring(0, 18) + '"'
+            : lbl  ? ' "' + lbl.substring(0, 18)  + '"'
+            : '';
+  return tag + annot;
+}
+
+function csRenderLocatorCards(attrs) {
+  var cards = [];
+  var isIos = !attrs['class'] && (attrs['type'] || attrs['name'] !== undefined);
+
+  if (isIos) {
+    // iOS XCUITest locator 전략 — label 우선(사람이 읽는 텍스트), name fallback
+    var labelVal = attrs['label'] || '';
+    var nameVal  = attrs['name']  || '';
+    var accId = labelVal || nameVal;
+    if (accId)
+      cards.push({ strategy: 'accessibility-id', stars: 5, value: accId });
+    var typeVal = attrs['type'] || '';
+    if (typeVal && labelVal)
+      cards.push({ strategy: 'predicate string', stars: 4, value: 'type == "' + typeVal + '" AND label == "' + labelVal + '"' });
+    else if (typeVal)
+      cards.push({ strategy: 'predicate string', stars: 3, value: 'type == "' + typeVal + '"' });
+    if (typeVal)
+      cards.push({ strategy: 'xpath', stars: 2, value: '//' + typeVal });
+  } else {
+    // Android UiAutomator2 locator 전략
+    if (attrs['resource-id'])
+      cards.push({ strategy: 'resource-id', stars: 5, value: attrs['resource-id'] });
+    if (attrs['content-desc'])
+      cards.push({ strategy: 'accessibility-id', stars: 4, value: attrs['content-desc'] });
+    if (attrs['text'] && attrs['text'].trim())
+      cards.push({ strategy: 'text', stars: 3, value: attrs['text'] });
+    if (attrs['class']) {
+      var xpath = '//' + attrs['class'].replace(/\./g, '/');
+      cards.push({ strategy: 'xpath', stars: 1, value: xpath });
+    }
+  }
+  if (!cards.length) return '<span style="color:var(--text3)">locator 없음</span>';
+  var maxStars = Math.max.apply(null, cards.map(function(c){ return c.stars; }));
+  return cards.map(function(c) {
+    var stars = '★'.repeat(c.stars) + '☆'.repeat(5 - c.stars);
+    var badge = c.stars >= 4 ? 'stable' : (c.stars >= 3 ? 'medium' : 'low');
+    var badgeLabel = c.stars >= 4 ? '안정' : (c.stars >= 3 ? '보통' : '낮음');
+    var rec = c.stars === maxStars;
+    var strategyEsc = esc(c.strategy).replace(/'/g,'\\\'');
+    var valueEsc = esc(c.value).replace(/'/g,'\\\'');
+    var alreadyApproved = _cs.approvedLocators.some(function(l){ return l.strategy === c.strategy && l.value === c.value; });
+    var approveBtn = alreadyApproved
+      ? '<button class="cs-btn" style="padding:1px 7px;font-size:10px;line-height:1.4;opacity:.5;cursor:default" disabled>승인됨 ✓</button>'
+      : '<button class="cs-btn" style="padding:1px 7px;font-size:10px;line-height:1.4;color:#34d399;border-color:rgba(52,211,153,.4)" onclick="csApproveLocator(\'' + strategyEsc + '\',\'' + valueEsc + '\',' + c.stars + ',this)">승인 ✓</button>';
+    return '<div class="cs-loc-card' + (rec ? ' recommended' : '') + '">'
+      + '<div class="cs-loc-strategy" style="display:flex;align-items:center;justify-content:space-between">'
+      + '<span>' + esc(c.strategy) + ' <span class="cs-loc-badge ' + badge + '">' + badgeLabel + '</span></span>'
+      + '<span style="display:flex;gap:4px">'
+      + '<button class="cs-btn" style="padding:1px 7px;font-size:10px;line-height:1.4" onclick="csValidateLocator(\'' + strategyEsc + '\',\'' + valueEsc + '\',this)">검증</button>'
+      + approveBtn
+      + '</span>'
+      + '</div>'
+      + '<div class="cs-loc-stars">' + stars + '</div>'
+      + '<div class="cs-loc-value">' + esc(c.value) + '</div>'
+      + '<div class="cs-loc-validate-result" style="font-size:10px;margin-top:4px"></div>'
+      + '</div>';
+  }).join('');
+}
+
+function csApproveLocator(strategy, value, rating, btn) {
+  var already = _cs.approvedLocators.some(function(l){ return l.strategy === strategy && l.value === value; });
+  if (!already) {
+    _cs.approvedLocators.push({ strategy: strategy, value: value, rating: rating });
+  }
+  btn.textContent = '승인됨 ✓';
+  btn.disabled = true;
+  btn.style.opacity = '0.5';
+  btn.style.cursor = 'default';
+  btn.style.color = '';
+  btn.style.borderColor = '';
+  btn.removeAttribute('onclick');
+}
+
+function csValidateLocator(strategy, value, btn) {
+  var resultEl = btn.closest('.cs-loc-card').querySelector('.cs-loc-validate-result');
+  resultEl.textContent = '검증 중...'; resultEl.style.color = 'var(--text3)';
+  fetch('/capture/validate_locator', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({session_id: _cs.sessionId, strategy: strategy, value: value})
+  }).then(function(r){ return r.json(); }).then(function(d){
+    if (!d.ok) { resultEl.textContent = '❌ ' + (d.error||'오류'); resultEl.style.color = 'var(--fail)'; return; }
+    if (d.unique) {
+      resultEl.textContent = '✅ 유일 (1개 매칭) — 신뢰도: ' + d.confidence;
+      resultEl.style.color = '#34d399';
+    } else if (d.match_count === 0) {
+      resultEl.textContent = '⚠️ 매칭 없음 — hierarchy 새로고침 후 재시도';
+      resultEl.style.color = '#fbbf24';
+    } else {
+      resultEl.textContent = '⚠️ ' + d.match_count + '개 매칭 — 신뢰도: ' + d.confidence;
+      resultEl.style.color = '#fbbf24';
+    }
+  }).catch(function(err){
+    resultEl.textContent = '❌ 오류: ' + err; resultEl.style.color = 'var(--fail)';
+  });
+}
+
+function csRenderXMLNode(xmlNode, depth, pathId) {
+  if (xmlNode.nodeType !== 1) return '';
+  var children = Array.from(xmlNode.children);
+  var hasChildren = children.length > 0;
+  var label = csNodeShortLabel(xmlNode);
+  // Android bounds string, iOS 는 빈 문자열 (csParseNodeBounds로 처리)
+  var bounds = xmlNode.getAttribute('bounds') || '';
+  _csNodeIdMap[pathId] = xmlNode;
+  var indent = depth * 14;
+  var childHtml = hasChildren
+    ? children.map(function(c, i) { return csRenderXMLNode(c, depth + 1, pathId + '-' + i); }).join('')
+    : '';
+  return '<div class="cs-tree-node" data-nid="' + esc(pathId) + '">'
+    + '<div class="cs-tree-header" style="padding-left:' + indent + 'px"'
+    + ' onclick="csSelectTreeNode(this)"'
+    + ' onmouseenter="csHoverNode(this,' + JSON.stringify(bounds) + ')"'
+    + ' onmouseleave="csHoverNodeEnd()"'
+    + '>'
+    + (hasChildren
+        ? '<span class="cs-tree-toggle" onclick="csToggleTreeNode(event,this)">▶</span>'
+        : '<span class="cs-tree-toggle" style="opacity:.25">·</span>')
+    + '<span class="cs-tree-label">' + esc(label) + '</span>'
+    + (bounds ? '<span class="cs-tree-bounds">' + esc(bounds) + '</span>' : '')
+    + '</div>'
+    + (hasChildren ? '<div class="cs-tree-children" style="display:none">' + childHtml + '</div>' : '')
+    + '</div>';
+}
+
+function csToggleTreeNode(event, toggleEl) {
+  event.stopPropagation();
+  var nodeEl = toggleEl.closest('.cs-tree-node');
+  var children = nodeEl && nodeEl.querySelector(':scope > .cs-tree-children');
+  if (!children) return;
+  var open = children.style.display !== 'none';
+  children.style.display = open ? 'none' : '';
+  toggleEl.textContent = open ? '▶' : '▼';
+}
+
+function csSelectTreeNode(headerEl, skipScroll) {
+  document.querySelectorAll('.cs-tree-header.selected').forEach(function(el){ el.classList.remove('selected'); });
+  headerEl.classList.add('selected');
+  var nodeEl = headerEl.closest('.cs-tree-node');
+  var nid = nodeEl && nodeEl.getAttribute('data-nid');
+  var xmlNode = nid && _csNodeIdMap[nid];
+  if (!xmlNode) return;
+
+  // Collect attrs
+  var attrs = {};
+  for (var i = 0; i < xmlNode.attributes.length; i++) {
+    attrs[xmlNode.attributes[i].name] = xmlNode.attributes[i].value;
+  }
+
+  // Detail panel — Android + iOS 속성 통합
+  var isIos = !attrs['class'] && (attrs['type'] || attrs['name'] !== undefined);
+  var detailKeys = isIos
+    ? ['type','name','label','value','enabled','visible','accessible','x','y','width','height','index','bundleId']
+    : ['class','resource-id','content-desc','text','bounds','clickable','enabled','focusable','scrollable','package','index'];
+  var detail = document.getElementById('cs-element-detail');
+  detail.innerHTML = detailKeys.filter(function(k){ return attrs[k] !== undefined; }).map(function(k){
+    return '<div class="cs-detail-attr">'
+      + '<span class="cs-detail-key">' + esc(k) + '</span>'
+      + '<span class="cs-detail-val">' + esc(attrs[k]) + '</span>'
+      + '</div>';
+  }).join('') || '<span style="color:var(--text3)">속성 없음</span>';
+
+  // Save selected attrs for Step 추가
+  _cs.selectedNodeAttrs = attrs;
+
+  // Locator panel
+  document.getElementById('cs-locators').innerHTML = csRenderLocatorCards(attrs);
+
+  // Step 추가 섹션 표시 및 서브패널 초기화
+  var stepHint = document.getElementById('cs-step-hint');
+  if (stepHint) stepHint.style.display = 'none';
+  var addStepSection = document.getElementById('cs-add-step-section');
+  if (addStepSection) addStepSection.style.display = '';
+  // 선택 요소 레이블 업데이트
+  var selectedLabel = document.getElementById('cs-selected-label');
+  if (selectedLabel) selectedLabel.textContent = _csNodeLabel();
+  var inputArea = document.getElementById('cs-step-input-area');
+  if (inputArea) inputArea.style.display = 'none';
+  var assertMenu = document.getElementById('cs-assert-menu');
+  if (assertMenu) assertMenu.style.display = 'none';
+  var assertTextArea = document.getElementById('cs-assert-text-area');
+  if (assertTextArea) assertTextArea.style.display = 'none';
+
+  if (!skipScroll) headerEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+
+  // 미러에 하이라이트 박스 표시
+  // Android: attrs['bounds'] 사용 / iOS: x,y,width,height로 bounds 문자열 생성
+  var highlightBounds = attrs['bounds'] || null;
+  if (!highlightBounds && attrs['x'] !== undefined) {
+    var hx1 = +attrs['x'], hy1 = +attrs['y'];
+    var hx2 = hx1 + +attrs['width'], hy2 = hy1 + +attrs['height'];
+    highlightBounds = '[' + hx1 + ',' + hy1 + '][' + hx2 + ',' + hy2 + ']';
+  }
+  csHighlightElementOnMirror(highlightBounds, _csNodeLabel());
+}
+
+// ---- Step 추가 헬퍼 함수 ----
+
+// 선택된 노드에서 가장 좋은 locator 추출
+// 미러 화면에 선택 요소 하이라이트 박스 표시 (Appium Inspector 스타일)
+// hover 시 미러 파란색 하이라이트 (선택 보라색과 별도)
+function csHoverNode(headerEl, boundsStr) {
+  if (!boundsStr) return;
+  var hov = document.getElementById('cs-hover-highlight');
+  if (!hov) return;
+  var b = csParseXMLBounds(boundsStr);
+  if (!b) return;
+  var _dimH = _csGetDeviceDimensions();
+  var devW = _dimH.w, devH = _dimH.h;
+  var container = document.getElementById('cs-mirror-container');
+  if (!container) return;
+  var cW = container.clientWidth, cH = container.clientHeight;
+  if (!cW || !cH) return;
+  var imgAspect = devW / devH, conAspect = cW / cH;
+  var scaleX, scaleY, offsetX = 0, offsetY = 0;
+  if (imgAspect > conAspect) { scaleX = cW / devW; scaleY = scaleX; offsetY = (cH - devH * scaleY) / 2; }
+  else { scaleY = cH / devH; scaleX = scaleY; offsetX = (cW - devW * scaleX) / 2; }
+  hov.style.left   = (offsetX + b.x1 * scaleX) + 'px';
+  hov.style.top    = (offsetY + b.y1 * scaleY) + 'px';
+  hov.style.width  = Math.max(1, (b.x2 - b.x1) * scaleX) + 'px';
+  hov.style.height = Math.max(1, (b.y2 - b.y1) * scaleY) + 'px';
+  hov.style.display = 'block';
+}
+
+function csHoverNodeEnd() {
+  var hov = document.getElementById('cs-hover-highlight');
+  if (hov) hov.style.display = 'none';
+}
+
+
+function csHighlightElementOnMirror(boundsStr, label) {
+  var box = document.getElementById('cs-element-highlight');
+  var lbl = document.getElementById('cs-element-highlight-label');
+  if (!box || !lbl) return;
+
+  if (!boundsStr) { box.style.display = 'none'; lbl.style.display = 'none'; return; }
+
+  var b = csParseXMLBounds(boundsStr);
+  if (!b) { box.style.display = 'none'; lbl.style.display = 'none'; return; }
+
+  // 디바이스 해상도 (iOS AppiumAUT 루트 자식까지 탐색하는 통합 함수 사용)
+  var _dim = _csGetDeviceDimensions();
+  var devW = _dim.w, devH = _dim.h;
+
+  // 미러 컨테이너 실제 크기
+  var container = document.getElementById('cs-mirror-container');
+  if (!container) return;
+  var cW = container.clientWidth;
+  var cH = container.clientHeight;
+  if (!cW || !cH) return;
+
+  // 스케일: 컨테이너 내부에서 이미지가 aspect-ratio를 유지하며 표시되는 영역
+  // object-fit:contain → letterbox 방식
+  var imgAspect = devW / devH;
+  var conAspect = cW / cH;
+  var scaleX, scaleY, offsetX = 0, offsetY = 0;
+  if (imgAspect > conAspect) {
+    scaleX = cW / devW; scaleY = scaleX;
+    offsetY = (cH - devH * scaleY) / 2;
+  } else {
+    scaleY = cH / devH; scaleX = scaleY;
+    offsetX = (cW - devW * scaleX) / 2;
+  }
+
+  var left   = offsetX + b.x1 * scaleX;
+  var top    = offsetY + b.y1 * scaleY;
+  var width  = (b.x2 - b.x1) * scaleX;
+  var height = (b.y2 - b.y1) * scaleY;
+
+  box.style.left   = left   + 'px';
+  box.style.top    = top    + 'px';
+  box.style.width  = width  + 'px';
+  box.style.height = height + 'px';
+  box.style.display = '';
+
+  // 레이블: 박스 위 또는 아래에 표시
+  lbl.textContent = label || '';
+  var lblTop = top - 18;
+  if (lblTop < 0) lblTop = top + height + 2;
+  lbl.style.left = left + 'px';
+  lbl.style.top  = lblTop + 'px';
+  lbl.style.display = '';
+}
+
+function _csBestLocator() {
+  var attrs = _cs.selectedNodeAttrs;
+  if (!attrs) return null;
+  // 승인된 locator 우선
+  if (_cs.approvedLocators.length > 0) {
+    var a = _cs.approvedLocators[0];
+    return {strategy: a.strategy, value: a.value};
+  }
+  var isIos = !attrs['class'] && (attrs['type'] || attrs['name'] !== undefined);
+  if (isIos) {
+    // iOS: label(사람이 읽는 텍스트) > name(번들ID) > predicate > xpath
+    // label 우선: XCUITest ACCESSIBILITY_ID는 label/name 모두 매칭하고,
+    // label을 쓰면 화면 밖 요소도 자동 스크롤하여 탭 가능
+    var accId = attrs['label'] || attrs['name'] || '';
+    if (accId) return {strategy: 'accessibility-id', value: accId};
+    if (attrs['type']) return {strategy: 'xpath', value: '//' + attrs['type']};
+  } else {
+    // Android: app-specific resource-id > content-desc > text > generic-id > class
+    // android:id/* 같은 시스템 공용 ID는 비유일하므로 text/content-desc를 우선 사용
+    var rid = attrs['resource-id'] || '';
+    var isGenericId = !rid || rid.startsWith('android:id/') || rid.startsWith('android:attr/');
+    if (rid && !isGenericId) return {strategy: 'resource-id', value: rid};
+    if (attrs['content-desc']) return {strategy: 'accessibility-id', value: attrs['content-desc']};
+    if (attrs['text']) return {strategy: 'text', value: attrs['text']};
+    if (rid) return {strategy: 'resource-id', value: rid};  // 마지막 fallback
+    if (attrs['class']) return {strategy: 'class', value: attrs['class']};
+  }
+  return null;
+}
+
+// 요소 label (트리 표시용)
+function _csNodeLabel() {
+  var attrs = _cs.selectedNodeAttrs;
+  if (!attrs) return '선택된 요소';
+  // Android
+  var rid = attrs['resource-id'] || '';
+  if (rid) return rid.split('/').pop() || rid;
+  if (attrs['text']) return attrs['text'];
+  if (attrs['content-desc']) return attrs['content-desc'];
+  // iOS
+  if (attrs['name']) return attrs['name'];
+  if (attrs['label']) return attrs['label'];
+  return attrs['class'] || attrs['type'] || '요소';
+}
+
+function csAddStep(type) {
+  var loc = _csBestLocator();
+  if (!loc) { alert('요소를 먼저 선택하세요.'); return; }
+  var idx = _cs.actions.length;
+  _cs.actions.push({
+    index: idx + 1,
+    action: type,
+    strategy: loc.strategy,
+    value: loc.value,
+    label: _csNodeLabel(),
+    context: _cs.context,
+    expected: ''
+  });
+  csRenderTimeline();
+  var tl = document.getElementById('cs-timeline');
+  if (tl) tl.scrollTop = tl.scrollHeight;
+}
+
+function csAddStepInput() {
+  var loc = _csBestLocator();
+  if (!loc) { alert('요소를 먼저 선택하세요.'); return; }
+  document.getElementById('cs-step-input-area').style.display = '';
+  document.getElementById('cs-assert-menu').style.display = 'none';
+  document.getElementById('cs-assert-text-area').style.display = 'none';
+  document.getElementById('cs-step-input-val').focus();
+}
+
+function csConfirmInput() {
+  var val = document.getElementById('cs-step-input-val').value;
+  var loc = _csBestLocator();
+  if (!loc) return;
+  var idx = _cs.actions.length;
+  _cs.actions.push({
+    index: idx + 1,
+    action: 'input',
+    strategy: loc.strategy,
+    value: loc.value,
+    input_text: val,
+    label: _csNodeLabel(),
+    context: _cs.context,
+    expected: ''
+  });
+  document.getElementById('cs-step-input-val').value = '';
+  document.getElementById('cs-step-input-area').style.display = 'none';
+  csRenderTimeline();
+  var tl = document.getElementById('cs-timeline');
+  if (tl) tl.scrollTop = tl.scrollHeight;
+}
+
+function csCancelStepInput() {
+  document.getElementById('cs-step-input-area').style.display = 'none';
+  document.getElementById('cs-step-input-val').value = '';
+}
+
+function csToggleAssertMenu() {
+  var m = document.getElementById('cs-assert-menu');
+  var loc = _csBestLocator();
+  if (!loc) { alert('요소를 먼저 선택하세요.'); return; }
+  m.style.display = m.style.display === 'none' ? '' : 'none';
+  document.getElementById('cs-step-input-area').style.display = 'none';
+  document.getElementById('cs-assert-text-area').style.display = 'none';
+}
+
+function csAddAssert(assertType) {
+  document.getElementById('cs-assert-menu').style.display = 'none';
+  if (assertType === 'text_visible') {
+    document.getElementById('cs-assert-text-area').style.display = '';
+    var textVal = document.getElementById('cs-assert-text-val');
+    textVal.dataset.assertType = assertType;
+    textVal.focus();
+  } else {
+    _csCommitAssert(assertType, '');
+  }
+}
+
+function csConfirmAssertText() {
+  var val = document.getElementById('cs-assert-text-val').value;
+  _csCommitAssert('text_visible', val);
+  document.getElementById('cs-assert-text-val').value = '';
+  document.getElementById('cs-assert-text-area').style.display = 'none';
+}
+
+function csCancelAssert() {
+  document.getElementById('cs-assert-menu').style.display = 'none';
+  document.getElementById('cs-assert-text-area').style.display = 'none';
+}
+
+function _csCommitAssert(assertType, assertValue) {
+  var loc = _csBestLocator();
+  if (!loc) return;
+  var idx = _cs.actions.length;
+  _cs.actions.push({
+    index: idx + 1,
+    action: 'assertion',
+    assertion_type: assertType,
+    assertion_value: assertValue,
+    strategy: loc.strategy,
+    value: loc.value,
+    label: _csNodeLabel(),
+    context: _cs.context,
+    expected: ''
+  });
+  csRenderTimeline();
+  var tl = document.getElementById('cs-timeline');
+  if (tl) tl.scrollTop = tl.scrollHeight;
+}
+
+// ---- Step 추가 헬퍼 함수 끝 ----
+
+function csFindSmallestNodeAt(x, y, xmlNode) {
+  if (xmlNode.nodeType !== 1) return null;
+  var b = csParseNodeBounds(xmlNode);  // Android + iOS 통합 파서 사용
+  if (!b || x < b.x1 || x > b.x2 || y < b.y1 || y > b.y2) return null;
+  var result = xmlNode;
+  var resultArea = (b.x2 - b.x1) * (b.y2 - b.y1);
+  for (var i = 0; i < xmlNode.children.length; i++) {
+    var child = csFindSmallestNodeAt(x, y, xmlNode.children[i]);
+    if (child) {
+      var cb = csParseNodeBounds(child);  // Android + iOS 통합
+      if (cb) {
+        var area = (cb.x2 - cb.x1) * (cb.y2 - cb.y1);
+        if (area <= resultArea) { result = child; resultArea = area; }
+      }
+    }
+  }
+  return result;
+}
+
+function csHighlightNodeInTree(xmlNode) {
+  // Find nid for xmlNode
+  var foundNid = null;
+  for (var nid in _csNodeIdMap) {
+    if (_csNodeIdMap[nid] === xmlNode) { foundNid = nid; break; }
+  }
+  if (!foundNid) return;
+  var nodeEl = document.querySelector('.cs-tree-node[data-nid="' + foundNid + '"]');
+  if (!nodeEl) return;
+  // Expand all ancestors
+  var parent = nodeEl.parentElement;
+  while (parent) {
+    if (parent.classList && parent.classList.contains('cs-tree-children')) {
+      parent.style.display = '';
+      var toggle = parent.previousElementSibling && parent.previousElementSibling.querySelector('.cs-tree-toggle');
+      if (toggle) toggle.textContent = '▼';
+    }
+    parent = parent.parentElement;
+  }
+  var header = nodeEl.querySelector(':scope > .cs-tree-header');
+  if (header) csSelectTreeNode(header, false);
+}
+
 function csRefreshHierarchy() {
+  var treeEl = document.getElementById('cs-hierarchy-tree');
+  if(treeEl) treeEl.innerHTML = '<span style="color:var(--text3);font-size:11px">⏳ 로딩 중...</span>';
+
+  // 드라이버가 살아있으면 fresh snapshot → 파일 로드, 없으면 바로 파일 로드
+  if(!_cs.sessionId){ _csLoadHierarchyFromFile(); return; }
+
+  fetch('/capture/driver_alive').then(function(r){ return r.json(); }).then(function(d){
+    if(d.alive){
+      fetch('/capture/snapshot', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({session_id: _cs.sessionId, context: _cs.context})
+      }).then(function(){ _csLoadHierarchyFromFile(); })
+        .catch(function(){ _csLoadHierarchyFromFile(); });
+    } else {
+      // 드라이버 없음 — 디스크 파일에서 바로 로드
+      _csLoadHierarchyFromFile();
+    }
+  }).catch(function(){ _csLoadHierarchyFromFile(); });
+}
+
+function _csLoadHierarchyFromFile() {
   fetch('/capture/hierarchy?session_id=' + encodeURIComponent(_cs.sessionId) + '&context=' + _cs.context)
     .then(function(r){ return r.json(); }).then(function(d){
-      var tree = document.getElementById('cs-hierarchy-tree');
-      if(d.hierarchy){
-        // 간단한 XML 표시 (실제 트리 렌더링은 후속 구현)
-        tree.textContent = d.hierarchy.substring(0, 8000);
+      var treeEl = document.getElementById('cs-hierarchy-tree');
+      if (d.hierarchy) {
+        try {
+          _csNodeIdMap = {};
+          var parser = new DOMParser();
+          var xmlDoc = parser.parseFromString(d.hierarchy, 'application/xml');
+          var parseErr = xmlDoc.querySelector('parsererror');
+          if (parseErr) throw new Error('XML parse error');
+          _csHierarchyDom = xmlDoc;
+          treeEl.innerHTML = csRenderXMLNode(xmlDoc.documentElement, 0, '0');
+          // Expand ALL tree nodes
+          treeEl.querySelectorAll('.cs-tree-children').forEach(function(el){ el.style.display = ''; });
+          treeEl.querySelectorAll('.cs-tree-toggle').forEach(function(el){ el.textContent = '▼'; });
+        } catch (e) {
+          treeEl.textContent = d.hierarchy.substring(0, 8000);
+        }
       } else {
-        tree.innerHTML = '<span style="color:var(--text3)">hierarchy 없음</span>';
+        treeEl.innerHTML = '<span style="color:var(--text3)">hierarchy 없음</span>';
+        _csHierarchyDom = null;
       }
     }).catch(function(err){
       document.getElementById('cs-hierarchy-tree').textContent = '오류: ' + err;
@@ -2531,40 +3600,185 @@ function csToggleRecord() {
   btn.style.borderColor = _cs.recording ? 'rgba(248,113,113,.4)' : '';
 }
 
+function csSendBack() {
+  fetch('/capture/back', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({session_id: _cs.sessionId, context: _cs.context})
+  }).then(function(r){ return r.json(); }).then(function(d){
+    if (!d.ok) csStatusMsg('Back 실패: ' + (d.error||''));
+  }).catch(function(err){ csStatusMsg('Back 오류: ' + err); });
+}
+
 function csClearActions() {
   if(!confirm('Action Timeline을 초기화하시겠습니까?')) return;
   _cs.actions = [];
   csRenderTimeline();
 }
 
-var _CS_ACTION_ICONS = {tap:'👆',input:'⌨️',back:'⬅️',context_switch:'🔄',assertion:'✅'};
+// 요소 선택 없이 바로 추가하는 직접 스텝
+function csAddDirectStep(type) {
+  var step;
+  if (type === 'back') {
+    step = { type: 'back', label: 'Back 버튼', step: 'Back 버튼을 누른다', expected: '' };
+    _cs.actions.push(step);
+    csRenderTimeline();
+    csStatusMsg(step.label + ' 스텝이 추가되었습니다.');
+    // 실제 Back 실행 (비동기) → 완료 후 hierarchy 자동 새로고침
+    var sid = _cs.sessionId;
+    if(sid) fetch('/capture/back', {method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({session_id:sid})
+    }).then(function(){ setTimeout(function(){ csRefreshHierarchy(); }, 1200); })
+      .catch(function(){});
+  } else if (type === 'scroll_down' || type === 'scroll_up') {
+    var dir = (type === 'scroll_up') ? 'up' : 'down';
+    var label = dir === 'up' ? '위로 스크롤' : '아래로 스크롤';
+    step = { type: type, label: label,
+             step: '화면을 ' + (dir === 'up' ? '위' : '아래') + '로 스크롤한다', expected: '' };
+    _cs.actions.push(step);
+    csRenderTimeline();
+    csStatusMsg(label + ' — 디바이스 스크롤 중...');
+
+    // 실제 디바이스 스크롤 실행 → 완료 후 hierarchy 자동 새로고침
+    var sid2 = _cs.sessionId;
+    if(sid2) {
+      fetch('/capture/scroll', {method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({session_id:sid2, direction:dir})
+      }).then(function(r){ return r.json(); }).then(function(d){
+        if(d.ok){
+          csStatusMsg(label + ' 완료 — Hierarchy 새로고침 중...');
+          // 잠시 후 자동 새로고침
+          setTimeout(function(){ csRefreshHierarchy(); }, 800);
+        } else {
+          csStatusMsg('⚠️ 스크롤 실패: ' + (d.error||''));
+        }
+      }).catch(function(e){ csStatusMsg('⚠️ 스크롤 오류: ' + e); });
+    } else {
+      csStatusMsg('⚠️ 세션 없음 — 스텝만 추가됨');
+    }
+  } else if (type === 'wait') {
+    var sec = prompt('대기 시간 (초):', '1');
+    if (!sec) return;
+    step = { type: 'wait', label: sec + '초 대기', step: sec + '초 대기한다', expected: '' };
+    _cs.actions.push(step);
+    csRenderTimeline();
+    csStatusMsg(step.label + ' 스텝이 추가되었습니다.');
+  }
+}
+
+var _CS_ACTION_ICONS = {tap:'👆',input:'⌨️',back:'⬅️',scroll_down:'↓',scroll_up:'↑',wait:'⏱',context_switch:'🔄',assertion:'✅'};
+
+function csActionStepText(a) {
+  // Human-readable step draft (Phase 5)
+  switch(a.action) {
+    case 'tap':
+      if (a.target_ref) return '"' + a.target_ref + '" 탭';
+      if (a.device_x !== undefined) return '좌표 (' + a.device_x + ', ' + a.device_y + ') 탭';
+      return '화면 탭';
+    case 'input':
+      var val = a.is_secret ? '***' : ('"' + (a.value||'') + '"');
+      if (a.target_ref) return '"' + a.target_ref + '"에 ' + val + ' 입력';
+      return val + ' 입력';
+    case 'back':
+      return '뒤로가기 (Back)';
+    case 'context_switch':
+      return (a.to_context === 'webview' ? 'WebView 전환' : 'Native 전환');
+    case 'assertion':
+      var aLabel = a.label || a.value || a.description || a.target_ref || '';
+      if (a.assertion_type === 'text_visible') return aLabel + ' 텍스트 확인: "' + (a.assertion_value || '') + '"';
+      if (a.assertion_type === 'element_present') return aLabel + ' 요소 존재 확인';
+      if (a.assertion_type === 'element_absent') return aLabel + ' 요소 없음 확인';
+      return '검증: ' + (a.description || a.target_ref || aLabel);
+    default:
+      return a.action + (a.target_ref ? ' → ' + a.target_ref : '');
+  }
+}
 
 function csRenderTimeline() {
   var el = document.getElementById('cs-timeline');
-  var empty = document.getElementById('cs-timeline-empty');
-  if(!_cs.actions.length){
-    if(empty) empty.style.display='';
-    el.innerHTML = '<span id="cs-timeline-empty" style="color:var(--text3)">녹화를 시작하고 요소를 탭하세요.</span>';
+  if (!_cs.actions.length) {
+    el.innerHTML = '<span id="cs-timeline-empty" style="color:var(--text3)">트리에서 요소를 선택하고 스텝을 추가하세요.</span>';
     return;
   }
-  el.innerHTML = _cs.actions.map(function(a){
+  el.innerHTML = _cs.actions.map(function(a, i){
     var icon = _CS_ACTION_ICONS[a.action] || '·';
-    var body = a.action + (a.target_ref ? ' → ' + a.target_ref : '') + (a.device_x !== undefined ? ' (' + a.device_x + ',' + a.device_y + ')' : '');
-    return '<div class="cs-action-row">'
+    var stepText = csActionStepText(a);
+    var expectedVal = esc(a.expected || '');
+    return '<div class="cs-action-row" style="flex-direction:column;align-items:stretch">'
+      + '<div style="display:flex;align-items:center;gap:8px">'
       + '<span class="cs-action-idx">' + a.index + '</span>'
       + '<span class="cs-action-icon">' + icon + '</span>'
-      + '<span class="cs-action-body">' + esc(body) + '</span>'
-      + '<span class="cs-action-ctx">' + esc(a.context||'') + '</span>'
+      + '<span class="cs-action-body">' + esc(stepText) + '</span>'
+      + '<span class="cs-action-ctx" style="font-size:9px">' + esc(a.context||'') + '</span>'
+      + '</div>'
+      + '<textarea data-action-idx="' + i + '" placeholder="기대 결과 입력 (선택)"'
+      + ' style="margin-top:4px;margin-left:44px;width:calc(100% - 48px);height:36px;resize:none;font-size:10px;'
+      + 'padding:4px 6px;border-radius:4px;border:1px solid var(--border);background:rgba(255,255,255,.04);'
+      + 'color:var(--text);outline:none;transition:height .15s;box-sizing:border-box"'
+      + ' oninput="csSetStepExpected(' + i + ',this.value)"'
+      + ' onfocus="this.style.height=\'60px\'" onblur="if(!this.value)this.style.height=\'36px\'">'
+      + expectedVal + '</textarea>'
       + '</div>';
   }).join('');
+}
+
+function csSetStepExpected(idx, value) {
+  if (_cs.actions[idx] !== undefined) {
+    _cs.actions[idx].expected = value;
+  }
 }
 
 function csPreviewTC() {
   var tcId = document.getElementById('cs-tc-id').value.trim() || 'tc_preview';
   var title = document.getElementById('cs-tc-title').value.trim() || '(제목 없음)';
-  var steps = _cs.actions.map(function(a,i){ return (i+1)+'. '+a.action+(a.target_ref?' → '+a.target_ref:''); });
-  var md = '# ' + tcId + ': ' + title + '\n\n## 단계\n\n' + steps.join('\n') + '\n\n## 기대결과\n\n_(기대 결과를 입력하세요)_';
-  alert('=== Markdown TC 미리보기 ===\n\n' + md);
+  var platform = document.getElementById('cs-platform').value || 'android';
+  var group = document.getElementById('cs-group').value.trim() || 'default';
+  var steps = _cs.actions.map(function(a, i){ return (i+1) + '. ' + csActionStepText(a); });
+  var expected = _cs.actions.map(function(){ return ''; });
+
+  // Markdown
+  var md = '# ' + tcId + ': ' + title + '\n\n'
+    + '## 플랫폼\n\n' + platform.charAt(0).toUpperCase() + platform.slice(1) + '\n\n'
+    + '## 사전 조건\n\n앱 실행 및 초기 화면 진입\n\n'
+    + '## 단계\n\n' + steps.join('\n') + '\n\n'
+    + '## 기대결과\n\n_(기대 결과를 입력하세요)_\n\n'
+    + '## 태그\n\ncapture-studio';
+
+  // pytest 초안
+  var snakeId = tcId.replace(/-/g, '_');
+  var pyLines = [
+    '# Auto-generated by Capture Studio',
+    '# TC: ' + tcId + ' — ' + title,
+    'import pytest',
+    '',
+    'def test_' + snakeId + '(appium_driver):',
+    '    """' + title + '"""',
+  ];
+  _cs.actions.forEach(function(a, i) {
+    pyLines.push('    # Step ' + (i+1) + ': ' + csActionStepText(a));
+    if (a.action === 'tap' && a.device_x !== undefined) {
+      if (a.target_ref) {
+        pyLines.push('    # driver.find_element("id", "' + (a.target_ref||'') + '").click()');
+      } else {
+        pyLines.push('    # driver.tap([(' + a.device_x + ', ' + a.device_y + ')])');
+      }
+    } else if (a.action === 'input') {
+      pyLines.push('    # elem.send_keys("' + (a.is_secret ? '***' : (a.value||'')) + '")');
+    } else if (a.action === 'back') {
+      pyLines.push('    # driver.back()');
+    }
+  });
+  pyLines.push('    pass  # TODO: add assertions');
+
+  document.getElementById('cs-preview-md').textContent = md;
+  document.getElementById('cs-preview-py').textContent = pyLines.join('\n');
+  var modal = document.getElementById('cs-preview-modal');
+  modal.style.display = 'flex';
+}
+
+function csClosePreview() {
+  document.getElementById('cs-preview-modal').style.display = 'none';
 }
 
 function csSaveTC() {
@@ -2573,7 +3787,17 @@ function csSaveTC() {
   if(!tcId || !title){ alert('TC ID와 제목을 입력하세요.'); return; }
   if(!_cs.actions.length){ alert('기록된 Action이 없습니다.'); return; }
 
-  var steps = _cs.actions.map(function(a){ return a.action+(a.target_ref?' → '+a.target_ref:''); });
+  var steps = _cs.actions.map(function(a){ return csActionStepText(a); });
+  var expected = _cs.actions.map(function(a){ return a.expected || ''; });
+  var platform = document.getElementById('cs-platform').value;
+
+  // approvedLocators 배열을 서버가 기대하는 dict 형식으로 변환
+  var approvedDict = {};
+  _cs.approvedLocators.forEach(function(l) {
+    var key = tcId + '.' + l.strategy.replace(/-/g, '_');
+    approvedDict[key] = { strategy: l.strategy, value: l.value, confidence: l.rating / 5 };
+  });
+
   document.getElementById('cs-save-btn').disabled = true;
   document.getElementById('cs-save-status').textContent = '저장 중...';
 
@@ -2583,19 +3807,23 @@ function csSaveTC() {
       session_id: _cs.sessionId,
       tc_id: tcId,
       title: title,
-      platform: document.getElementById('cs-platform').value,
+      platform: platform,
       tc_group: document.getElementById('cs-group').value.trim() || 'default',
       steps: steps,
-      expected: steps.map(function(){ return ''; }),
-      approved_locators: _cs.approvedLocators,
+      expected: expected,
+      approved_locators: approvedDict,
+      overwrite: true,
     })
   }).then(function(r){ return r.json(); }).then(function(d){
     document.getElementById('cs-save-btn').disabled = false;
     if(d.ok){
-      var msg = '✅ 저장 완료: ' + d.tc_file;
-      if(d.quality_tag) msg += ' ⚠️ 품질 낮음: 기대 결과가 없습니다.';
-      document.getElementById('cs-save-status').textContent = msg;
-      document.getElementById('cs-save-status').style.color = d.quality_tag ? 'var(--warn)' : 'var(--pass)';
+      var msg = '✅ TC 저장 완료 — 테스트 코드 생성 중…';
+      if(d.quality_tag) msg += ' ⚠️ 기대 결과 누락';
+      var statusEl = document.getElementById('cs-save-status');
+      statusEl.textContent = msg;
+      statusEl.style.color = 'var(--text3)';
+      // TC 저장 후 자동으로 테스트 코드 생성
+      csAutoGenerate(platform, d.tc_file);
     } else {
       document.getElementById('cs-save-status').textContent = '❌ ' + (d.error||'저장 실패');
       document.getElementById('cs-save-status').style.color = 'var(--fail)';
@@ -2607,15 +3835,168 @@ function csSaveTC() {
   });
 }
 
+function csShowGenerateBtn(platform) {} // 자동 생성으로 대체 — 수동 버튼 불필요
+
+// _cs.actions를 서버 코드 생성 포맷으로 변환
+function _csActionsForCodeGen() {
+  return _cs.actions.map(function(a) {
+    return {
+      type: a.action || a.type || '',
+      label: a.label || a.target_ref || '',
+      locator_strategy: a.strategy || '',   // csAddStep에서 저장한 strategy
+      locator_value:    a.value   || '',    // csAddStep에서 저장한 locator value
+      assertion_type:   a.assertion_type  || '',
+      assertion_value:  a.assertion_value || '',
+      input_value:      a.input_text      || '',
+      wait_seconds:     a.wait_seconds    || 1,
+    };
+  });
+}
+
+// TC 저장 직후 자동으로 테스트 코드 생성 + 결과 패널 표시
+function csAutoGenerate(platform, tcFile) {
+  var tcId = document.getElementById('cs-tc-id').value.trim() || 'tc_generated';
+  var title = document.getElementById('cs-tc-title').value.trim() || 'TC';
+  var group = document.getElementById('cs-group').value.trim() || 'default';
+  fetch('/capture/generate_from_actions', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      session_id: _cs.sessionId,
+      tc_id: tcId, title: title, platform: platform, tc_group: group,
+      actions: _csActionsForCodeGen(),
+    })
+  }).then(function(r){ return r.json(); }).then(function(d){
+    var statusEl = document.getElementById('cs-save-status');
+    if (d.returncode === 0 || d.ok) {
+      statusEl.textContent = '✅ 테스트 코드 생성 완료 → ' + (d.generated_file || ('tests/generated/' + platform));
+      statusEl.style.color = 'var(--pass)';
+      // 생성된 코드 패널 표시
+      csShowGeneratedCode(platform, d);
+    } else {
+      statusEl.textContent = '⚠️ TC 저장됨, 코드 생성 실패: ' + (d.error || ('exit ' + d.returncode));
+      statusEl.style.color = 'var(--warn)';
+    }
+  }).catch(function(err){
+    document.getElementById('cs-save-status').textContent = '⚠️ TC 저장됨, 코드 생성 오류: ' + err;
+    document.getElementById('cs-save-status').style.color = 'var(--warn)';
+  });
+}
+
+// 생성된 Python 테스트 코드를 코드 뷰어 패널에 표시
+function csShowGeneratedCode(platform, genResult) {
+  var existing = document.getElementById('cs-code-panel');
+  if (existing) existing.remove();
+
+  var code = genResult.output || genResult.code || '';
+  // output이 로그면 generated_file 경로로 직접 읽기 시도
+  var filePath = genResult.generated_file || '';
+
+  var panel = document.createElement('div');
+  panel.id = 'cs-code-panel';
+  panel.style.cssText = 'margin-top:14px;border:1px solid rgba(96,165,250,.35);border-radius:10px;overflow:hidden';
+  panel.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:rgba(96,165,250,.08);border-bottom:1px solid rgba(96,165,250,.2)">'
+    + '<span style="font-size:12px;font-weight:600;color:#60a5fa">🐍 생성된 테스트 코드 (' + platform + ')</span>'
+    + '<button class="cs-btn" onclick="csLoadGeneratedFile(\'' + platform + '\')" style="padding:3px 10px;font-size:10px">↻ 새로고침</button>'
+    + '</div>'
+    + '<pre id="cs-code-body" style="margin:0;padding:14px;overflow-x:auto;font:12px/1.6 monospace;color:var(--text2);background:rgba(8,7,27,.4);max-height:420px;overflow-y:auto">'
+    + (code ? esc(code.slice(0,4000)) : '코드를 불러오는 중…')
+    + '</pre>';
+
+  var timeline = document.getElementById('cs-timeline');
+  if (timeline && timeline.parentNode) {
+    timeline.parentNode.parentNode.appendChild(panel);
+  }
+
+  // 생성된 파일 내용 직접 로드
+  csLoadGeneratedFile(platform);
+}
+
+function csLoadGeneratedFile(platform) {
+  fetch('/capture/generated_code?platform=' + platform)
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      var el = document.getElementById('cs-code-body');
+      if (el && d.code) el.textContent = d.code;
+      else if (el && d.error) el.textContent = '// ' + d.error;
+    }).catch(function(){});
+}
+
+function csRunGenerate(platform, btn) { csAutoGenerate(platform); }
+
+// 드라이버 죽음 상태에서 setup 화면에서 재실행
+function csReLaunchFromSetup() {
+  var statusEl = document.getElementById('cs-setup-status');
+  var _rfsIsIos = (_cs.screenshotMode === 'poll');
+  var _rfsTimeout = _rfsIsIos ? 180000 : 45000;
+  var _rfsStartTs = Date.now();
+  if(statusEl){ statusEl.textContent = '📱 앱 재실행 중...'; statusEl.style.color='#a78bfa'; }
+  var _rfsProgress = setInterval(function(){
+    var s = Math.round((Date.now() - _rfsStartTs) / 1000);
+    if(statusEl) statusEl.textContent = '📱 앱 재실행 중… (' + s + '초 경과' + (_rfsIsIos ? ' / 최대 180초' : '') + ')';
+  }, 2000);
+  var _ctrl = new AbortController();
+  var _ctrlTimer = setTimeout(function(){ _ctrl.abort(); }, _rfsTimeout);
+  fetch('/capture/launch', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({session_id: _cs.sessionId}),
+    signal: _ctrl.signal
+  }).then(function(r){ clearTimeout(_ctrlTimer); clearInterval(_rfsProgress); return r.json(); }).then(function(d){
+    if(d.ok){
+      document.getElementById('cs-setup').style.display='none';
+      document.getElementById('cs-workspace').style.display='block'; setTimeout(function(){ csStartMirrorObserver(); csSyncPanelHeight(); }, 100);
+      document.getElementById('cs-session-badge').style.display='';
+      csRenderTimeline();
+      csMirrorConnect();
+      setTimeout(function(){ csRefreshHierarchy(); }, 1500);
+      var saveStatus = document.getElementById('cs-save-status');
+      if(saveStatus){ saveStatus.textContent = '✅ 앱 재실행됨'; saveStatus.style.color='var(--pass)'; }
+    } else {
+      if(statusEl){ statusEl.textContent = '❌ 재실행 실패: ' + (d.error||'알 수 없는 오류'); statusEl.style.color='var(--fail)'; }
+    }
+  }).catch(function(err){
+    clearTimeout(_ctrlTimer); clearInterval(_rfsProgress);
+    var s2 = Math.round((Date.now() - _rfsStartTs) / 1000);
+    var msg = err && err.name==='AbortError'
+      ? '⏱ ' + s2 + '초 초과 — Appium/디바이스 상태를 확인하세요'
+      : '❌ 오류: ' + err;
+    if(statusEl){ statusEl.textContent = msg; statusEl.style.color='var(--fail)'; }
+  });
+}
+
+// 이전 세션 버리고 새 세션 시작
+function csForceNewSession() {
+  fetch('/capture/end', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({session_id: _cs.sessionId})
+  }).catch(function(){}).finally(function(){
+    if(_cs.pollTimer){ clearInterval(_cs.pollTimer); _cs.pollTimer = null; }
+    csStopScreenWatcher();
+    _cs.sessionId = '';
+    _cs.actions = [];
+    _cs.recording = false;
+    _cs.approvedLocators = [];
+    _cs.screenshotMode = 'mjpeg';
+    document.getElementById('cs-setup').style.display='block';
+    document.getElementById('cs-workspace').style.display='none';
+    document.getElementById('cs-session-badge').style.display='none';
+    document.getElementById('cs-start-btn').disabled = false;
+    var statusEl = document.getElementById('cs-setup-status');
+    if(statusEl){ statusEl.textContent = '새 세션을 시작할 수 있습니다.'; statusEl.style.color='var(--text3)'; }
+  });
+}
+
 function csEndSession() {
   if(!confirm('Capture 세션을 종료하시겠습니까? 저장하지 않은 기록은 유실됩니다.')) return;
   fetch('/capture/end', {
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({session_id: _cs.sessionId})
   }).then(function(r){ return r.json(); }).then(function(d){
+    if(_cs.pollTimer){ clearInterval(_cs.pollTimer); _cs.pollTimer = null; }
+    csStopScreenWatcher();
     _cs.sessionId = '';
     _cs.actions = [];
     _cs.recording = false;
+    _cs.screenshotMode = 'mjpeg';
     document.getElementById('cs-setup').style.display='block';
     document.getElementById('cs-workspace').style.display='none';
     document.getElementById('cs-session-badge').style.display='none';
@@ -2647,7 +4028,9 @@ async function csOpenHealReview(platform, testFile) {
 
   // 4. 워크스페이스 표시 (세션 없어도 재확인 모드 진입)
   document.getElementById('cs-setup').style.display='none';
-  document.getElementById('cs-workspace').style.display='block';
+  document.getElementById('cs-workspace').style.display='block'; setTimeout(function(){ csStartMirrorObserver(); csSyncPanelHeight(); }, 100);
+  // 활성 세션이 있으면 미러링 자동 시작
+  if(_cs.sessionId) { setTimeout(function(){ csMirrorConnect(); csRefreshHierarchy(); }, 500); }
 
   // 5. 재확인 안내 메시지
   var saveStatus = document.getElementById('cs-save-status');
@@ -2684,5 +4067,25 @@ document.addEventListener('DOMContentLoaded', function(){
   }
 });
 </script>
+
+<!-- ── TC Preview Modal ─────────────────────────────────────── -->
+<div id="cs-preview-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);align-items:center;justify-content:center">
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;width:min(96vw,720px);max-height:88vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.6)">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border)">
+      <div style="font-size:13px;font-weight:700;color:var(--text)">TC 미리보기</div>
+      <button class="cs-btn" onclick="csClosePreview()" style="padding:3px 10px;font-size:11px">닫기 ✕</button>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:16px 18px;display:flex;gap:16px;flex-wrap:wrap">
+      <div style="flex:1;min-width:260px">
+        <div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:8px">Markdown TC</div>
+        <pre id="cs-preview-md" style="margin:0;white-space:pre-wrap;font-size:11px;font-family:monospace;color:var(--text);background:rgba(8,7,27,.3);border:1px solid var(--border);border-radius:6px;padding:12px;overflow-x:auto"></pre>
+      </div>
+      <div style="flex:1;min-width:260px">
+        <div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:8px">pytest 코드 (초안)</div>
+        <pre id="cs-preview-py" style="margin:0;white-space:pre-wrap;font-size:10px;font-family:monospace;color:var(--text);background:rgba(8,7,27,.3);border:1px solid var(--border);border-radius:6px;padding:12px;overflow-x:auto"></pre>
+      </div>
+    </div>
+  </div>
+</div>
 </body>
 </html>
