@@ -959,6 +959,9 @@ async def capture_snapshot(request: Request):
     if driver is None:
         return JSONResponse({"ok": False, "error": "Appium 세션 없음"}, status_code=409)
 
+    # hierarchy 조회도 활동으로 간주 → last_activity_at 갱신 (30분 만료 방지)
+    save_capture_session({**session, "last_activity_at": datetime.now().isoformat()})
+
     loop = asyncio.get_event_loop()
     try:
         snap_id = await loop.run_in_executor(
@@ -1104,27 +1107,60 @@ async def capture_validate_locator(request: Request):
     except Exception as exc:
         return JSONResponse({"ok": False, "error": f"XML 파싱 오류: {exc}"}, status_code=500)
 
-    attr_map = {
-        "resource-id":      "resource-id",
-        "accessibility-id": "content-desc",
-        "text":             "text",
-    }
+    # 플랫폼별 XML 속성 매핑
+    # Android: content-desc (accessibility), resource-id, text
+    # iOS: name (accessibilityIdentifier), label (visible text), value
+    platform = session.get("platform", "android")
+    if platform == "ios":
+        attr_map = {
+            "accessibility-id": "name",    # iOS accessibilityIdentifier → XML name
+            "accessibility id": "name",
+            "name":             "name",
+            "label":            "label",   # iOS visible label
+            "value":            "value",
+            "text":             "label",   # iOS에서 text는 label로 매핑
+        }
+    else:
+        attr_map = {
+            "resource-id":      "resource-id",
+            "accessibility-id": "content-desc",
+            "accessibility id": "content-desc",
+            "text":             "text",
+        }
+
     count: int = 0
     matched_bounds: list[str] = []
+
+    def _elem_bounds(elem: ET.Element) -> str:
+        """Android bounds 문자열 또는 iOS x/y/width/height → bounds 문자열."""
+        b = elem.get("bounds", "")
+        if b:
+            return b
+        # iOS: x, y, width, height → "[x1,y1][x2,y2]" 형식 생성
+        x = elem.get("x"); y = elem.get("y")
+        w = elem.get("width"); h = elem.get("height")
+        if x is not None and y is not None and w is not None and h is not None:
+            try:
+                x2 = int(float(x)) + int(float(w))
+                y2 = int(float(y)) + int(float(h))
+                return f"[{int(float(x))},{int(float(y))}][{x2},{y2}]"
+            except (ValueError, TypeError):
+                pass
+        return ""
 
     if strategy in attr_map:
         xml_attr = attr_map[strategy]
         for elem in root.iter():
             if elem.get(xml_attr) == value:
                 count += 1
-                b = elem.get("bounds", "")
+                b = _elem_bounds(elem)
                 if b:
                     matched_bounds.append(b)
     elif strategy == "xpath":
         try:
             matches        = root.findall(value)
             count          = len(matches)
-            matched_bounds = [m.get("bounds", "") for m in matches if m.get("bounds")]
+            matched_bounds = [_elem_bounds(m) for m in matches if _elem_bounds(m)]
         except Exception as exc:
             return JSONResponse({"ok": False, "error": f"XPath 오류: {exc}"}, status_code=400)
     else:

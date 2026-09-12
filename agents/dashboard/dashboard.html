@@ -1911,6 +1911,23 @@ async function refreshStatus(){
     } else {
       var existingWarn = document.getElementById('capture-pipeline-warn');
       if(existingWarn) existingWarn.remove();
+
+      // ── 30분 세션 만료 감지 ──
+      // Capture 워크스페이스가 열려 있는데 서버가 capture_active=false로 바꿨으면 만료
+      var _workspace = document.getElementById('cs-workspace');
+      if(_cs.sessionId && _workspace && _workspace.style.display !== 'none') {
+        var _expiredBanner = document.getElementById('cs-expired-banner');
+        if(!_expiredBanner){
+          var _banner = document.createElement('div');
+          _banner.id = 'cs-expired-banner';
+          _banner.style.cssText = 'background:rgba(251,113,133,.1);border:1px solid rgba(251,113,133,.4);color:#fb7185;' +
+            'padding:10px 16px;border-radius:8px;font-size:12px;margin-bottom:10px;display:flex;align-items:center;gap:10px;';
+          _banner.innerHTML = '⏰ Capture 세션이 30분 비활동으로 자동 종료됐습니다. 기록은 보존됩니다.' +
+            '<button class="cs-btn" onclick="csForceNewSession()" style="padding:3px 10px;font-size:11px;flex-shrink:0">새 세션 시작</button>' +
+            '<button class="cs-btn" onclick="csReLaunch()" style="padding:3px 10px;font-size:11px;flex-shrink:0">🔄 재연결</button>';
+          _workspace.insertBefore(_banner, _workspace.firstChild);
+        }
+      }
     }
 
     // 최초 로드 시 pipeline.json 플랫폼으로 라디오 동기화
@@ -2625,6 +2642,9 @@ function csReLaunch() {
     signal: _launchCtrl.signal
   }).then(function(r){ clearTimeout(_launchTimer); clearInterval(_reProgressTimer); return r.json(); }).then(function(d){
     if(d.ok){
+      // 세션 만료 배너 제거
+      var _eb = document.getElementById('cs-expired-banner');
+      if(_eb) _eb.remove();
       saveStatus.textContent = '✅ 앱 재실행됨 — 미러링 재연결 중';
       saveStatus.style.color='var(--pass)';
       csMirrorConnect();
