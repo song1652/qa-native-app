@@ -369,10 +369,13 @@ async def capture_tap(request: Request):
         "timestamp":   datetime.now().isoformat(),
     }
 
+    # session["actions"]를 단일 소스로 사용 (actions.json은 참조용 덤프)
+    # 이전 구현에서 actions.json을 읽어 덮어쓰면 back/scroll/context_switch 액션이 유실됨
+    actions = list(session.get("actions", []))
+    actions.append(action)
+
     session_dir  = CAPTURES_DIR / session["session_id"]
     actions_path = session_dir / "actions.json"
-    actions = json.loads(actions_path.read_text(encoding="utf-8")) if actions_path.exists() else []
-    actions.append(action)
     actions_path.write_text(json.dumps(actions, ensure_ascii=False, indent=2), encoding="utf-8")
 
     save_capture_session({**session, "last_activity_at": datetime.now().isoformat(), "actions": actions})
@@ -418,10 +421,12 @@ async def capture_input(request: Request):
         "timestamp":     datetime.now().isoformat(),
     }
 
+    # session["actions"]를 단일 소스로 사용 (actions.json은 참조용 덤프)
+    actions = list(session.get("actions", []))
+    actions.append(action)
+
     session_dir  = CAPTURES_DIR / session["session_id"]
     actions_path = session_dir / "actions.json"
-    actions = json.loads(actions_path.read_text(encoding="utf-8")) if actions_path.exists() else []
-    actions.append(action)
     actions_path.write_text(json.dumps(actions, ensure_ascii=False, indent=2), encoding="utf-8")
 
     save_capture_session({**session, "last_activity_at": datetime.now().isoformat(), "actions": actions})
@@ -988,9 +993,15 @@ async def capture_back(request: Request):
         "timestamp":  datetime.now().isoformat(),
         "target_ref": None,
     }
-    session.setdefault("actions", []).append(action)
+    actions = list(session.get("actions", []))
+    actions.append(action)
+    session["actions"] = actions
     session["last_activity_at"] = datetime.now().isoformat()
     save_capture_session(session)
+    # actions.json 동기화
+    actions_path = CAPTURES_DIR / session_id / "actions.json"
+    if actions_path.parent.exists():
+        actions_path.write_text(json.dumps(actions, ensure_ascii=False, indent=2), encoding="utf-8")
 
     broadcast_timeline_sync({**action, "type": "action"})
 
@@ -1029,9 +1040,15 @@ async def capture_scroll(request: Request):
         "timestamp":  datetime.now().isoformat(),
         "target_ref": None,
     }
-    session.setdefault("actions", []).append(action)
+    actions = list(session.get("actions", []))
+    actions.append(action)
+    session["actions"] = actions
     session["last_activity_at"] = datetime.now().isoformat()
     save_capture_session(session)
+    # actions.json 동기화
+    actions_path = CAPTURES_DIR / session_id / "actions.json"
+    if actions_path.parent.exists():
+        actions_path.write_text(json.dumps(actions, ensure_ascii=False, indent=2), encoding="utf-8")
     broadcast_timeline_sync({**action, "type": "action"})
 
     def _do_scroll() -> bool:
@@ -1073,9 +1090,15 @@ async def capture_context_switch(request: Request):
         "timestamp":  datetime.now().isoformat(),
         "target_ref": None,
     }
-    session.setdefault("actions", []).append(action)
+    actions = list(session.get("actions", []))
+    actions.append(action)
+    session["actions"] = actions
     session["last_activity_at"] = datetime.now().isoformat()
     save_capture_session(session)
+    # actions.json 동기화
+    actions_path = CAPTURES_DIR / session_id / "actions.json"
+    if actions_path.parent.exists():
+        actions_path.write_text(json.dumps(actions, ensure_ascii=False, indent=2), encoding="utf-8")
 
     broadcast_timeline_sync({**action, "type": "action"})
     return JSONResponse({"ok": True, "action": action, "switched_to": target_ctx})
