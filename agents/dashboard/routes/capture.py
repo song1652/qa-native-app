@@ -869,6 +869,25 @@ async def capture_end_session(request: Request):
     return JSONResponse({"ok": True, "message": "Capture 세션 종료됨"})
 
 
+@router.post("/capture/clear_actions")
+async def capture_clear_actions(request: Request):
+    """Action Timeline 초기화 — session['actions']와 actions.json을 모두 비웁니다."""
+    body       = await request.json()
+    session    = load_capture_session()
+    session_id = body.get("session_id", session.get("session_id", ""))
+    if session.get("session_id") != session_id:
+        return JSONResponse(
+            {"ok": False, "error": "session_id가 일치하지 않습니다"}, status_code=400
+        )
+    session["actions"] = []
+    save_capture_session(session)
+    # actions.json 파일도 동기화
+    actions_path = CAPTURES_DIR / session_id / "actions.json"
+    if actions_path.parent.exists():
+        actions_path.write_text(json.dumps([], ensure_ascii=False), encoding="utf-8")
+    return JSONResponse({"ok": True, "cleared": True})
+
+
 @router.get("/capture/page_source_hash")
 async def capture_page_source_hash():
     """page_source 앞부분 MD5 해시 반환 — 화면 전환 감지용 경량 엔드포인트."""
