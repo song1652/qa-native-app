@@ -1,24 +1,485 @@
 [05_execute] TC 폴더 지정: tests/generated/android/hybrid_webview
 [05_execute] Using pytest-json-report for result parsing.
-[05_execute] Running: /Users/junghoyoung/qa-native-app/.venv/bin/python -m pytest /Users/junghoyoung/qa-native-app/tests/generated/android/hybrid_webview -v --junit-xml=/Users/junghoyoung/qa-native-app/state/pytest_report.xml --json-report --json-report-file=/Users/junghoyoung/qa-native-app/state/pytest_report.json --html=/Users/junghoyoung/qa-native-app/tests/reports/report_android_20260907_185242_773.html --self-contained-html
+[05_execute] pytest-rerunfailures: setup 실패 시 최대 2회 재시도 (5초 대기)
+[05_execute] Running: /Users/junghoyoung/qa-native-app/.venv/bin/python3 -m pytest /Users/junghoyoung/qa-native-app/tests/generated/android/hybrid_webview -v --junit-xml=/Users/junghoyoung/qa-native-app/state/pytest_report.xml --json-report --json-report-file=/Users/junghoyoung/qa-native-app/state/pytest_report.json --reruns 2 --reruns-delay 5 --html=/Users/junghoyoung/qa-native-app/tests/reports/report_android_20260912_110351_435.html --self-contained-html
 ============================= test session starts ==============================
-platform darwin -- Python 3.14.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/junghoyoung/qa-native-app/.venv/bin/python
+platform darwin -- Python 3.14.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/junghoyoung/qa-native-app/.venv/bin/python3
 cachedir: .pytest_cache
-metadata: {'Python': '3.14.2', 'Platform': 'macOS-14.6.1-arm64-arm-64bit-Mach-O', 'Packages': {'pytest': '9.1.1', 'pluggy': '1.6.0'}, 'Plugins': {'json-report': '1.5.0', 'metadata': '3.1.1', 'html': '4.2.0'}}
+metadata: {'Python': '3.14.2', 'Platform': 'macOS-26.6.2-arm64-arm-64bit-Mach-O', 'Packages': {'pytest': '9.1.1', 'pluggy': '1.6.0'}, 'Plugins': {'json-report': '1.5.0', 'metadata': '3.1.1', 'html': '4.2.0', 'rerunfailures': '16.6.1', 'anyio': '4.15.1'}}
 rootdir: /Users/junghoyoung/qa-native-app
 configfile: setup.cfg
-plugins: json-report-1.5.0, metadata-3.1.1, html-4.2.0
+plugins: json-report-1.5.0, metadata-3.1.1, html-4.2.0, rerunfailures-16.6.1, anyio-4.15.1
 collecting ... collected 3 items
 
-tests/generated/android/hybrid_webview/tc_004_ApiDemos_네이티브_WebView_탐지.py::TestApidemos네이티브Webview탐지::test_native_header_and_webview_content_are_detected PASSED [ 33%]
-tests/generated/android/hybrid_webview/tc_005_ApiDemos_WebView_텍스트_입력.py::TestApidemosWebview텍스트입력::test_webview_text_input_after_native_detection PASSED [ 66%]
-tests/generated/android/hybrid_webview/tc_006_ApiDemos_WebView_링크_이동.py::TestApidemosWebview링크이동::test_webview_link_navigation_and_native_restore PASSED [100%]
+tests/generated/android/hybrid_webview/tc_004_ApiDemos_네이티브_WebView_탐지.py::TestApidemos네이티브Webview탐지::test_native_header_and_webview_content_are_detected RERUN [ 33%]
+tests/generated/android/hybrid_webview/tc_004_ApiDemos_네이티브_WebView_탐지.py::TestApidemos네이티브Webview탐지::test_native_header_and_webview_content_are_detected RERUN [ 33%]
+tests/generated/android/hybrid_webview/tc_004_ApiDemos_네이티브_WebView_탐지.py::TestApidemos네이티브Webview탐지::test_native_header_and_webview_content_are_detected ERROR [ 33%]
+tests/generated/android/hybrid_webview/tc_005_ApiDemos_WebView_텍스트_입력.py::TestApidemosWebview텍스트입력::test_webview_text_input_after_native_detection RERUN [ 66%]
+tests/generated/android/hybrid_webview/tc_005_ApiDemos_WebView_텍스트_입력.py::TestApidemosWebview텍스트입력::test_webview_text_input_after_native_detection RERUN [ 66%]
+tests/generated/android/hybrid_webview/tc_005_ApiDemos_WebView_텍스트_입력.py::TestApidemosWebview텍스트입력::test_webview_text_input_after_native_detection ERROR [ 66%]
+tests/generated/android/hybrid_webview/tc_006_ApiDemos_WebView_링크_이동.py::TestApidemosWebview링크이동::test_webview_link_navigation_and_native_restore RERUN [100%]
+tests/generated/android/hybrid_webview/tc_006_ApiDemos_WebView_링크_이동.py::TestApidemosWebview링크이동::test_webview_link_navigation_and_native_restore RERUN [100%]
+tests/generated/android/hybrid_webview/tc_006_ApiDemos_WebView_링크_이동.py::TestApidemosWebview링크이동::test_webview_link_navigation_and_native_restore ERROR [100%]
 
+==================================== ERRORS ====================================
+_ ERROR at setup of TestApidemos네이티브Webview탐지.test_native_header_and_webview_content_are_detected _
+
+self = <tests.generated.android.hybrid_webview.tc_004_ApiDemos_네이티브_WebView_탐지.TestApidemos네이티브Webview탐지 object at 0x107c24050>
+
+    def setup_method(self):
+        _check_device_connected()
+>       self.driver = _build_driver()
+                      ^^^^^^^^^^^^^^^
+
+tests/generated/android/hybrid_webview/tc_004_ApiDemos_네이티브_WebView_탐지.py:92: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/generated/android/hybrid_webview/tc_004_ApiDemos_네이티브_WebView_탐지.py:84: in _build_driver
+    return webdriver.Remote(APPIUM_URL, options=options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/appium/webdriver/webdriver.py:251: in __init__
+    super().__init__(
+.venv/lib/python3.14/site-packages/selenium/webdriver/remote/webdriver.py:300: in __init__
+    self.start_session(capabilities)
+.venv/lib/python3.14/site-packages/appium/webdriver/webdriver.py:345: in start_session
+    response = self.execute(RemoteCommand.NEW_SESSION, w3c_caps)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/selenium/webdriver/remote/webdriver.py:492: in execute
+    self.error_handler.check_response(response)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <selenium.webdriver.remote.errorhandler.ErrorHandler object at 0x107cd4cd0>
+response = {'status': 500, 'value': '{"value":{"error":"unknown error","message":"Cannot start the \'io.appium.android.apis\' app...ions/node/v24.13.0/lib/node_modules/appium/node_modules/@appium/base-driver/build/lib/protocol/protocol.js:401:25)"}}'}
+
+    def check_response(self, response: dict[str, Any]) -> None:
+        """Check that a JSON response from the WebDriver does not have an error.
+    
+        Args:
+            response: The JSON response from the WebDriver server as a dictionary
+                object.
+    
+        Raises:
+            WebDriverException: If the response contains an error message.
+        """
+        status = response.get("status", None)
+        if not status or status == ErrorCode.SUCCESS:
+            return
+        value = None
+        message = response.get("message", "")
+        screen: str = response.get("screen", "")
+        stacktrace = None
+        if isinstance(status, int):
+            value_json = response.get("value", None)
+            if value_json and isinstance(value_json, str):
+                try:
+                    value = json.loads(value_json)
+                    if isinstance(value, dict):
+                        if len(value) == 1:
+                            value = value["value"]
+                        status = value.get("error", None)
+                        if not status:
+                            status = value.get("status", ErrorCode.UNKNOWN_ERROR)
+                            message = value.get("value") or value.get("message")
+                            if not isinstance(message, str):
+                                value = message
+                                message = message.get("message") if isinstance(message, dict) else None
+                        else:
+                            message = value.get("message", None)
+                except ValueError:
+                    pass
+    
+        exception_class: type[WebDriverException]
+        e = ErrorCode()
+        error_codes = [item for item in dir(e) if not item.startswith("__")]
+        for error_code in error_codes:
+            error_info = getattr(ErrorCode, error_code)
+            if isinstance(error_info, list) and status in error_info:
+                exception_class = getattr(ExceptionMapping, error_code, WebDriverException)
+                break
+        else:
+            exception_class = WebDriverException
+    
+        if not value:
+            value = response["value"]
+        if isinstance(value, str):
+            raise exception_class(value)
+        if message == "" and "message" in value:
+            message = value["message"]
+    
+        screen = None  # type: ignore[assignment]
+        if "screen" in value:
+            screen = value["screen"]
+    
+        stacktrace = None
+        st_value = value.get("stackTrace") or value.get("stacktrace")
+        if st_value:
+            if isinstance(st_value, str):
+                stacktrace = st_value.split("\n")
+            else:
+                stacktrace = []
+                try:
+                    for frame in st_value:
+                        line = frame.get("lineNumber", "")
+                        file = frame.get("fileName", "<anonymous>")
+                        if line:
+                            file = f"{file}:{line}"
+                        meth = frame.get("methodName", "<anonymous>")
+                        if "className" in frame:
+                            meth = f"{frame['className']}.{meth}"
+                        msg = "    at %s (%s)"
+                        msg = msg % (meth, file)
+                        stacktrace.append(msg)
+                except TypeError:
+                    pass
+        if exception_class == UnexpectedAlertPresentException:
+            alert_text = None
+            if "data" in value:
+                alert_text = value["data"].get("text")
+            elif "alert" in value:
+                alert_text = value["alert"].get("text")
+            raise exception_class(message, screen, stacktrace, alert_text)
+>       raise exception_class(message, screen, stacktrace)
+E       selenium.common.exceptions.WebDriverException: Message: Cannot start the 'io.appium.android.apis' application. Consider checking the driver's troubleshooting documentation. Original error: Error executing adbExec. Original error: 'Command '/Users/junghoyoung/Library/Android/sdk/platform-tools/adb -P 5037 -s emulator-5554 shell am start-activity -W -n io.appium.android.apis/.view.WebView1 -S -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -f 0x10200000' exited with code 1'; Command output: Stopping: io.appium.android.apis
+E       Starting: Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10200000 cmp=io.appium.android.apis/.view.WebView1 }
+E       Error type 3
+E       Error: Activity class {io.appium.android.apis/io.appium.android.apis.view.WebView1} does not exist.
+E       
+E       Stacktrace:
+E       UnknownError: Cannot start the 'io.appium.android.apis' application. Consider checking the driver's troubleshooting documentation. Original error: Error executing adbExec. Original error: 'Command '/Users/junghoyoung/Library/Android/sdk/platform-tools/adb -P 5037 -s emulator-5554 shell am start-activity -W -n io.appium.android.apis/.view.WebView1 -S -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -f 0x10200000' exited with code 1'; Command output: Stopping: io.appium.android.apis
+E       Starting: Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10200000 cmp=io.appium.android.apis/.view.WebView1 }
+E       Error type 3
+E       Error: Activity class {io.appium.android.apis/io.appium.android.apis.view.WebView1} does not exist.
+E       
+E           at getResponseForW3CError (/Users/junghoyoung/.nvm/versions/node/v24.13.0/lib/node_modules/appium/node_modules/@appium/base-driver/build/lib/protocol/errors.js:846:36)
+E           at asyncHandler (/Users/junghoyoung/.nvm/versions/node/v24.13.0/lib/node_modules/appium/node_modules/@appium/base-driver/build/lib/protocol/protocol.js:485:77)
+E           at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+E       The above error is caused by
+E       Error: Cannot start the 'io.appium.android.apis' application. Consider checking the driver's troubleshooting documentation. Original error: Error executing adbExec. Original error: 'Command '/Users/junghoyoung/Library/Android/sdk/platform-tools/adb -P 5037 -s emulator-5554 shell am start-activity -W -n io.appium.android.apis/.view.WebView1 -S -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -f 0x10200000' exited with code 1'; Command output: Stopping: io.appium.android.apis
+E       Starting: Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10200000 cmp=io.appium.android.apis/.view.WebView1 }
+E       Error type 3
+E       Error: Activity class {io.appium.android.apis/io.appium.android.apis.view.WebView1} does not exist.
+E       
+E           at ADB.startApp (/Users/junghoyoung/.appium/node_modules/appium-uiautomator2-driver/node_modules/appium-adb/build/lib/tools/app-commands.js:612:15)
+E           at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+E           at async AndroidUiautomator2Driver.ensureAppStarts (/Users/junghoyoung/.appium/node_modules/appium-uiautomator2-driver/build/lib/commands/aut.js:106:5)
+E           at async AndroidUiautomator2Driver.performPostExecSetup [as performSessionPostExecSetup] (/Users/junghoyoung/.appium/node_modules/appium-uiautomator2-driver/build/lib/uiautomator2-server/session.js:202:9)
+E           at async AndroidUiautomator2Driver.startSession [as startUiAutomator2Session] (/Users/junghoyoung/.appium/node_modules/appium-uiautomator2-driver/build/lib/uiautomator2-server/session.js:260:5)
+E           at async AndroidUiautomator2Driver.createSession (/Users/junghoyoung/.appium/node_modules/appium-uiautomator2-driver/build/lib/driver.js:301:28)
+E           at async AppiumDriver.createSession (/Users/junghoyoung/.nvm/versions/node/v24.13.0/lib/node_modules/appium/build/lib/appium.js:271:44)
+E           at async runCommandPromise (/Users/junghoyoung/.nvm/versions/node/v24.13.0/lib/node_modules/appium/node_modules/@appium/base-driver/build/lib/basedriver/driver.js:119:24)
+E           at async AppiumDriver.executeCommand (/Users/junghoyoung/.nvm/versions/node/v24.13.0/lib/node_modules/appium/node_modules/@appium/base-driver/build/lib/basedriver/driver.js:162:15)
+E           at async defaultBehavior (/Users/junghoyoung/.nvm/versions/node/v24.13.0/lib/node_modules/appium/build/lib/appium.js:582:24)
+E           at async AppiumDriver.executeWrappedCommand (/Users/junghoyoung/.nvm/versions/node/v24.13.0/lib/node_modules/appium/build/lib/appium.js:694:22)
+E           at async AppiumDriver.executeCommand (/Users/junghoyoung/.nvm/versions/node/v24.13.0/lib/node_modules/appium/build/lib/appium.js:598:21)
+E           at async asyncHandler (/Users/junghoyoung/.nvm/versions/node/v24.13.0/lib/node_modules/appium/node_modules/@appium/base-driver/build/lib/protocol/protocol.js:401:25)
+
+.venv/lib/python3.14/site-packages/selenium/webdriver/remote/errorhandler.py:232: WebDriverException
+_ ERROR at setup of TestApidemosWebview텍스트입력.test_webview_text_input_after_native_detection _
+
+self = <tests.generated.android.hybrid_webview.tc_005_ApiDemos_WebView_텍스트_입력.TestApidemosWebview텍스트입력 object at 0x107c27ce0>
+
+>   ???
+
+/Users/junghoyoung/qa-native-app/tests/generated/android/hybrid_webview/tc_005_ApiDemos_WebView_텍스트_입력.py:93: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/junghoyoung/qa-native-app/tests/generated/android/hybrid_webview/tc_005_ApiDemos_WebView_텍스트_입력.py:85: in _build_driver
+    ???
+.venv/lib/python3.14/site-packages/appium/webdriver/webdriver.py:251: in __init__
+    super().__init__(
+.venv/lib/python3.14/site-packages/selenium/webdriver/remote/webdriver.py:300: in __init__
+    self.start_session(capabilities)
+.venv/lib/python3.14/site-packages/appium/webdriver/webdriver.py:345: in start_session
+    response = self.execute(RemoteCommand.NEW_SESSION, w3c_caps)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/selenium/webdriver/remote/webdriver.py:492: in execute
+    self.error_handler.check_response(response)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <selenium.webdriver.remote.errorhandler.ErrorHandler object at 0x107c2ec30>
+response = {'status': 500, 'value': '{"value":{"error":"unknown error","message":"Cannot start the \'io.appium.android.apis\' app...ions/node/v24.13.0/lib/node_modules/appium/node_modules/@appium/base-driver/build/lib/protocol/protocol.js:401:25)"}}'}
+
+    def check_response(self, response: dict[str, Any]) -> None:
+        """Check that a JSON response from the WebDriver does not have an error.
+    
+        Args:
+            response: The JSON response from the WebDriver server as a dictionary
+                object.
+    
+        Raises:
+            WebDriverException: If the response contains an error message.
+        """
+        status = response.get("status", None)
+        if not status or status == ErrorCode.SUCCESS:
+            return
+        value = None
+        message = response.get("message", "")
+        screen: str = response.get("screen", "")
+        stacktrace = None
+        if isinstance(status, int):
+            value_json = response.get("value", None)
+            if value_json and isinstance(value_json, str):
+                try:
+                    value = json.loads(value_json)
+                    if isinstance(value, dict):
+                        if len(value) == 1:
+                            value = value["value"]
+                        status = value.get("error", None)
+                        if not status:
+                            status = value.get("status", ErrorCode.UNKNOWN_ERROR)
+                            message = value.get("value") or value.get("message")
+                            if not isinstance(message, str):
+                                value = message
+                                message = message.get("message") if isinstance(message, dict) else None
+                        else:
+                            message = value.get("message", None)
+                except ValueError:
+                    pass
+    
+        exception_class: type[WebDriverException]
+        e = ErrorCode()
+        error_codes = [item for item in dir(e) if not item.startswith("__")]
+        for error_code in error_codes:
+            error_info = getattr(ErrorCode, error_code)
+            if isinstance(error_info, list) and status in error_info:
+                exception_class = getattr(ExceptionMapping, error_code, WebDriverException)
+                break
+        else:
+            exception_class = WebDriverException
+    
+        if not value:
+            value = response["value"]
+        if isinstance(value, str):
+            raise exception_class(value)
+        if message == "" and "message" in value:
+            message = value["message"]
+    
+        screen = None  # type: ignore[assignment]
+        if "screen" in value:
+            screen = value["screen"]
+    
+        stacktrace = None
+        st_value = value.get("stackTrace") or value.get("stacktrace")
+        if st_value:
+            if isinstance(st_value, str):
+                stacktrace = st_value.split("\n")
+            else:
+                stacktrace = []
+                try:
+                    for frame in st_value:
+                        line = frame.get("lineNumber", "")
+                        file = frame.get("fileName", "<anonymous>")
+                        if line:
+                            file = f"{file}:{line}"
+                        meth = frame.get("methodName", "<anonymous>")
+                        if "className" in frame:
+                            meth = f"{frame['className']}.{meth}"
+                        msg = "    at %s (%s)"
+                        msg = msg % (meth, file)
+                        stacktrace.append(msg)
+                except TypeError:
+                    pass
+        if exception_class == UnexpectedAlertPresentException:
+            alert_text = None
+            if "data" in value:
+                alert_text = value["data"].get("text")
+            elif "alert" in value:
+                alert_text = value["alert"].get("text")
+            raise exception_class(message, screen, stacktrace, alert_text)
+>       raise exception_class(message, screen, stacktrace)
+E       selenium.common.exceptions.WebDriverException: Message: Cannot start the 'io.appium.android.apis' application. Consider checking the driver's troubleshooting documentation. Original error: Error executing adbExec. Original error: 'Command '/Users/junghoyoung/Library/Android/sdk/platform-tools/adb -P 5037 -s emulator-5554 shell am start-activity -W -n io.appium.android.apis/.view.WebView1 -S -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -f 0x10200000' exited with code 1'; Command output: Stopping: io.appium.android.apis
+E       Starting: Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10200000 cmp=io.appium.android.apis/.view.WebView1 }
+E       Error type 3
+E       Error: Activity class {io.appium.android.apis/io.appium.android.apis.view.WebView1} does not exist.
+E       
+E       Stacktrace:
+E       UnknownError: Cannot start the 'io.appium.android.apis' application. Consider checking the driver's troubleshooting documentation. Original error: Error executing adbExec. Original error: 'Command '/Users/junghoyoung/Library/Android/sdk/platform-tools/adb -P 5037 -s emulator-5554 shell am start-activity -W -n io.appium.android.apis/.view.WebView1 -S -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -f 0x10200000' exited with code 1'; Command output: Stopping: io.appium.android.apis
+E       Starting: Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10200000 cmp=io.appium.android.apis/.view.WebView1 }
+E       Error type 3
+E       Error: Activity class {io.appium.android.apis/io.appium.android.apis.view.WebView1} does not exist.
+E       
+E           at getResponseForW3CError (/Users/junghoyoung/.nvm/versions/node/v24.13.0/lib/node_modules/appium/node_modules/@appium/base-driver/build/lib/protocol/errors.js:846:36)
+E           at asyncHandler (/Users/junghoyoung/.nvm/versions/node/v24.13.0/lib/node_modules/appium/node_modules/@appium/base-driver/build/lib/protocol/protocol.js:485:77)
+E       The above error is caused by
+E       Error: Cannot start the 'io.appium.android.apis' application. Consider checking the driver's troubleshooting documentation. Original error: Error executing adbExec. Original error: 'Command '/Users/junghoyoung/Library/Android/sdk/platform-tools/adb -P 5037 -s emulator-5554 shell am start-activity -W -n io.appium.android.apis/.view.WebView1 -S -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -f 0x10200000' exited with code 1'; Command output: Stopping: io.appium.android.apis
+E       Starting: Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10200000 cmp=io.appium.android.apis/.view.WebView1 }
+E       Error type 3
+E       Error: Activity class {io.appium.android.apis/io.appium.android.apis.view.WebView1} does not exist.
+E       
+E           at ADB.startApp (/Users/junghoyoung/.appium/node_modules/appium-uiautomator2-driver/node_modules/appium-adb/build/lib/tools/app-commands.js:612:15)
+E           at async AndroidUiautomator2Driver.ensureAppStarts (/Users/junghoyoung/.appium/node_modules/appium-uiautomator2-driver/build/lib/commands/aut.js:106:5)
+E           at async AndroidUiautomator2Driver.performPostExecSetup [as performSessionPostExecSetup] (/Users/junghoyoung/.appium/node_modules/appium-uiautomator2-driver/build/lib/uiautomator2-server/session.js:202:9)
+E           at async AndroidUiautomator2Driver.startSession [as startUiAutomator2Session] (/Users/junghoyoung/.appium/node_modules/appium-uiautomator2-driver/build/lib/uiautomator2-server/session.js:260:5)
+E           at async AndroidUiautomator2Driver.createSession (/Users/junghoyoung/.appium/node_modules/appium-uiautomator2-driver/build/lib/driver.js:301:28)
+E           at async AppiumDriver.createSession (/Users/junghoyoung/.nvm/versions/node/v24.13.0/lib/node_modules/appium/build/lib/appium.js:271:44)
+E           at async runCommandPromise (/Users/junghoyoung/.nvm/versions/node/v24.13.0/lib/node_modules/appium/node_modules/@appium/base-driver/build/lib/basedriver/driver.js:119:24)
+E           at async AppiumDriver.executeCommand (/Users/junghoyoung/.nvm/versions/node/v24.13.0/lib/node_modules/appium/node_modules/@appium/base-driver/build/lib/basedriver/driver.js:162:15)
+E           at async defaultBehavior (/Users/junghoyoung/.nvm/versions/node/v24.13.0/lib/node_modules/appium/build/lib/appium.js:582:24)
+E           at async AppiumDriver.executeWrappedCommand (/Users/junghoyoung/.nvm/versions/node/v24.13.0/lib/node_modules/appium/build/lib/appium.js:694:22)
+E           at async AppiumDriver.executeCommand (/Users/junghoyoung/.nvm/versions/node/v24.13.0/lib/node_modules/appium/build/lib/appium.js:598:21)
+E           at async asyncHandler (/Users/junghoyoung/.nvm/versions/node/v24.13.0/lib/node_modules/appium/node_modules/@appium/base-driver/build/lib/protocol/protocol.js:401:25)
+
+.venv/lib/python3.14/site-packages/selenium/webdriver/remote/errorhandler.py:232: WebDriverException
+_ ERROR at setup of TestApidemosWebview링크이동.test_webview_link_navigation_and_native_restore _
+
+self = <tests.generated.android.hybrid_webview.tc_006_ApiDemos_WebView_링크_이동.TestApidemosWebview링크이동 object at 0x107c263f0>
+
+>   ???
+
+/Users/junghoyoung/qa-native-app/tests/generated/android/hybrid_webview/tc_006_ApiDemos_WebView_링크_이동.py:97: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/junghoyoung/qa-native-app/tests/generated/android/hybrid_webview/tc_006_ApiDemos_WebView_링크_이동.py:89: in _build_driver
+    ???
+.venv/lib/python3.14/site-packages/appium/webdriver/webdriver.py:251: in __init__
+    super().__init__(
+.venv/lib/python3.14/site-packages/selenium/webdriver/remote/webdriver.py:300: in __init__
+    self.start_session(capabilities)
+.venv/lib/python3.14/site-packages/appium/webdriver/webdriver.py:345: in start_session
+    response = self.execute(RemoteCommand.NEW_SESSION, w3c_caps)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/selenium/webdriver/remote/webdriver.py:492: in execute
+    self.error_handler.check_response(response)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <selenium.webdriver.remote.errorhandler.ErrorHandler object at 0x107c43050>
+response = {'status': 500, 'value': '{"value":{"error":"unknown error","message":"Cannot start the \'io.appium.android.apis\' app...ions/node/v24.13.0/lib/node_modules/appium/node_modules/@appium/base-driver/build/lib/protocol/protocol.js:401:25)"}}'}
+
+    def check_response(self, response: dict[str, Any]) -> None:
+        """Check that a JSON response from the WebDriver does not have an error.
+    
+        Args:
+            response: The JSON response from the WebDriver server as a dictionary
+                object.
+    
+        Raises:
+            WebDriverException: If the response contains an error message.
+        """
+        status = response.get("status", None)
+        if not status or status == ErrorCode.SUCCESS:
+            return
+        value = None
+        message = response.get("message", "")
+        screen: str = response.get("screen", "")
+        stacktrace = None
+        if isinstance(status, int):
+            value_json = response.get("value", None)
+            if value_json and isinstance(value_json, str):
+                try:
+                    value = json.loads(value_json)
+                    if isinstance(value, dict):
+                        if len(value) == 1:
+                            value = value["value"]
+                        status = value.get("error", None)
+                        if not status:
+                            status = value.get("status", ErrorCode.UNKNOWN_ERROR)
+                            message = value.get("value") or value.get("message")
+                            if not isinstance(message, str):
+                                value = message
+                                message = message.get("message") if isinstance(message, dict) else None
+                        else:
+                            message = value.get("message", None)
+                except ValueError:
+                    pass
+    
+        exception_class: type[WebDriverException]
+        e = ErrorCode()
+        error_codes = [item for item in dir(e) if not item.startswith("__")]
+        for error_code in error_codes:
+            error_info = getattr(ErrorCode, error_code)
+            if isinstance(error_info, list) and status in error_info:
+                exception_class = getattr(ExceptionMapping, error_code, WebDriverException)
+                break
+        else:
+            exception_class = WebDriverException
+    
+        if not value:
+            value = response["value"]
+        if isinstance(value, str):
+            raise exception_class(value)
+        if message == "" and "message" in value:
+            message = value["message"]
+    
+        screen = None  # type: ignore[assignment]
+        if "screen" in value:
+            screen = value["screen"]
+    
+        stacktrace = None
+        st_value = value.get("stackTrace") or value.get("stacktrace")
+        if st_value:
+            if isinstance(st_value, str):
+                stacktrace = st_value.split("\n")
+            else:
+                stacktrace = []
+                try:
+                    for frame in st_value:
+                        line = frame.get("lineNumber", "")
+                        file = frame.get("fileName", "<anonymous>")
+                        if line:
+                            file = f"{file}:{line}"
+                        meth = frame.get("methodName", "<anonymous>")
+                        if "className" in frame:
+                            meth = f"{frame['className']}.{meth}"
+                        msg = "    at %s (%s)"
+                        msg = msg % (meth, file)
+                        stacktrace.append(msg)
+                except TypeError:
+                    pass
+        if exception_class == UnexpectedAlertPresentException:
+            alert_text = None
+            if "data" in value:
+                alert_text = value["data"].get("text")
+            elif "alert" in value:
+                alert_text = value["alert"].get("text")
+            raise exception_class(message, screen, stacktrace, alert_text)
+>       raise exception_class(message, screen, stacktrace)
+E       selenium.common.exceptions.WebDriverException: Message: Cannot start the 'io.appium.android.apis' application. Consider checking the driver's troubleshooting documentation. Original error: Error executing adbExec. Original error: 'Command '/Users/junghoyoung/Library/Android/sdk/platform-tools/adb -P 5037 -s emulator-5554 shell am start-activity -W -n io.appium.android.apis/.view.WebView1 -S -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -f 0x10200000' exited with code 1'; Command output: Stopping: io.appium.android.apis
+E       Starting: Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10200000 cmp=io.appium.android.apis/.view.WebView1 }
+E       Error type 3
+E       Error: Activity class {io.appium.android.apis/io.appium.android.apis.view.WebView1} does not exist.
+E       
+E       Stacktrace:
+E       UnknownError: Cannot start the 'io.appium.android.apis' application. Consider checking the driver's troubleshooting documentation. Original error: Error executing adbExec. Original error: 'Command '/Users/junghoyoung/Library/Android/sdk/platform-tools/adb -P 5037 -s emulator-5554 shell am start-activity -W -n io.appium.android.apis/.view.WebView1 -S -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -f 0x10200000' exited with code 1'; Command output: Stopping: io.appium.android.apis
+E       Starting: Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10200000 cmp=io.appium.android.apis/.view.WebView1 }
+E       Error type 3
+E       Error: Activity class {io.appium.android.apis/io.appium.android.apis.view.WebView1} does not exist.
+E       
+E           at getResponseForW3CError (/Users/junghoyoung/.nvm/versions/node/v24.13.0/lib/node_modules/appium/node_modules/@appium/base-driver/build/lib/protocol/errors.js:846:36)
+E           at asyncHandler (/Users/junghoyoung/.nvm/versions/node/v24.13.0/lib/node_modules/appium/node_modules/@appium/base-driver/build/lib/protocol/protocol.js:485:77)
+E       The above error is caused by
+E       Error: Cannot start the 'io.appium.android.apis' application. Consider checking the driver's troubleshooting documentation. Original error: Error executing adbExec. Original error: 'Command '/Users/junghoyoung/Library/Android/sdk/platform-tools/adb -P 5037 -s emulator-5554 shell am start-activity -W -n io.appium.android.apis/.view.WebView1 -S -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -f 0x10200000' exited with code 1'; Command output: Stopping: io.appium.android.apis
+E       Starting: Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10200000 cmp=io.appium.android.apis/.view.WebView1 }
+E       Error type 3
+E       Error: Activity class {io.appium.android.apis/io.appium.android.apis.view.WebView1} does not exist.
+E       
+E           at ADB.startApp (/Users/junghoyoung/.appium/node_modules/appium-uiautomator2-driver/node_modules/appium-adb/build/lib/tools/app-commands.js:612:15)
+E           at async AndroidUiautomator2Driver.ensureAppStarts (/Users/junghoyoung/.appium/node_modules/appium-uiautomator2-driver/build/lib/commands/aut.js:106:5)
+E           at async AndroidUiautomator2Driver.performPostExecSetup [as performSessionPostExecSetup] (/Users/junghoyoung/.appium/node_modules/appium-uiautomator2-driver/build/lib/uiautomator2-server/session.js:202:9)
+E           at async AndroidUiautomator2Driver.startSession [as startUiAutomator2Session] (/Users/junghoyoung/.appium/node_modules/appium-uiautomator2-driver/build/lib/uiautomator2-server/session.js:260:5)
+E           at async AndroidUiautomator2Driver.createSession (/Users/junghoyoung/.appium/node_modules/appium-uiautomator2-driver/build/lib/driver.js:301:28)
+E           at async AppiumDriver.createSession (/Users/junghoyoung/.nvm/versions/node/v24.13.0/lib/node_modules/appium/build/lib/appium.js:271:44)
+E           at async runCommandPromise (/Users/junghoyoung/.nvm/versions/node/v24.13.0/lib/node_modules/appium/node_modules/@appium/base-driver/build/lib/basedriver/driver.js:119:24)
+E           at async AppiumDriver.executeCommand (/Users/junghoyoung/.nvm/versions/node/v24.13.0/lib/node_modules/appium/node_modules/@appium/base-driver/build/lib/basedriver/driver.js:162:15)
+E           at async defaultBehavior (/Users/junghoyoung/.nvm/versions/node/v24.13.0/lib/node_modules/appium/build/lib/appium.js:582:24)
+E           at async AppiumDriver.executeWrappedCommand (/Users/junghoyoung/.nvm/versions/node/v24.13.0/lib/node_modules/appium/build/lib/appium.js:694:22)
+E           at async AppiumDriver.executeCommand (/Users/junghoyoung/.nvm/versions/node/v24.13.0/lib/node_modules/appium/build/lib/appium.js:598:21)
+E           at async asyncHandler (/Users/junghoyoung/.nvm/versions/node/v24.13.0/lib/node_modules/appium/node_modules/@appium/base-driver/build/lib/protocol/protocol.js:401:25)
+
+.venv/lib/python3.14/site-packages/selenium/webdriver/remote/errorhandler.py:232: WebDriverException
 - generated xml file: /Users/junghoyoung/qa-native-app/state/pytest_report.xml -
 --------------------------------- JSON report ----------------------------------
 report saved to: /Users/junghoyoung/qa-native-app/state/pytest_report.json
-- Generated html report: file:///Users/junghoyoung/qa-native-app/tests/reports/report_android_20260907_185242_773.html -
-========================= 3 passed in 96.84s (0:01:36) =========================
+- Generated html report: file:///Users/junghoyoung/qa-native-app/tests/reports/report_android_20260912_110351_435.html -
+=========================== short test summary info ============================
+ERROR tests/generated/android/hybrid_webview/tc_004_ApiDemos_네이티브_WebView_탐지.py::TestApidemos네이티브Webview탐지::test_native_header_and_webview_content_are_detected
+ERROR tests/generated/android/hybrid_webview/tc_005_ApiDemos_WebView_텍스트_입력.py::TestApidemosWebview텍스트입력::test_webview_text_input_after_native_detection
+ERROR tests/generated/android/hybrid_webview/tc_006_ApiDemos_WebView_링크_이동.py::TestApidemosWebview링크이동::test_webview_link_navigation_and_native_restore
+==================== 3 errors, 6 rerun in 89.53s (0:01:29) =====================
 [05_execute] Parsing JSON report results...
-[05_execute] Results: 3 passed, 0 failed / 3 total
-[05_execute] HTML report saved: /Users/junghoyoung/qa-native-app/tests/reports/report_android_20260907_185242_773.html
+[05_execute] Results: 0 passed, 3 failed / 3 total
+[05_execute] HTML report saved: /Users/junghoyoung/qa-native-app/tests/reports/report_android_20260912_110351_435.html
+[06_heal] platform=android
+[06_heal] dom_info 없음 — 01_analyze.py를 먼저 실행하세요. fallback(전략 교체) 모드로 진행합니다.
+[06_heal]   WARNING: 파일 없음 — tests/generated/android/hybrid_webview/tc_004_ApiDemos_네이티브_WebView_탐지.py
+[06_heal]   WARNING: 파일 없음 — tests/generated/android/hybrid_webview/tc_005_ApiDemos_WebView_텍스트_입력.py
+[06_heal]   WARNING: 파일 없음 — tests/generated/android/hybrid_webview/tc_006_ApiDemos_WebView_링크_이동.py
+[06_heal] 유효한 TC 파일 없음 — errors에서 파일을 찾지 못했습니다.
+[05_execute] TC 폴더 지정: tests/generated/android/hybrid_webview
+[05_execute] No tests found at /Users/junghoyoung/qa-native-app/tests/generated/android/hybrid_webview

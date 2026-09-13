@@ -37,7 +37,8 @@ def check_allow_insecure_flag(port: int = 4723) -> tuple[bool, str]:
     except Exception as exc:
         hint = (
             f"\n  → Appium 서버를 다음 플래그와 함께 재시작하세요:\n"
-            f"    appium --address 0.0.0.0 --port 4723 --allow-insecure=adb_screen_streaming"
+            f"    appium --address 0.0.0.0 --port 4723 --allow-insecure=uiautomator2:adb_screen_streaming\n"
+            f"    (Appium 3.x: 드라이버명 prefix 필수. 구버전은 adb_screen_streaming 단독 사용)"
         )
         return False, f"MJPEG 포트 {port} 미응답: {exc}{hint}"
 
@@ -87,10 +88,10 @@ config/devices.json Android Emulator 섹션에 다음 capability를 추가하세
   "mjpegServerScreenshotQuality": 70
 }}
 
-Appium 서버 실행 명령:
-  appium --address 0.0.0.0 --port 4723 --allow-insecure=adb_screen_streaming
+Appium 서버 실행 명령 (Appium 3.x):
+  appium --address 0.0.0.0 --port 4723 --allow-insecure=uiautomator2:adb_screen_streaming
 
-브라우저에서 미러링 확인:
+브라우저에서 미러링 확인 (Appium 세션 시작 후):
   http://localhost:{mjpeg_port}/
 """)
 

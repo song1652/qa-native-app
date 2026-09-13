@@ -1,6 +1,0 @@
-[03_lint] platform=android
-[03_lint] 3개 파일 검사 시작
-  pass: tc_004_ApiDemos_네이티브_WebView_탐지.py
-  pass: tc_005_ApiDemos_WebView_텍스트_입력.py
-  pass: tc_006_ApiDemos_WebView_링크_이동.py
-[03_lint] done — 3 파일 모두 통과

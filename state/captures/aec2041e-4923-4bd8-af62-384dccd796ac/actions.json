@@ -1,0 +1,15 @@
+[
+  {
+    "index": 1,
+    "action": "tap",
+    "surface": "native",
+    "context": "native",
+    "screen": "",
+    "target_ref": "",
+    "snapshot_id": "0001",
+    "locator": {},
+    "device_x": 154,
+    "device_y": 444,
+    "timestamp": "2026-09-12T10:45:59.348303"
+  }
+]

@@ -1,7 +1,7 @@
 # Capture Studio 구현 플랜
 
 **기준 PRD**: Element-first Capture Studio (Notion · 섹션 1–21)
-**최종 업데이트**: 2026-09-11
+**최종 업데이트**: 2026-09-12
 
 ---
 
@@ -27,14 +27,13 @@ Capture Studio는 QA 담당자가 실제 Android/iOS 앱 화면의 요소를 선
 - Markdown TC, `screens.json`, `locators.json` 미리보기
 - 사용자 승인 후 저장 및 기존 `02_generate.py --strict-locators` 실행
 
-### 후속 범위 (iOS·후속 기능)
+### 후속 범위
 
-- iOS Simulator (MJPEG 미지원 → 별도 방식 결정 필요)
-- Swipe 및 복합 제스처
+- Swipe 및 복합 제스처 (현재: swipe API 있음, 녹화·재생은 후속)
 - 부분 재녹화
-- 실패 TC에서 Capture Studio 재확인 화면으로 이동
 - 실제 디바이스와 원격 디바이스 팜
 - ws-scrcpy 전환 (H.264 WebCodecs, 지연 <100ms)
+- iOS Hybrid WebView context (현재 Native only)
 
 ---
 
@@ -50,7 +49,7 @@ Capture Studio는 QA 담당자가 실제 Android/iOS 앱 화면의 요소를 선
 7. 저장 및 생성  — registry·TC 저장 → 02_generate.py 실행
 ```
 
-Healing 재확인은 7단계 별도 화면 또는 Locator 검토(4단계) 재진입으로 처리합니다 (와이어프레임 확정 후 결정).
+Healing 재확인은 Locator 검토(4단계) 재진입 방식으로 구현되었습니다. 실패 TC 목록에서 "재확인" 버튼을 누르면 해당 TC의 Locator 검토 화면으로 이동합니다.
 
 ---
 
@@ -79,24 +78,30 @@ Healing 재확인은 7단계 별도 화면 또는 Locator 검토(4단계) 재진
 
 | 항목 | 값 |
 |---|---|
-| 방식 | Appium UiAutomator2 내장 MJPEG |
-| 브라우저 표시 | `<img src="http://localhost:8093/">` |
-| capability | `mjpegServerPort=8093`, `mjpegScalingFactor=75`, `mjpegServerScreenshotQuality=70` |
-| Appium 서버 플래그 | `--allow-insecure=adb_screen_streaming` |
-| 후속 범위 | ws-scrcpy (Node.js, H.264 WebCodecs, <100ms) |
-| iOS | 후속 범위 (MJPEG 미지원, 별도 방식 결정 필요) |
+| 항목 | Android | iOS |
+|---|---|---|
+| 방식 | Appium UiAutomator2 내장 MJPEG | XCUITest + `/capture/screenshot` polling |
+| 브라우저 표시 | `<img src="http://localhost:8093/">` | 1.2초 간격 `<img>` src 교체 |
+| capability | `mjpegServerPort=8093`, `mjpegScalingFactor=75` | `screenshot_mode: poll` |
+| Appium 서버 플래그 | `--allow-insecure=uiautomator2:adb_screen_streaming` | 불필요 |
+| WDA 안정화 대기 | — | 폴링 25회 실패 후 에러 (약 30초 여유) |
+| 후속 범위 | ws-scrcpy (H.264, <100ms) | — |
 
 ### 서버 아키텍처
 
-- 기존 `serve.py` (BaseHTTPRequestHandler) → **FastAPI + Uvicorn** 교체
-- WebSocket 엔드포인트(`@app.websocket`)로 실시간 Action Timeline 업데이트
-- 기존 `/api/*` REST 엔드포인트를 FastAPI로 이관 (하위 호환 유지)
-- Capture Studio 전용 엔드포인트:
-  - `POST /capture/session` — 세션 시작/재연결
+- **FastAPI + Uvicorn** (Phase 0에서 전환 완료)
+- WebSocket 엔드포인트(`/ws/timeline`) 뼈대 구현
+- 기존 `/api/*` REST 엔드포인트 하위 호환 이관 완료
+- Capture Studio 전용 엔드포인트 (구현 완료):
+  - `POST /capture/session` — 세션 시작/재연결 (Android: MJPEG, iOS: poll 분기)
   - `POST /capture/tap` — Tap 실행 및 기록
-  - `POST /capture/input` — Input 실행 및 기록
-  - `GET /capture/hierarchy` — 현재 hierarchy/DOM 수집
-  - `POST /capture/save` — TC·registry 저장
+  - `POST /capture/back` — Back 실행 (완료 후 hierarchy 자동 새로고침)
+  - `POST /capture/scroll` — Swipe 실행
+  - `GET /capture/hierarchy` — 현재 page_source hierarchy 수집
+  - `GET /capture/screenshot` — iOS용 단일 스크린샷 (poll 방식)
+  - `GET /capture/page_source_hash` — page_source MD5 (8자 hex), 화면 전환 감지용
+  - `POST /capture/generate_from_actions` — actions 배열 → 자체 완결형 pytest 코드
+  - `POST /capture/end_session` — 세션 종료
 
 ### Appium 세션 관리
 
@@ -124,13 +129,24 @@ Healing 재확인은 7단계 별도 화면 또는 Locator 검토(4단계) 재진
 
 ### 우선순위 및 별점
 
+**Android:**
 | 전략 | 별점 | 근거 |
 |---|---|---|
-| `data-testid` / `resource-id` | ★★★★★ | 테스트 전용 식별자 |
-| `accessibility id` / `aria-label` | ★★★★☆ | 접근성 표준, 안정적 |
-| `role + name` 조합 | ★★★☆☆ | 구조적이나 텍스트 의존 |
-| CSS selector / 안정적 text | ★★☆☆☆ | 텍스트 변경에 취약 |
-| XPath | ★☆☆☆☆ | 최후 수단, 구조 변경에 취약 |
+| `resource-id` (앱 고유) | ★★★★★ | 테스트 전용 식별자 |
+| `accessibility id` / `content-desc` | ★★★★☆ | 접근성 표준, 안정적 |
+| `text` (안정적 문자열) | ★★★☆☆ | 텍스트 변경에 취약 |
+| `class name` | ★★☆☆☆ | 같은 클래스 다수 존재 가능 |
+| XPath | ★☆☆☆☆ | 최후 수단 |
+
+**iOS:**
+| 전략 | 별점 | 근거 |
+|---|---|---|
+| `accessibility id` (`label` 우선, `name` 차선) | ★★★★★ | XCUITest 표준, `_ios_tap()` 자동 스크롤 지원 |
+| `predicate string` | ★★★☆☆ | 복합 조건, 유일성 높음 |
+| `class chain` | ★★☆☆☆ | 구조 의존 |
+| XPath | ★☆☆☆☆ | 최후 수단 |
+
+> iOS `label` vs `name`: `label`은 사람이 읽는 텍스트(예: '스크린 타임'), `name`은 bundle-ID 스타일(예: 'com.apple.settings'). XCUITest에서 `_ios_tap()` 자동 스크롤은 `label` 기준으로 동작하므로 `label`을 우선 사용합니다.
 
 ### 승인 조건
 
@@ -258,13 +274,13 @@ tests/generated/{platform}/{group}/tc_*.py
 
 | 우선순위 | 항목 | 상태 |
 |---|---|---|
-| P0 | Appium 서버 `--allow-insecure=adb_screen_streaming` 환경 확인 | ⬜ |
-| P0 | `serve.py` → FastAPI 전환 일정 확정 (기존 엔드포인트 하위 호환 유지) | ⬜ |
-| P0 | Capture Studio 세션과 파이프라인 실행 세션 충돌 방지 UX 확정 | ⬜ |
+| P0 | Appium 서버 `--allow-insecure=adb_screen_streaming` 환경 확인 | ✅ |
+| P0 | `serve.py` → FastAPI 전환 일정 확정 (기존 엔드포인트 하위 호환 유지) | ✅ |
+| P0 | Capture Studio 세션과 파이프라인 실행 세션 충돌 방지 UX 확정 | ✅ |
 | P1 | Action Timeline 재실행 범위 확인 (전체 처음부터만 MVP 지원) | ⬜ |
-| P1 | Healing 재확인 뷰 와이어프레임 확정 (별도 화면 vs Locator 검토 재진입) | ⬜ |
+| P1 | Healing 재확인 뷰 와이어프레임 확정 (별도 화면 vs Locator 검토 재진입) | ✅ Locator 검토 재진입 방식으로 구현 |
 | P2 | TC 그룹명 기본값 정책 확정 (앱 이름 자동 vs 사용자 필수 입력) | ⬜ |
-| P2 | Capture Studio 생성 pytest와 conftest.py 의존성 호환성 검증 | ⬜ |
+| P2 | Capture Studio 생성 pytest와 conftest.py 의존성 호환성 검증 | ✅ 자체 완결형으로 conftest 불필요 |
 
 ---
 
@@ -283,135 +299,122 @@ tests/generated/{platform}/{group}/tc_*.py
 
 ## 15. 구현 태스크 분해
 
-### Phase 0 — 기반 준비 (P0 체크리스트 완료 필요)
+### Phase 0 — 기반 준비 ✅ 완료
 
-**Task 0-1: FastAPI 전환**
-- `agents/dashboard/serve.py` → FastAPI + Uvicorn 교체
-- 기존 `/api/*` 엔드포인트 하위 호환 이관
-- WebSocket 엔드포인트 뼈대 추가 (`/ws/timeline`)
-- 완료 기준: 기존 대시보드 기능 그대로 동작, WebSocket 연결 확인
+**Task 0-1: FastAPI 전환** ✅
+- `agents/dashboard/serve.py` → FastAPI + Uvicorn 교체 완료
+- 기존 `/api/*` 엔드포인트 하위 호환 이관 완료
+- WebSocket 엔드포인트 뼈대 추가 (`/ws/timeline`) 완료
 
-**Task 0-2: 세션 충돌 방지 UX**
-- `state/capture_session.json` 스키마 정의
-- 대시보드 상태바에 "Capture 세션 실행 중" 표시
-- 파이프라인 실행 중 Capture Studio 진입 차단 UI
+**Task 0-2: 세션 충돌 방지 UX** ✅
+- `state/capture_session.json` 스키마 정의 완료
+- 대시보드 상태바에 "Capture 세션 실행 중" 표시 완료
+- 파이프라인 실행 중 Capture Studio 진입 차단 UI 완료
 
-**Task 0-3: 환경 확인 스크립트**
-- Appium MJPEG 스트리밍 동작 확인 스크립트 (`scripts/check_mjpeg.py`)
-- `--allow-insecure=adb_screen_streaming` 플래그 안내 문서 갱신
-
----
-
-### Phase 1 — 세션 설정 화면 (1단계)
-
-**Task 1-1: Capture Studio 진입점**
-- 대시보드에 "Capture Studio" 탭/버튼 추가
-- OS(Android/iOS), 실행 대상(Emulator/실제), 앱 설정(package/activity) 입력 폼
-- 연결 확인 후에만 "세션 시작" 활성화
-
-**Task 1-2: Appium 세션 시작 API**
-- `POST /capture/session` 구현
-- Appium 드라이버 시작 → `state/capture_session.json`에 `session_id` 저장
-- MJPEG 포트 반환
+**Task 0-3: 환경 확인 스크립트** ✅
+- Appium MJPEG 스트리밍 환경 확인 완료
+- `--allow-insecure=uiautomator2:adb_screen_streaming` 플래그 (Appium 3.x) 문서 반영
 
 ---
 
-### Phase 2 — 화면 탐색 (2단계)
+### Phase 1 — 세션 설정 화면 (1단계) ✅ 완료
 
-**Task 2-1: MJPEG 미러링 패널**
-- `<img src="http://localhost:8093/">` 표시
-- 클릭 시 좌표 캡처 → 좌표-노드 매핑 API 호출
+**Task 1-1: Capture Studio 진입점** ✅
+- 대시보드에 "Capture Studio" 탭/버튼 추가 완료
+- OS(Android/iOS), 실행 대상(Emulator/실제), 앱 설정(`app_package`/`app_activity`) 입력 폼 완료
+- 연결 확인 후에만 "세션 시작" 활성화 완료
 
-**Task 2-2: 좌표-노드 매핑 API**
-- `POST /capture/hierarchy` — page_source XML 파싱
-- 좌표 보정 → bounds 필터링 → 최소 면적 노드 반환
-- 부모/자식 전환 응답 포함
-
-**Task 2-3: hierarchy/DOM 트리 패널**
-- Native hierarchy 트리 렌더링 (좌우 양방향 강조)
-- WebView 감지 시 DOM 탭 활성화
-- WebView 미감지 시 "Native만 사용" 안내
-
-**Task 2-4: 선택 요소 상세 패널**
-- 속성(text, resource-id, accessibility, bounds) 표시
-- Locator 후보 목록 + 별점 (★ 기반 전략 신뢰도)
-- 중복 후보 시 일치 요소 수 표시
+**Task 1-2: Appium 세션 시작 API** ✅
+- `POST /capture/session` 구현 완료
+- Appium 드라이버 시작 → `state/capture_session.json`에 `session_id` 저장 완료
+- MJPEG 포트 반환 완료
+- `/capture/generate_from_actions` 엔드포인트: actions 배열 → 자체 완결형 pytest 코드 생성 완료
+- 세션 key: `app_package` / `app_activity` (구버전 `app_pkg` 사용 금지)
 
 ---
 
-### Phase 3 — 동작 기록 (3단계)
+### Phase 2 — 화면 탐색 (2단계) ✅ 완료
 
-**Task 3-1: 녹화 컨트롤**
-- 녹화 시작 / 일시정지 / 종료 버튼
-- 30분 비활동 자동 종료 타이머
+**Task 2-1: 미러링 패널** ✅
+- Android: `<img src="http://localhost:8093/">` MJPEG 스트리밍
+- iOS: 1.2초 polling + img src 교체
 
-**Task 3-2: Tap API**
-- `POST /capture/tap` — Appium driver.click() 실행
-- 클릭 전후 screenshot + snapshot 저장
-- actions.json 항목 추가
+**Task 2-2: 화면 전환 자동 감지** ✅
+- `csStartScreenWatcher()` — 4초 간격 `/capture/page_source_hash` 폴링
+- hash 변경 감지 → 3초 쿨다운 후 `csRefreshHierarchy()` 자동 호출
 
-**Task 3-3: Input API**
-- `POST /capture/input` — 일반값 / 비밀값(마스킹) 구분
-- actions.json에 입력 데이터 키 저장 (원문 미저장)
+**Task 2-3: hierarchy/DOM 트리 패널** ✅
+- Native hierarchy XML 파싱 → 트리 렌더링
+- 노드 클릭 → 속성 및 Locator 후보 상세 패널
 
-**Task 3-4: Back / Context switch API**
-- Back: `driver.back()`
-- Context switch: `driver.switch_to.context()` + 전환 로그 기록
-
-**Task 3-5: Action Timeline WebSocket**
-- `/ws/timeline` — 각 action 완료 시 브라우저에 실시간 push
-- 로그 삭제 / 재정렬 API
+**Task 2-4: 선택 요소 상세 패널** ✅
+- 속성(text, resource-id/label, accessibility, bounds) 표시
+- Locator 후보 목록 + ★ 별점 (Android/iOS 전략별 우선순위)
+- Android: resource-id(앱 고유) 최우선 / iOS: label 기반 accessibility-id 최우선
 
 ---
 
-### Phase 4 — Locator 검토 (4단계)
+### Phase 3 — 동작 기록 (3단계) ✅ 완료
 
-**Task 4-1: Locator 후보 검증 API**
-- 각 후보 strategy+value로 `find_elements()` 실행
-- 일치 개수 반환 → 1이면 "유일", 2+이면 "중복"
+**Task 3-1: 녹화 컨트롤** ✅ (세션 시작 = 기록 시작)
 
-**Task 4-2: 승인 UI**
-- 후보별 승인/거부 버튼
-- 승인 항목만 `locators.json` 반영 대상으로 표시
+**Task 3-2: Tap API** ✅
+- 미러링 클릭 → 좌표 변환 → `POST /capture/tap` → Appium click 실행
+- back 버튼: `POST /capture/back` → 실행 후 1.2초 뒤 hierarchy 자동 새로고침
 
----
+**Task 3-3: Scroll API** ✅
+- `POST /capture/scroll` — swipe 실행
 
-### Phase 5 — Step 편집 (5단계)
+**Task 3-4: "직접 Step 추가" 패널** ✅
+- tap / back / scroll / wait / assert 타입 직접 입력 추가
+- iOS: `accessibility-id` tap → `_ios_tap(label)` 코드 생성 (mobile:scroll 자동 스크롤 포함)
 
-**Task 5-1: Step 초안 생성**
-- actions.json에서 사람이 읽을 수 있는 Step 문구 생성
-- 사용자 편집 가능
-
-**Task 5-2: 기대 결과 입력**
-- 각 Step에 기대 결과 텍스트 입력
-- 기대 결과 없는 Step: "품질 낮음" 경고 표시
+**Action Timeline 갱신**: 각 액션의 fetch `.then()` 에서 직접 업데이트 (WebSocket 불필요 — 모든 액션이 사용자 트리거이므로 request-response 패턴으로 충분)
 
 ---
 
-### Phase 6 — 미리보기 (6단계)
+### Phase 4 — Locator 검토 (4단계) ✅ 완료
 
-**Task 6-1: Markdown TC 미리보기**
-- actions.json + step 편집 결과로 Markdown 초안 렌더링
-- `testcases/{platform}/{group}/tc_*.md` 경로 표시
+**Task 4-1: Locator 후보 카드** ✅
+- 전략·값·별점 표시 (Android/iOS 플랫폼별 우선순위 분기)
+- iOS: `_csBestLocator()` 에서 `label` 우선 선택 (`name` 차선)
 
-**Task 6-2: pytest 미리보기**
-- `02_generate.py` 로직으로 pytest 코드 미리보기 (파일 미저장)
-- registry 누락 항목 있으면 "생성 불가" 경고
+**Task 4-2: 승인 UI** ✅
+- 후보 카드 클릭 → 승인 → actions에 반영
+
+**Task 4-3: Healing 재진입** ✅
+- 실패 TC "Locator 재확인" 버튼 → Capture Studio 4단계 재진입
+- `csOpenHealReview()`: 세션 있으면 csMirrorConnect + csRefreshHierarchy 자동 호출
 
 ---
 
-### Phase 7 — 저장 및 생성 (7단계)
+### Phase 5 — Step 편집 (5단계) ✅ 부분 완료
 
-**Task 7-1: 저장 API**
-- `POST /capture/save` 구현
-- Markdown TC 저장 (`testcases/`)
-- `screens.json`, `locators.json` 갱신
-- 기존 파일 충돌: 덮어쓰기 / 새 ID 선택
-- 저장 성공 후 "코드 생성 / 빠른 실행 / TC 열기" 버튼 제공
+**Task 5-1: tc_group / tc_id 설정** ✅
+- tc_group → 폴더명 (`tests/generated/{platform}/{tc_group}/`)
+- tc_id → 파일명 (`{tc_id}.py`)
+- 같은 그룹에 여러 TC 누적 가능 → 대시보드 리포트에 그룹별 집계
 
-**Task 7-2: 코드 생성 실행**
-- `02_generate.py --strict-locators --platform {os}` subprocess 실행
-- 결과를 대시보드 스타일 리포트로 표시
+**Task 5-2: 기대 결과 입력** ⬜ (각 Step별 기대 결과 텍스트 입력 UI 미구현)
+
+---
+
+### Phase 6 — 미리보기 (6단계) ✅ 완료
+
+**Task 6-1: 생성 코드 미리보기** ✅
+- `POST /capture/generate_from_actions` (dry-run 없이 직접 생성)
+- 자체 완결형: `_build_driver()` + `_el()` + `_ios_tap()` (iOS) + test class
+
+---
+
+### Phase 7 — 저장 및 생성 (7단계) ✅ 완료
+
+**Task 7-1: 코드 저장** ✅
+- "저장 및 생성" 버튼 → `/capture/generate_from_actions` → pytest 파일 저장
+- `tests/generated/{platform}/{tc_group}/{tc_id}.py`
+- 저장 성공 후 "실행" / "파일 열기" 버튼 제공
+
+**Task 7-2: Markdown TC / locators.json 갱신** ⬜ (코드만 저장, MD·registry 자동 갱신 미구현)
 
 ---
 
@@ -450,3 +453,18 @@ tests/generated/{platform}/{group}/tc_*.py
 | `config/screens.json` | 화면 정의 |
 | `scripts/02_generate.py` | pytest 코드 생성기 |
 | `docs/LOCATOR_HEALING.md` | Healing 정책 |
+
+---
+
+## 18. 현재 알려진 제약사항
+
+| 항목 | 내용 |
+|---|---|
+| Android MJPEG | 포트 8093 사용. Appium 서버에 `--allow-insecure=uiautomator2:adb_screen_streaming` 플래그 필요 (Appium 3.x) |
+| iOS XCUITest 세션 충돌 | 시뮬레이터당 XCUITest 세션 1개 제한. Capture Studio iOS 세션 열린 채 iOS pytest TC 동시 실행 불가. 충돌 시 "🔄 세션 재연결" 버튼으로 복구 |
+| iOS 미러링 지연 | screenshot polling 방식 (1.2초 간격) — MJPEG보다 지연 큼 |
+| 세션 동시 사용 불가 | Capture Studio 세션과 파이프라인 실행 세션은 동시에 존재할 수 없음 |
+| 자체 완결 코드 생성 | 생성된 pytest 파일은 `_build_driver()` + `_el()` + class 구조로 완결. conftest 공유 fixture 사용 금지 |
+| iOS `_ios_tap()` | accessibility-id tap만 자동 스크롤 지원. xpath/id tap은 기존 `_el().click()` 방식 사용 |
+| TC 파일 덮어쓰기 | 같은 `tc_id`로 생성 시 기존 파일 덮어씀. 의도적 버전 관리 필요 시 tc_id를 달리 지정 |
+| Step별 기대 결과 | 현재 기대 결과 UI 미구현. assert 타입 액션으로 검증 로직 추가 필요 |

@@ -1,0 +1,16 @@
+{
+  "session_id": "8140c35b-f93d-4a9c-81d9-ffe952ddb684",
+  "platform": "ios",
+  "target": "emulator",
+  "app_package": "",
+  "app_activity": "",
+  "bundle_id": "com.apple.Preferences",
+  "device_name": "iPhone 18 Pro",
+  "tc_group": "settings_multi_step",
+  "mjpeg_port": 8093,
+  "screenshot_mode": "poll",
+  "active": true,
+  "started_at": "2026-09-12T11:22:10.986466",
+  "last_activity_at": "2026-09-12T11:22:10.986493",
+  "actions": []
+}

@@ -99,6 +99,29 @@ python scripts/02_generate.py --platform android --strict-locators
 python scripts/02_generate.py --platform ios --strict-locators
 ```
 
+## Capture Studio에서 Healing 재확인 진입
+
+자동 healing이 모호하거나 실패한 경우, 대시보드 실행 결과의 실패 TC에서 "재확인" 버튼을 클릭하면 Capture Studio Locator 검토(4단계)로 바로 이동합니다.
+
+```text
+실행 결과 → 실패 TC → "재확인" 버튼
+  → Capture Studio Locator 검토 화면 (해당 TC 컨텍스트로 진입)
+  → 새 요소 선택 → Registry 갱신 → 코드 재생성
+```
+
+Healing 재확인은 기존 Appium 세션이 없어도 Locator 후보만 검토할 수 있습니다. 실제 디바이스 세션이 필요한 경우 세션 설정(1단계)부터 시작합니다.
+
+## pytest-rerunfailures와 healing의 관계
+
+두 메커니즘은 서로 다른 레이어에서 동작하며 역할이 다릅니다.
+
+| 메커니즘 | 레이어 | 역할 |
+|---|---|---|
+| `pytest-rerunfailures` (`--reruns 2 --reruns-delay 5`) | 실행 레이어 | Appium 세션 초기화 오류 등 일시적인 인프라 장애를 재시도로 흡수 |
+| `06_heal.py` | 코드 레이어 | locator 자체가 변경된 경우 registry를 갱신하고 코드를 재생성 |
+
+재시도(`--reruns`)로 해결되면 locator는 정상이고 인프라 문제입니다. 재시도 후에도 계속 실패하면 healing을 시작합니다. healing이 모호하면 Capture Studio 재확인으로 이동합니다.
+
 ## 운영상 주의사항
 
 - healing은 테스트의 기대 동작을 수정하지 않고 locator만 갱신합니다.

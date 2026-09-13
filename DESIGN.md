@@ -1,60 +1,61 @@
-# Design
+# 디자인
 
-## Source of truth
+## 기준 정보
 
-Status: Active. Updated: 2026-09-07. Surfaces: dashboard, Capture Studio, pipeline, quick run, Import Studio, reports, history, Appium settings. Evidence: current dashboard implementation, native-fixed Import Studio, approved Import Studio screenshot, two reference captures of a semi-manual device inspector workflow, and the approved element-first mockup. Product requirements are defined in `docs/PRD.md`; screen behavior is defined in `docs/CAPTURE_STUDIO_PLAN.md`.
+상태: Active. 업데이트: 2026-09-11. 적용 화면: 대시보드, Capture Studio, 파이프라인, 빠른 실행, Import Studio, 리포트, 히스토리, Appium 설정. 근거: 현재 대시보드 구현, native-fixed Import Studio, 승인된 Import Studio 스크린샷, 반수동 디바이스 Inspector 워크플로우의 참조 캡처 2건, 승인된 요소 우선 목업. 제품 요구사항은 `docs/PRD.md`에, 화면 동작은 `docs/CAPTURE_STUDIO_PLAN.md`에 정의되어 있습니다.
 
-## Brand
+## 브랜드
 
-Dark QA control-center interface: precise, operational, and calm. Trust comes from explicit status, execution evidence, and reversible actions. Avoid decorative UI that competes with test state.
+어두운 QA 관제 센터 인터페이스: 정확하고, 운영 중심적이며, 안정적입니다. 신뢰는 명시적인 상태, 실행 증거, 되돌릴 수 있는 액션에서 비롯됩니다. 테스트 상태와 경쟁하는 장식적 UI는 사용하지 않습니다.
 
-## Product goals
+## 제품 목표
 
-Make Appium test discovery, generation, execution, healing, import, and reporting understandable in one workspace. Capture Studio must let a QA engineer select actual Native/WebView elements and perform a path once, then reuse the recorded element evidence for Step generation, deterministic code generation, and healing. Preserve existing Python dashboard commands and APIs. Do not conceal failures or imply unsupported automation.
+Appium 테스트 탐색, 생성, 실행, healing, 가져오기, 리포트를 하나의 작업 공간에서 이해할 수 있도록 합니다. Capture Studio는 QA 엔지니어가 실제 Native/WebView 요소를 선택하고 경로를 한 번 수행한 뒤, 기록된 요소 증거를 Step 생성, 결정론적 코드 생성, healing에 재사용할 수 있어야 합니다. 기존 Python 대시보드 명령과 API를 보존합니다. 지원하지 않는 자동화를 숨기거나 실패를 감추지 않습니다.
 
-## Personas and jobs
+## 페르소나 및 핵심 작업
 
-Primary user: a QA engineer preparing and running Android/iOS test cases. Core jobs: import TC data, connect a device, select an element from the mirrored screen, inspect its Native/WebView structure, record actions, confirm locators, add expected results, generate code, run tests, inspect evidence, and respond to failures. The user should not need to operate Appium Inspector repeatedly after a flow has been approved.
+주요 사용자: Android/iOS 테스트 케이스를 준비하고 실행하는 QA 엔지니어. 핵심 작업: TC 데이터 가져오기, 디바이스 연결, 미러링 화면에서 요소 선택, Native/WebView 구조 검사, 동작 기록, locator 확인, 기대 결과 추가, 코드 생성, 테스트 실행, 증거 검토, 실패 대응. 흐름이 승인된 이후에는 Appium Inspector를 반복 조작하지 않아도 됩니다.
 
-## Information architecture
+## 정보 구조
 
-Persistent top status bar and left navigation. Each menu opens one focused work surface. Capture Studio sits between Import Studio and pipeline execution and follows six steps: session setup, element inspection, action capture, locator review, TC preview, save and generate. Within the capture workspace, visual priority is device and selected element first, hierarchy/DOM second, Action Timeline third, and Step/expected-result editing after the evidence is recorded. Import Studio follows five steps: file selection, column/sheet mapping, preview, safe application, completion.
+고정 상단 상태 표시줄과 좌측 내비게이션. 각 메뉴는 하나의 집중된 작업 화면을 엽니다. Capture Studio는 Import Studio와 파이프라인 실행 사이에 위치하며 여섯 단계를 따릅니다: 세션 설정, 요소 검사, 동작 캡처, Locator 검토, TC 미리보기, 저장 및 생성. 캡처 작업 공간 안에서는 디바이스와 선택된 요소가 시각적으로 최우선이고, 그 다음이 hierarchy/DOM, Action Timeline, Step/기대 결과 편집 순입니다. Import Studio는 다섯 단계를 따릅니다: 파일 선택, 열/시트 매핑, 미리보기, 안전한 반영, 완료.
 
-## Design principles
+## 디자인 원칙
 
-Show the current scope before actions; keep platform and context synchronized; expose progress and disabled states; retain native-fixed interaction patterns where workflows match. Selection starts from the mirrored app element, not from manual TC prose. Treat captured hierarchy, DOM, context, screenshot, selected element, and action logs as evidence. Generate Step drafts from evidence and require user confirmation for ambiguous locators instead of silently guessing.
+액션 전에 현재 범위를 표시합니다. 플랫폼과 컨텍스트를 항상 동기화합니다. 진행 상태와 비활성 상태를 명시합니다. 워크플로우가 일치하는 경우 native-fixed 상호작용 패턴을 재사용합니다. 선택은 수동 TC 산문이 아닌 미러링된 앱 요소에서 시작합니다. 캡처된 hierarchy, DOM, 컨텍스트, 스크린샷, 선택된 요소, 액션 로그를 증거로 취급합니다. 증거에서 Step 초안을 생성하고, 모호한 locator는 자동으로 추측하지 않고 사용자 확인을 요청합니다.
 
-## Visual language
+## 시각적 언어
 
-Use the existing dark purple dashboard tokens. Import Studio uses `#0B0B14` background, `#1A1A2E` cards, `#8B5CF6` accent, compact 6–10px radii, 12–20px typography, and restrained borders instead of heavy shadows.
+기존 어두운 보라색 대시보드 토큰을 사용합니다. Import Studio는 `#0B0B14` 배경, `#1A1A2E` 카드, `#8B5CF6` 액센트, 6–10px 소형 radius, 12–20px 타이포그래피, 무거운 그림자 대신 절제된 테두리를 사용합니다.
 
-## Components
+## 컴포넌트
 
-Shared shell: top status bar and sidebar. Capture Studio components: connection bar, live device viewport, element highlight overlay, Native/WebView context switcher, hierarchy/DOM tree, element detail panel, record controls, action timeline, locator candidate table, confidence badge, Step/expected-result editor, Markdown preview, generated-code preview, and save/generate action bar. Locator and structure panels support the element workflow but must not visually dominate the device and Action Timeline. Quick-run results use collapsible folder summaries; each expanded folder exposes All/Pass/Fail filters and test-level details without mixing folders. Import components: wizard header, expandable file card with sheet checkboxes, three-column mapping workspace (selected source, common mapping, validation result), platform selector, preview summary, safe-apply policy cards, commit summary, completion result, bottom action bar. Safe apply exposes only the supported `skip-conflict` and `overwrite` policies.
+공유 셸: 상단 상태 표시줄과 사이드바. Capture Studio 컴포넌트: 연결 바, 실시간 디바이스 뷰포트, 요소 강조 오버레이, Native/WebView 컨텍스트 전환기, hierarchy/DOM 트리, 요소 상세 패널, 녹화 컨트롤, Action Timeline, Locator 후보 테이블, 신뢰도 배지, Step/기대 결과 편집기, Markdown 미리보기, 생성 코드 미리보기, 저장/생성 액션 바. Locator 및 구조 패널은 요소 워크플로우를 지원하지만 디바이스와 Action Timeline을 시각적으로 압도해서는 안 됩니다. 빠른 실행 결과는 폴더별 접기/펼치기 요약을 사용합니다. 각 폴더를 펼치면 전체/통과/실패 필터와 테스트 단위 상세 정보가 표시되며 폴더끼리 섞이지 않습니다. Import 컴포넌트: 위저드 헤더, 시트 체크박스가 있는 확장형 파일 카드, 3열 매핑 작업 공간(선택된 소스, 공통 매핑, 검증 결과), 플랫폼 선택기, 미리보기 요약, 안전한 반영 정책 카드, 반영 요약, 완료 결과, 하단 액션 바. 안전한 반영은 지원되는 `skip-conflict`와 `overwrite` 정책만 노출합니다.
 
-## Accessibility
+## 접근성
 
-Controls use native buttons/inputs, visible disabled states, text labels, keyboard focus, and status text that does not rely on color alone. Maintain readable contrast and 13px minimum control text.
+컨트롤은 네이티브 버튼/입력, 명시적 비활성 상태, 텍스트 레이블, 키보드 포커스, 색상에만 의존하지 않는 상태 텍스트를 사용합니다. 읽기 가능한 대비와 최소 13px 컨트롤 텍스트를 유지합니다.
 
-## Responsive behavior
+## 반응형 동작
 
-Desktop-first dashboard. Wizard lines and cards may wrap at narrower widths; bottom actions remain visible and content scrolls independently.
+데스크톱 우선 대시보드. 위저드 라인과 카드는 좁은 화면 폭에서 줄 바꿈이 될 수 있습니다. 하단 액션은 항상 표시되고 콘텐츠는 독립적으로 스크롤됩니다.
 
-## Interaction states
+## 상호작용 상태
 
-Support device disconnected, Appium unavailable, session starting, Native context, WebView detected, WebView unavailable, recording, paused, ambiguous locator, stale snapshot, validation error, save in progress, generation success, and generation failure. Existing import states remain: loading, empty import folder, selected file, unavailable sheet, validation error, conversion in progress, success, and conversion failure.
+디바이스 연결 끊김, Appium 사용 불가, 세션 시작 중, Native 컨텍스트, WebView 감지됨, WebView 사용 불가, 녹화 중, 일시정지, 모호한 locator, 오래된 snapshot, 유효성 오류, 저장 중, 생성 성공, 생성 실패를 지원합니다. 기존 Import 상태는 유지됩니다: 로딩 중, 가져오기 폴더 비어 있음, 파일 선택됨, 시트 사용 불가, 유효성 오류, 변환 중, 성공, 변환 실패.
 
-## Content voice
+## 콘텐츠 어조
 
-Use short operational Korean labels. State what will happen: “다음: 열 매핑”, “안전한 반영”, “반영 시작”, and “원본 파일은 변경되지 않습니다.”
+짧고 운영 중심적인 한국어 레이블을 사용합니다. 다음에 일어날 일을 명시합니다: "다음: 열 매핑", "안전한 반영", "반영 시작", "원본 파일은 변경되지 않습니다."
 
-## Implementation constraints
+## 구현 제약사항
 
-Vanilla HTML/CSS/JavaScript served by `agents/dashboard/serve.py`. Capture Studio extends the existing Appium session and `hybrid_runtime.py`; it must not create a second competing driver for the same device. Captures persist under a dedicated session directory and update `config/screens.json` and `config/locators.json` only after review. It generates one Markdown file per TC and then invokes the existing strict generator. Reuse `/api/import/files`, `/api/import/sheets`, and `/api/import/convert`. Import conversion must apply the selected column mapping and split output into `testcases/android/{sheet}` and `testcases/ios/{sheet}`. Generated code mirrors the group below the platform root into `tests/generated/{platform}/{sheet}`. Validate JavaScript syntax, Python tests, API path safety, and the live localhost surface.
+`agents/dashboard/serve.py`가 제공하는 Vanilla HTML/CSS/JavaScript. Capture Studio는 기존 Appium 세션과 `hybrid_runtime.py`를 확장하며, 같은 디바이스에 경쟁하는 두 번째 드라이버를 생성해서는 안 됩니다. 캡처는 전용 세션 디렉토리 아래에 저장되고, 검토 후에만 `config/screens.json`과 `config/locators.json`을 갱신합니다. TC당 Markdown 파일 하나를 생성한 뒤 기존 strict 생성기를 실행합니다. `/api/import/files`, `/api/import/sheets`, `/api/import/convert`를 재사용합니다. 가져오기 변환은 선택된 열 매핑을 적용하고 출력을 `testcases/android/{sheet}`와 `testcases/ios/{sheet}`로 분리해야 합니다. 생성된 코드는 플랫폼 루트 아래의 그룹을 `tests/generated/{platform}/{sheet}`에 동일하게 반영합니다. JavaScript 문법, Python 테스트, API 경로 안전성, 실시간 localhost 화면을 검증합니다.
 
-## Open questions
+## 미결 사항
 
-- [ ] Whether reusable mapping profiles and per-sheet override mappings should be added; owner: product; impact: repeated imports with heterogeneous Excel formats.
-- [ ] Whether multi-file/multi-sheet conversion should be transactional; owner: backend; impact: Step 4 rollback semantics.
-- [ ] Whether Capture Studio should support remote physical-device farms in its first release; owner: product; impact: session transport and authentication.
-- [ ] Whether iOS WebView DOM capture should be Appium-context-only or optionally integrate Safari Web Inspector; owner: architecture; impact: parity with Android CDP capture.
+- [ ] 재사용 가능한 매핑 프로파일과 시트별 재정의 매핑 추가 여부: 담당 — 제품; 영향 — 이기종 Excel 형식의 반복 가져오기.
+- [ ] 다중 파일/다중 시트 변환의 트랜잭션 처리 여부: 담당 — 백엔드; 영향 — Step 4 롤백 의미론.
+- [ ] Capture Studio가 첫 번째 릴리스에서 원격 물리 디바이스 팜을 지원할지 여부: 담당 — 제품; 영향 — 세션 전송 및 인증.
+- [ ] iOS WebView DOM 캡처를 Appium 컨텍스트 전용으로 할지, Safari Web Inspector와 선택적으로 통합할지 여부: 담당 — 아키텍처; 영향 — Android CDP 캡처와의 동등성.
+- [x] Healing 재확인 화면 진입 방식 — 별도 화면 vs Locator 검토 재진입: 해결됨 — 실패 TC 목록에서 Locator 검토(4단계) 재진입 방식으로 구현 완료.

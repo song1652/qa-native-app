@@ -28,6 +28,8 @@ appium driver install uiautomator2
 appium driver install xcuitest
 ```
 
+`requirements.txt`에는 `pytest-rerunfailures`가 포함되어 있습니다. `05_execute.py`가 패키지 설치 여부를 감지해 `--reruns 2 --reruns-delay 5`를 자동으로 적용하므로 별도 설정이 필요 없습니다.
+
 Android는 `ANDROID_HOME`과 `adb`를 설정하고, iOS는 Xcode 및 `xcrun simctl`을 준비합니다.
 
 ```bash
@@ -109,6 +111,32 @@ testcases/ios/{시트명}/     → tests/generated/ios/{시트명}/
 ```
 
 서로 다른 시트에서 같은 TC 번호를 사용해도 시트별 하위 폴더로 분리되므로 파일이 덮어써지지 않습니다. 빠른 실행은 선택한 OS의 `tests/generated/{platform}`만 조회합니다.
+
+### Capture Studio
+
+대시보드의 Capture Studio 탭에서 실제 앱 화면을 보면서 요소를 선택하고 TC를 직접 생성합니다.
+
+```text
+1. 세션 설정   — OS(Android) · 디바이스 · 앱 package/activity 선택 후 세션 시작
+2. 화면 탐색   — MJPEG 미러링 + hierarchy 트리에서 요소 선택
+3. 동작 기록   — Tap/Input/Back 등 실제 조작을 Action Timeline에 기록
+4. Locator 검토 — 후보 별점 확인 및 승인
+5. 미리보기   — Markdown TC와 pytest 코드 나란히 확인
+6. 저장 및 생성 — registry·TC 저장 후 02_generate.py 실행
+```
+
+**현재 구현된 기능:**
+- Phase 0: FastAPI 전환 완료, 세션 충돌 방지 UX, MJPEG 환경 확인
+- Phase 1: 세션 설정 화면 (앱·디바이스·그룹 설정), Appium 세션 시작 API
+- `/capture/generate_from_actions` 엔드포인트: actions 배열로 pytest 코드 자동 생성
+- 실패 TC에서 Capture Studio Locator 재확인 화면 재진입 (Healing 연계)
+
+**제약사항:**
+- iOS 미지원 (MJPEG 방식이 iOS Simulator에서 동작하지 않음; 후속 범위)
+- MJPEG 스트리밍 포트 8093이 열려 있어야 합니다
+- Capture Studio 세션과 파이프라인 실행 세션은 동시에 존재할 수 없습니다
+
+생성된 pytest 파일은 자체 완결형(`_build_driver()` + `_el()` + class 구조 포함)으로, 수정 없이 `05_execute.py`로 바로 실행할 수 있습니다.
 
 ### CLI 실행
 

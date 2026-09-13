@@ -1,0 +1,14 @@
+{
+  "session_id": "d40df2f4-3e55-4c66-8721-6043e874c3f7",
+  "platform": "android",
+  "target": "emulator",
+  "app_package": "com.android.settings",
+  "app_activity": ".Settings",
+  "bundle_id": "",
+  "tc_group": "settings_e2e",
+  "mjpeg_port": 8093,
+  "active": true,
+  "started_at": "2026-09-11T21:14:55.131476",
+  "last_activity_at": "2026-09-11T21:14:55.131508",
+  "actions": []
+}

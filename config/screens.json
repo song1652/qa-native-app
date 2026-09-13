@@ -3,6 +3,43 @@
     "description": "ApiDemos native 헤더와 WebView 콘텐츠 화면",
     "precondition": "app_launch",
     "actions": [],
-    "platform": ["android"]
+    "platform": [
+      "android"
+    ]
+  },
+  "settings": {
+    "name": "settings",
+    "entry": {
+      "action": "launch",
+      "app": "com.android.settings"
+    }
+  },
+  "setting": {
+    "name": "setting",
+    "entry": {
+      "action": "launch",
+      "app": "com.android.settings"
+    }
+  },
+  "settings_main": {
+    "name": "settings_main",
+    "entry": {
+      "action": "launch",
+      "app": "com.android.settings"
+    }
+  },
+  "settings_e2e": {
+    "name": "settings_e2e",
+    "entry": {
+      "action": "launch",
+      "app": "com.android.settings"
+    }
+  },
+  "settings_ui_v3": {
+    "name": "settings_ui_v3",
+    "entry": {
+      "action": "launch",
+      "app": "com.android.settings"
+    }
   }
 }

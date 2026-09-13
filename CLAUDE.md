@@ -20,7 +20,7 @@
 - `01_analyze.py`: Appium native hierarchy와 감지된 WebView DOM을 분리 수집
 - `02_generate.py`: native 우선·선택적 Playwright WebView pytest 생성
 - `03_lint.py`: 생성 코드 flake8 검사
-- `05_execute.py`: pytest/Appium 실행 및 리포트 저장
+- `05_execute.py`: pytest/Appium 실행 및 리포트 저장. `pytest-rerunfailures`가 설치된 경우 `--reruns 2 --reruns-delay 5` 자동 적용
 - `06_heal.py`: 실패 직전 최신 hierarchy를 다시 수집하고 유일 후보만 healing
 
 대시보드의 전체 실행은 위 순서의 단일 파이프라인입니다. 제품에는 단일/병렬 실행 유형을 별도로 노출하지 않습니다.
@@ -49,6 +49,39 @@ testcases/ios/{group}/     → tests/generated/ios/{group}/
 - 파일명 충돌은 시트별 하위 폴더로 방지합니다.
 - 안전한 반영의 기본 정책은 `skip-conflict`이며 기존 Markdown을 보존합니다. 명시적으로 `overwrite`를 선택하면 동일 경로 파일을 덮어씁니다.
 
+## Capture Studio
+
+대시보드의 Capture Studio 탭에서 실제 앱 화면을 보며 요소를 선택하고 TC를 직접 생성합니다.
+
+**현재 구현 상태 (2026-09-12):**
+- Phase 0–1 완료: FastAPI 전환, 세션 충돌 방지, MJPEG/iOS poll 환경 확인, 세션 설정 화면
+- Phase 2–4 완료: hierarchy 트리 렌더링·노드 선택, 동작 기록(tap/scroll/back/wait), Locator 후보·승인
+- Phase 7 완료: `저장 및 생성` 버튼 → `/capture/generate_from_actions` → 자체 완결형 pytest 파일 생성
+- 생성 코드 구조: `_build_driver()` + `_el()` + `_ios_tap()` (iOS 전용) + class + test 함수
+- Healing 연계: 실패 TC에서 Locator 검토 4단계 재진입 완료
+- **iOS 화면 미러링**: XCUITest + `GET /capture/screenshot` polling (1.2초), 25회 실패 후 에러 표시 (WDA 안정화 30초 여유)
+- **화면 전환 자동 감지**: `GET /capture/page_source_hash` 4초 폴링 → hash 변경 시 hierarchy 자동 새로고침 (쿨다운 3초)
+- **back 액션**: 실행 후 1.2초 뒤 hierarchy 자동 새로고침
+- **세션 복구**: mirror 에러 시 "🔄 세션 재연결" 버튼 → `csReLaunch()` → Back 없이 드라이버 재시작
+
+**TC 파일 명명 규칙:**
+- `tc_group` → 폴더명: `tests/generated/{platform}/{tc_group}/`
+- `tc_id` → 파일명: `{tc_id}.py` (같은 그룹에 여러 TC 누적 가능)
+- 예: group=`settings`, id=`tc_settings_v1` → `tests/generated/android/settings/tc_settings_v1.py`
+- `pytest tests/generated/android/settings/` 한 번에 그룹 전체 실행
+
+**Locator 생성 규칙:**
+- Android: app-specific `resource-id` > `content-desc` > `text` > generic-id(android:id/*) > class
+- iOS: `label`(사람이 읽는 텍스트) > `name`(bundle ID 스타일) > predicate > xpath
+- iOS accessibility-id tap → `_ios_tap(label)` 헬퍼 생성: `find_element` 실패 시 `mobile: scroll` 자동 스크롤 후 탭
+
+**제약 및 주의사항:**
+- Android: MJPEG 스트리밍은 포트 8093, Appium 서버에 `--allow-insecure=uiautomator2:adb_screen_streaming` 플래그 필요 (Appium 3.x)
+- iOS: XCUITest 세션에는 `bundle_id`와 `device_name`(Simulator 이름)이 필요합니다. `xcrun simctl list`로 정확한 이름 확인
+- **iOS XCUITest 세션 충돌**: 시뮬레이터당 세션 1개만 허용. Capture Studio iOS 세션이 열려 있으면 iOS pytest TC를 동시에 실행할 수 없음 (반대도 동일). 충돌 시 드라이버가 None이 되며 "🔄 세션 재연결" 버튼으로 복구
+- Capture Studio 세션과 파이프라인 실행 세션은 동시에 존재할 수 없습니다 (대시보드에 상태 표시)
+- Android 세션 key는 `app_package` / `app_activity`, iOS는 `bundle_id`를 사용합니다
+
 ## Locator 작업 규칙
 
 1. Appium Inspector 또는 native hierarchy에서 요소 속성을 확인합니다.
@@ -70,7 +103,7 @@ python scripts/02_generate.py --platform ios --strict-locators
 | 파일 | 역할 |
 |---|---|
 | `config/test_data.json` | 앱 package/activity, bundle ID, 테스트 데이터 |
-| `config/devices.json` | Android/iOS capability |
+| `config/devices.json` | Android/iOS capability. **스키마**: `android.emulator`는 단일 객체가 아니라 배열이며 각 항목에 `default: true` 필드로 기본 디바이스를 지정합니다. ENV Setup UI에서 관리 — 직접 편집 시 배열 형식 유지 필수 |
 | `config/screens.json` | 분석 화면과 진입 action |
 | `config/locators.json` | 플랫폼별 target locator registry |
 | `config/jira_config.json` | 이 제품 전용 Jira 프로젝트/이슈 설정 |
@@ -109,8 +142,10 @@ testcases/{android,ios}/   # OS별 입력 TC Markdown
 tests/generated/{android,ios}/ # OS별 생성 코드
 tests/reports/             # 실행 리포트
 state/pipeline.json        # 실행 상태와 snapshot
+state/capture_session.json # Capture Studio 세션 상태
 logs/                      # 단계별 로그
 docs/LOCATOR_HEALING.md    # healing 정책
+docs/CAPTURE_STUDIO_PLAN.md # Capture Studio 구현 플랜
 ```
 
 ## 변경 시 검증
@@ -122,4 +157,10 @@ python3 scripts/02_generate.py --platform ios --strict-locators
 git diff --check
 ```
 
+`pytest-rerunfailures` 동작 확인: `pip show pytest-rerunfailures` 후 `05_execute.py` 실행 로그에서 `--reruns 2 --reruns-delay 5` 포함 여부를 확인합니다.
+
 실제 Appium 실행은 연결된 서버와 디바이스가 있을 때 별도로 수행합니다.
+
+## 연속 Appium 세션 주의사항
+
+3개 이상의 테스트를 순차 실행할 때 3번째 이후 세션에서 UiAutomator2 초기화 실패가 발생할 수 있습니다. `pytest-rerunfailures`(`--reruns 2 --reruns-delay 5`)가 이를 제품 레벨에서 처리합니다. 테스트 파일을 수정하지 않아도 됩니다. 재시도 후에도 반복 실패하면 `agents/lessons_learned.md`를 확인하고 Appium 서버를 재기동하세요.

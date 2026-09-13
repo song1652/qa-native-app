@@ -1,7 +1,1 @@
-{
-  "tests/generated/ios/settings/tc_001_main_screen.py::TestMainScreen::test_settings_main_screen": "screenshots/tests_generated_ios_settings_tc_001_main_screen.py__TestMainScreen__test_settings_main_screen.png",
-  "tests/generated/ios/settings/tc_002_search_bar.py::TestSearchBar::test_search_bar_tap": "screenshots/tests_generated_ios_settings_tc_002_search_bar.py__TestSearchBar__test_search_bar_tap.png",
-  "tests/generated/ios/settings/tc_003_network_item.py::TestNetworkItem::test_network_item_visible": "screenshots/tests_generated_ios_settings_tc_003_network_item.py__TestNetworkItem__test_network_item_visible.png",
-  "tests/generated/android/hybrid_webview/tc_006_ApiDemos_WebView_링크_이동.py::TestApidemosWebview링크이동::test_webview_link_navigation_and_native_restore": "screenshots/android/tests_generated_android_hybrid_webview_tc_006_ApiDemos_WebView_링크_이동.py__TestApidemosWebview링크이동__test_webview_link_navigation_and_native_restore.png",
-  "tests/generated/android/hybrid_webview/tc_004_ApiDemos_네이티브_WebView_탐지.py::TestApidemos네이티브Webview탐지::test_native_header_and_webview_content_are_detected": "screenshots/android/tests_generated_android_hybrid_webview_tc_004_ApiDemos_네이티브_WebView_탐지.py__TestApidemos네이티브Webview탐지__test_native_header_and_webview_content_are_detected.png"
-}
+{}

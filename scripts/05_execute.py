@@ -159,6 +159,15 @@ def _has_json_report_plugin() -> bool:
         return False
 
 
+def _has_rerun_plugin() -> bool:
+    """pytest-rerunfailures 패키지 설치 여부 확인."""
+    try:
+        import importlib.util
+        return importlib.util.find_spec("pytest_rerunfailures") is not None
+    except Exception:
+        return False
+
+
 def parse_json_report(json_path: Path) -> dict:
     """Parse pytest-json-report JSON and return execute_results dict.
 
@@ -350,6 +359,7 @@ def main():
         test_target = test_dir
 
     use_json_report = _has_json_report_plugin()
+    use_rerun = _has_rerun_plugin()
     cmd = [
         sys.executable, "-m", "pytest", str(test_target), "-v",
         f"--junit-xml={JUNIT_XML}",
@@ -360,6 +370,11 @@ def main():
             f"--json-report-file={JSON_REPORT}",
         ]
         print("[05_execute] Using pytest-json-report for result parsing.")
+
+    # Appium 세션 초기화 실패(setup error) 자동 재시도 — 5초 대기 후 최대 2회
+    if use_rerun:
+        cmd += ["--reruns", "2", "--reruns-delay", "5"]
+        print("[05_execute] pytest-rerunfailures: setup 실패 시 최대 2회 재시도 (5초 대기)")
 
     if args.only_failed:
         cmd.append("--lf")

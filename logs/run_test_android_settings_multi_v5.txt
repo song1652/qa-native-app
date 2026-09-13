@@ -1,0 +1,23 @@
+[05_execute] TC 폴더 지정: tests/generated/android/settings_multi_v5
+[05_execute] Using pytest-json-report for result parsing.
+[05_execute] pytest-rerunfailures: setup 실패 시 최대 2회 재시도 (5초 대기)
+[05_execute] Running: /Users/junghoyoung/qa-native-app/.venv/bin/python -m pytest /Users/junghoyoung/qa-native-app/tests/generated/android/settings_multi_v5 -v --junit-xml=/Users/junghoyoung/qa-native-app/state/pytest_report.xml --json-report --json-report-file=/Users/junghoyoung/qa-native-app/state/pytest_report.json --reruns 2 --reruns-delay 5 --html=/Users/junghoyoung/qa-native-app/tests/reports/report_android_20260912_150425_429.html --self-contained-html
+============================= test session starts ==============================
+platform darwin -- Python 3.14.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/junghoyoung/qa-native-app/.venv/bin/python
+cachedir: .pytest_cache
+metadata: {'Python': '3.14.2', 'Platform': 'macOS-26.6.2-arm64-arm-64bit-Mach-O', 'Packages': {'pytest': '9.1.1', 'pluggy': '1.6.0'}, 'Plugins': {'json-report': '1.5.0', 'metadata': '3.1.1', 'html': '4.2.0', 'rerunfailures': '16.6.1', 'anyio': '4.15.1'}}
+rootdir: /Users/junghoyoung/qa-native-app
+configfile: setup.cfg
+plugins: json-report-1.5.0, metadata-3.1.1, html-4.2.0, rerunfailures-16.6.1, anyio-4.15.1
+collecting ... collected 1 item
+
+tests/generated/android/settings_multi_v5/tc_android_settings_v5.py::TestTcAndroidSettingsV5::test_tc_android_settings_v5 PASSED [100%]
+
+- generated xml file: /Users/junghoyoung/qa-native-app/state/pytest_report.xml -
+--------------------------------- JSON report ----------------------------------
+report saved to: /Users/junghoyoung/qa-native-app/state/pytest_report.json
+- Generated html report: file:///Users/junghoyoung/qa-native-app/tests/reports/report_android_20260912_150425_429.html -
+============================== 1 passed in 33.77s ==============================
+[05_execute] Parsing JSON report results...
+[05_execute] Results: 1 passed, 0 failed / 1 total
+[05_execute] HTML report saved: /Users/junghoyoung/qa-native-app/tests/reports/report_android_20260912_150425_429.html
