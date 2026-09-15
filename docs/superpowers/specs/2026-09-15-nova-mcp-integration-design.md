@@ -281,9 +281,12 @@ MCP 툴 호출 시 활성 Capture Studio 세션이 없으면 `session_not_active
 ### Phase 3 — Livetail (1~2일)
 - 기존 `/ws/timeline` + `broadcast_timeline_sync()` 확장 (신규 SSE Event Bus 없음)
 - source별 아이콘·필터 (👤 user / 🤖 mcp / ⚙ pipeline)
+- **레이아웃: 기존 3패널 유지 (Mirror | Hierarchy | Step+Locator)**
+- Livetail은 세션 스트립 토글 버튼 → 오른쪽 슬라이드 패널 (Step+Locator 위를 덮음)
 - 프론트 Livetail 패널: `.lt-row` 전용 클래스 (`.log-box` 재활용 금지)
 - 메모리 버퍼 200행 + 신규 접속 시 replay
 - 신규 JS: `static/livetail.js` 분리 (`dashboard.html` 인라인 증가 억제)
+- 목업 참조: https://claude.ai/code/artifact/9d72a3b9-5d10-4ca3-96c5-7ba33bc3b748 (옵션 C)
 
 ---
 
@@ -389,10 +392,11 @@ MCP `device_tap` 호출이 사람의 녹화 세션 `session["actions"]`에 섞�
 `capture.py:415-417` `is_secret` 마스킹이 Livetail·MCP `device_input` 응답에 미적용.
 → `device_input` 이벤트 emit 시 `value_preview`에 `***` 처리 필수.
 
-**[Designer] Step/Locator 패널 행선지**
+**[Designer] Step/Locator 패널 행선지 — ✅ 결정**
 
-Livetail이 오른쪽 패널을 차지하면 기존 Step 추가·Locator 후보 패널이 사라짐.
-→ 미러 하단 accordion 접이식 영역으로 이동 (미러 컨트롤 영역 아래).
+기존 3패널(Mirror | Hierarchy | Step+Locator) 레이아웃 완전 유지.
+Livetail은 세션 바 토글 버튼으로 오른쪽에서 슬라이드 인 — 열리면 Step+Locator 패널 위를 덮음.
+닫으면 기존 패널 복원. Livetail 버튼은 세션 스트립에 배치 (`lt-toggle-btn` 클래스).
 
 **[Designer] 반응형 레이아웃**
 
