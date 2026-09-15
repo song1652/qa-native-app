@@ -159,6 +159,15 @@ def _has_json_report_plugin() -> bool:
         return False
 
 
+def _has_rerun_plugin() -> bool:
+    """pytest-rerunfailures 패키지 설치 여부 확인."""
+    try:
+        import importlib.util
+        return importlib.util.find_spec("pytest_rerunfailures") is not None
+    except Exception:
+        return False
+
+
 def parse_json_report(json_path: Path) -> dict:
     """Parse pytest-json-report JSON and return execute_results dict.
 
@@ -306,6 +315,7 @@ def main():
     parser.add_argument("--record", action="store_true",
                         help="Record emulator screen during test run (requires --report)")
     args = parser.parse_args()
+    report_stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
 
     # 디바이스 연결 가드
     if args.platform == "android":
@@ -349,8 +359,9 @@ def main():
         test_target = test_dir
 
     use_json_report = _has_json_report_plugin()
+    use_rerun = _has_rerun_plugin()
     cmd = [
-        "python", "-m", "pytest", str(test_target), "-v",
+        sys.executable, "-m", "pytest", str(test_target), "-v",
         f"--junit-xml={JUNIT_XML}",
     ]
     if use_json_report:
@@ -360,13 +371,19 @@ def main():
         ]
         print("[05_execute] Using pytest-json-report for result parsing.")
 
+    # Appium 세션 초기화 실패(setup error) 자동 재시도 — 5초 대기 후 최대 2회
+    if use_rerun:
+        cmd += ["--reruns", "2", "--reruns-delay", "5"]
+        print("[05_execute] pytest-rerunfailures: setup 실패 시 최대 2회 재시도 (5초 대기)")
+
     if args.only_failed:
         cmd.append("--lf")
 
     if not args.no_report:
         report_dir = ROOT / "tests" / "reports"
         report_dir.mkdir(parents=True, exist_ok=True)
-        cmd += [f"--html={report_dir}/report_{platform}.html", "--self-contained-html"]
+        report_name = f"report_{platform}_{report_stamp}.html"
+        cmd += [f"--html={report_dir / report_name}", "--self-contained-html"]
 
     # Screen recording
     rec_proc = None
@@ -421,13 +438,14 @@ def main():
 
     # HTML report — --no-report 플래그가 없으면 자동 생성
     if not args.no_report:
-        _generate_html_report(state, platform, video_path)
+        _generate_html_report(state, platform, video_path, report_stamp)
 
     sys.exit(result.returncode)
 
 
 def _generate_html_report(state: dict, platform: str,
-                           video_path: "Path | None" = None):
+                           video_path: "Path | None" = None,
+                           report_stamp: str | None = None):
     """Generate HTML report using report_html.parse_pipeline_to_groups + build_report."""
     import importlib.util
     report_html_path = Path(__file__).parent / "report_html.py"
@@ -462,7 +480,8 @@ def _generate_html_report(state: dict, platform: str,
         video_path=rel_video, platform=platform
     )
 
-    report_path = REPORTS_DIR / f"report_{platform}.html"
+    stamp = report_stamp or datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
+    report_path = REPORTS_DIR / f"report_{platform}_{stamp}.html"
     report_path.write_text(html_content, encoding="utf-8")
     print(f"[05_execute] HTML report saved: {report_path}")
 

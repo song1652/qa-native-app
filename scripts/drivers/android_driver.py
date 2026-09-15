@@ -29,10 +29,32 @@ def check_device_connected() -> bool:
     return len(connected) > 0
 
 
+def _get_default_device(platform: str, mode: str) -> dict:
+    """devices.json에서 default:true 항목 반환 (배열·dict 모두 호환)."""
+    data = json.loads((CONFIG_DIR / "devices.json").read_text(encoding="utf-8"))
+    section = data.get(platform, {}).get(mode)
+    if isinstance(section, dict):
+        return section
+    if isinstance(section, list):
+        for item in section:
+            if item.get("default"):
+                return item
+        return section[0] if section else {}
+    return {}
+
+
+_NON_APPIUM_KEYS = frozenset({"default", "wifi_ip", "team_id", "label", "note"})
+
+
+def _filter_appium_caps(device: dict) -> dict:
+    """devices.json 항목에서 Appium 비전달 필드를 제거한 caps dict 반환."""
+    return {k: v for k, v in device.items() if k not in _NON_APPIUM_KEYS}
+
+
 def get_capabilities(mode: str = "emulator") -> dict:
-    devices = json.loads((CONFIG_DIR / "devices.json").read_text())
-    test_data = json.loads((CONFIG_DIR / "test_data.json").read_text())
-    caps = devices["android"][mode].copy()
+    test_data = json.loads((CONFIG_DIR / "test_data.json").read_text(encoding="utf-8"))
+    raw = _get_default_device("android", mode)
+    caps = _filter_appium_caps(raw)
     caps["platformName"] = "Android"
     caps["appPackage"] = test_data["app"]["android"]["package"]
     caps["appActivity"] = test_data["app"]["android"]["activity"]

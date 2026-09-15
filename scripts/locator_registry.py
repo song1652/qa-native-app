@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import re
 import xml.etree.ElementTree as ET
+from html.parser import HTMLParser
 from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
@@ -11,6 +12,8 @@ REGISTRY_FILE = ROOT / "config" / "locators.json"
 
 STRATEGIES = {"ID", "ACCESSIBILITY_ID", "XPATH", "ANDROID_UIAUTOMATOR",
               "IOS_PREDICATE", "IOS_CLASS_CHAIN"}
+SURFACES = {"auto", "native", "webview"}
+WEB_STRATEGIES = {"role", "label", "test_id", "placeholder", "text", "css"}
 
 
 def normalize_locator(raw: object) -> dict:
@@ -46,7 +49,20 @@ def normalize_locator(raw: object) -> dict:
             strategy = "ACCESSIBILITY_ID"
     if strategy not in STRATEGIES:
         raise ValueError(f"지원하지 않는 locator strategy: {strategy}")
-    result.update({"strategy": strategy, "value": value})
+    surface = str(result.get("surface", "auto")).lower()
+    if surface not in SURFACES:
+        raise ValueError(f"지원하지 않는 locator surface: {surface}")
+    webview = result.get("webview")
+    if webview is not None:
+        if not isinstance(webview, dict):
+            raise ValueError("webview locator는 객체여야 합니다")
+        web_strategy = str(webview.get("strategy", "css")).lower()
+        if web_strategy not in WEB_STRATEGIES:
+            raise ValueError(f"지원하지 않는 webview locator strategy: {web_strategy}")
+        webview = dict(webview, strategy=web_strategy)
+    result.update({"strategy": strategy, "value": value, "surface": surface})
+    if webview is not None:
+        result["webview"] = webview
     return result
 
 
@@ -140,3 +156,47 @@ def find_unique_candidate(original: dict, xml_text: str) -> dict:
     best = dict(ranked[0][1])
     best["confidence"] = "high" if best_score >= 100 else "medium"
     return best
+
+
+class _HTMLCandidates(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.items = []
+
+    def handle_starttag(self, tag, attrs):
+        values = dict(attrs)
+        mappings = [
+            ("data-testid", "test_id"), ("aria-label", "label"),
+            ("placeholder", "placeholder"), ("id", "css"),
+        ]
+        for attr, strategy in mappings:
+            value = values.get(attr, "").strip()
+            if value:
+                selector = f"#{value}" if attr == "id" else value
+                self.items.append({"attr": attr, "strategy": strategy,
+                                   "value": selector})
+        role = values.get("role", "").strip()
+        if role:
+            self.items.append({"attr": "role", "strategy": "role",
+                               "role": role, "value": role})
+
+
+def find_unique_web_candidate(original: dict, html_text: str) -> dict:
+    """WebView HTML에서 의미 기반 locator의 고유 후보만 반환한다."""
+    parser = _HTMLCandidates()
+    try:
+        parser.feed(html_text)
+    except Exception:
+        return {}
+    original_value = str(original.get("value", ""))
+    ranked = [(_score(original_value, item["value"]), item)
+              for item in parser.items]
+    ranked = [item for item in ranked if item[0] >= 60]
+    ranked.sort(key=lambda item: item[0], reverse=True)
+    if not ranked:
+        return {}
+    best_score = ranked[0][0]
+    best = [item for score, item in ranked if score == best_score]
+    if len(best) != 1:
+        return {}
+    return dict(best[0], confidence="high" if best_score == 100 else "medium")

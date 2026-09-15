@@ -17,6 +17,7 @@ Usage:
     python scripts/06_heal.py [--platform android|ios]
 """
 import argparse
+import ast
 import json
 import re
 import shutil
@@ -28,7 +29,7 @@ from pathlib import Path
 SCRIPTS_DIR = Path(__file__).parent
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
-from locator_registry import load_registry, save_registry
+from locator_registry import find_unique_web_candidate, load_registry, save_registry
 
 ROOT = Path(__file__).parent.parent
 CONFIG_DIR = ROOT / "config"
@@ -304,11 +305,18 @@ def _find_best_match(sel_value: str, elements: list) -> dict:
 
 
 def _target_ref_for_const(source: str, const_name: str) -> str:
-    pattern = re.compile(
+    inline_pattern = re.compile(
         rf'^{re.escape(const_name)}\s*=.*# target_ref:\s*([^/\s]+)',
         re.MULTILINE,
     )
-    match = pattern.search(source)
+    match = inline_pattern.search(source)
+    if match:
+        return match.group(1)
+    preceding_pattern = re.compile(
+        rf'^# target_ref:\s*([^/\s]+).*\n{re.escape(const_name)}\s*=',
+        re.MULTILINE,
+    )
+    match = preceding_pattern.search(source)
     return match.group(1) if match else ""
 
 
@@ -350,6 +358,24 @@ def _replace_sel_value_and_strategy(
     )
 
     return source
+
+
+def _replace_webview_runtime_spec(source: str, native_value: str,
+                                  webview: dict) -> str:
+    """생성 파일의 runtime surface map을 안전하게 갱신한다."""
+    pattern = re.compile(r"^LOCATOR_SURFACES\s*=\s*(\{.*\})$", re.MULTILINE)
+    match = pattern.search(source)
+    if not match:
+        return source
+    try:
+        specs = ast.literal_eval(match.group(1))
+    except (SyntaxError, ValueError):
+        return source
+    if native_value not in specs:
+        return source
+    specs[native_value]["surface"] = "webview"
+    specs[native_value]["webview"] = webview
+    return pattern.sub(f"LOCATOR_SURFACES = {specs!r}", source, count=1)
 
 
 # ---------------------------------------------------------------------------
@@ -446,8 +472,9 @@ def heal_file_xml(file_path: str, dom_info: dict, platform: str = "android") -> 
             "reason": f"dom_info에 '{screen_name}' XML 없음",
         }
 
-    elements = _collect_elements(xml_text)
-    if not elements:
+    webviews = screen_info.get("webviews", []) if isinstance(screen_info, dict) else []
+    elements = _collect_elements(xml_text) if xml_text else []
+    if not elements and not webviews:
         return {
             "file": file_path,
             "reason": f"'{screen_name}' XML에서 요소를 파싱하지 못함",
@@ -469,6 +496,45 @@ def heal_file_xml(file_path: str, dom_info: dict, platform: str = "android") -> 
 
         print(f"[06_heal]   {const_name}: 값='{original_value}' 매칭 중...")
 
+        target = _target_ref_for_const(source, const_name)
+        registry = load_registry()
+        locator = registry.get("targets", {}).get(target, {}).get(platform, {})
+        surface = locator.get("surface", "auto") if isinstance(locator, dict) else "auto"
+
+        # 명시적 WebView locator는 native XML과 섞지 않고 HTML 후보만 사용한다.
+        if surface == "webview":
+            original_web = locator.get("webview", {})
+            match = {}
+            for snapshot in webviews:
+                match = find_unique_web_candidate(
+                    original_web or {"value": original_value}, snapshot.get("html", "")
+                )
+                if match:
+                    break
+            if not match:
+                print(f"[06_heal]   {const_name}: WebView DOM 고유 후보 없음")
+                continue
+            registry.setdefault("targets", {}).setdefault(target, {})[platform] = {
+                **locator,
+                "surface": "webview",
+                "webview": {key: value for key, value in match.items()
+                            if key in {"strategy", "value", "role", "name"}},
+                "confidence": match.get("confidence", "medium"),
+                "source": "webview_dom",
+            }
+            save_registry(registry)
+            web_spec = {key: value for key, value in match.items()
+                        if key in {"strategy", "value", "role", "name"}}
+            source = _replace_webview_runtime_spec(source, original_value, web_spec)
+            healed_any = True
+            heal_details.append({
+                "sel_const": const_name, "original_value": original_value,
+                "replacement_value": match["value"],
+                "strategy": f"WEBVIEW_{match['strategy'].upper()}",
+                "matched_attr": match.get("attr", "webview"),
+            })
+            continue
+
         match = _find_best_match(original_value, elements)
         if not match:
             print(f"[06_heal]   {const_name}: XML에서 매칭 요소 없음, 건너뜀")
@@ -486,12 +552,11 @@ def heal_file_xml(file_path: str, dom_info: dict, platform: str = "android") -> 
         source = _replace_sel_value_and_strategy(
             source, const_name, replacement_value, new_strategy
         )
-        target = _target_ref_for_const(source, const_name)
         if target:
-            registry = load_registry()
             registry.setdefault("targets", {}).setdefault(target, {})[platform] = {
                 "strategy": new_strategy,
                 "value": replacement_value,
+                "surface": surface,
                 "confidence": match.get("confidence", "medium"),
                 "source": "appium_page_source",
             }

@@ -1,0 +1,274 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<AppiumAUT>
+  <XCUIElementTypeApplication type="XCUIElementTypeApplication" name="설정" label="설정" enabled="true" visible="true" accessible="false" x="0" y="0" width="402" height="874" index="0" traits="" processId="85253" bundleId="com.apple.Preferences">
+    <XCUIElementTypeWindow type="XCUIElementTypeWindow" enabled="true" visible="true" accessible="false" x="0" y="0" width="402" height="874" index="0" traits="">
+      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="402" height="874" index="0" traits="">
+        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="402" height="874" index="0" traits="">
+          <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="402" height="874" index="0" traits="">
+            <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="0" y="0" width="402" height="874" index="0" traits="">
+              <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="402" height="874" index="0" traits="">
+                <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="402" height="874" index="0" traits="">
+                  <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="402" height="874" index="0" traits="">
+                    <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="402" height="874" index="0" traits="">
+                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="402" height="874" index="0" traits="">
+                        <XCUIElementTypeNavigationBar type="XCUIElementTypeNavigationBar" name="검색" enabled="true" visible="true" accessible="false" x="0" y="62" width="402" height="54" index="0" traits="">
+                          <XCUIElementTypeButton type="XCUIElementTypeButton" name="BackButton" label="설정" enabled="true" visible="true" accessible="true" x="16" y="62" width="44" height="44" index="0" traits="Button"/>
+                          <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="검색" name="검색" label="검색" enabled="true" visible="true" accessible="true" x="186" y="73" width="30" height="22" index="1" traits="Header"/>
+                        </XCUIElementTypeNavigationBar>
+                        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="402" height="874" index="1" traits="">
+                          <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="402" height="874" index="0" traits="">
+                            <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="402" height="874" index="0" traits="">
+                              <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="0" y="0" width="402" height="874" index="0" traits="">
+                                <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="116" width="402" height="724" index="0" traits="">
+                                  <XCUIElementTypeTable type="XCUIElementTypeTable" enabled="true" visible="true" accessible="false" x="0" y="0" width="402" height="874" index="0" traits="">
+                                    <XCUIElementTypeOther type="XCUIElementTypeOther" name="검색 및 찾아보기" enabled="true" visible="true" accessible="false" x="0" y="116" width="402" height="38" index="0" traits="">
+                                      <XCUIElementTypeOther type="XCUIElementTypeOther" name="검색 및 찾아보기" label="검색 및 찾아보기" enabled="true" visible="true" accessible="true" x="20" y="116" width="362" height="38" index="0" traits="Header"/>
+                                    </XCUIElementTypeOther>
+                                    <XCUIElementTypeCell type="XCUIElementTypeCell" name="관련 콘텐츠 보기" enabled="true" visible="true" accessible="false" x="20" y="154" width="362" height="54" index="1" traits="">
+                                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="20" y="154" width="362" height="54" index="0" traits="">
+                                        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="20" y="154" width="362" height="54" index="0" traits="">
+                                          <XCUIElementTypeSwitch type="XCUIElementTypeSwitch" value="1" name="관련 콘텐츠 보기" label="관련 콘텐츠 보기" enabled="true" visible="true" accessible="true" x="36" y="166" width="330" height="29" index="0" traits="ToggleButton, StaticText, Button">
+                                            <XCUIElementTypeButton type="XCUIElementTypeButton" name="관련 콘텐츠 보기" label="관련 콘텐츠 보기" enabled="true" visible="true" accessible="false" x="36" y="170" width="112" height="21" index="0" traits="StaticText, Button"/>
+                                            <XCUIElementTypeSwitch type="XCUIElementTypeSwitch" value="1" enabled="true" visible="true" accessible="false" x="305" y="166" width="63" height="29" index="1" traits="ToggleButton, Button"/>
+                                          </XCUIElementTypeSwitch>
+                                        </XCUIElementTypeOther>
+                                      </XCUIElementTypeOther>
+                                    </XCUIElementTypeCell>
+                                    <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="207" width="402" height="65" index="2" traits="">
+                                      <XCUIElementTypeTextView type="XCUIElementTypeTextView" value="사진에서 텍스트 또는 대상을 찾거나 검색할 때 Apple 및 관계사의 콘텐츠를 표시하도록 허용합니다. 검색 및 개인정보 보호에 관하여…" enabled="true" visible="true" accessible="false" x="36" y="215" width="330" height="49" index="0" traits="StaticText">
+                                        <XCUIElementTypeTextView type="XCUIElementTypeTextView" name="사진에서 텍스트 또는 대상을 찾거나 검색할 때 Apple 및 관계사의 콘텐츠를 표시하도록 허용합니다. 검색 및 개인정보 보호에 관하여…" label="사진에서 텍스트 또는 대상을 찾거나 검색할 때 Apple 및 관계사의 콘텐츠를 표시하도록 허용합니다. 검색 및 개인정보 보호에 관하여…" enabled="true" visible="true" accessible="true" x="36" y="215" width="310" height="49" index="0" traits="StaticText">
+                                          <XCUIElementTypeLink type="XCUIElementTypeLink" name="검색 및 개인정보 보호에 관하여…" label="검색 및 개인정보 보호에 관하여…" enabled="true" visible="true" accessible="false" x="36" y="231" width="310" height="33" index="0" traits="Link"/>
+                                        </XCUIElementTypeTextView>
+                                        <XCUIElementTypeOther type="XCUIElementTypeOther" value="0%" name="수평 스크롤 막대, 1페이지" label="수평 스크롤 막대, 1페이지" enabled="true" visible="true" accessible="false" x="36" y="236" width="330" height="25" index="1" traits="Adjustable">
+                                          <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="-3" y="257" width="36" height="4" index="0" traits=""/>
+                                        </XCUIElementTypeOther>
+                                      </XCUIElementTypeTextView>
+                                    </XCUIElementTypeOther>
+                                    <XCUIElementTypeOther type="XCUIElementTypeOther" name="검색 전에" enabled="true" visible="true" accessible="false" x="0" y="271" width="402" height="39" index="3" traits="">
+                                      <XCUIElementTypeOther type="XCUIElementTypeOther" name="검색 전에" label="검색 전에" enabled="true" visible="true" accessible="true" x="20" y="271" width="362" height="39" index="0" traits="Header"/>
+                                    </XCUIElementTypeOther>
+                                    <XCUIElementTypeCell type="XCUIElementTypeCell" value="앱 4개" name="앱 제안" label="앱 제안" enabled="true" visible="true" accessible="true" x="20" y="309" width="362" height="53" index="4" traits="Button">
+                                      <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="앱 제안" name="앱 제안" label="앱 제안" enabled="true" visible="true" accessible="true" x="36" y="325" width="49" height="22" index="0" traits="StaticText"/>
+                                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="36" y="360" width="330" height="2" index="1" traits=""/>
+                                      <XCUIElementTypeButton type="XCUIElementTypeButton" name="앱 4개" label="앱 4개" enabled="true" visible="true" accessible="true" x="281" y="318" width="85" height="36" index="2" traits="Button">
+                                        <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="앱 4개" name="앱 4개" label="앱 4개" enabled="true" visible="true" accessible="false" x="293" y="325" width="45" height="22" index="0" traits="StaticText"/>
+                                      </XCUIElementTypeButton>
+                                    </XCUIElementTypeCell>
+                                    <XCUIElementTypeCell type="XCUIElementTypeCell" name="앱 단축어 제안" enabled="true" visible="true" accessible="false" x="20" y="361" width="362" height="54" index="5" traits="">
+                                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="20" y="361" width="362" height="54" index="0" traits="">
+                                        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="20" y="361" width="362" height="54" index="0" traits="">
+                                          <XCUIElementTypeSwitch type="XCUIElementTypeSwitch" value="0" name="앱 단축어 제안" label="앱 단축어 제안" enabled="true" visible="true" accessible="true" x="36" y="374" width="330" height="29" index="0" traits="ToggleButton, StaticText, Button">
+                                            <XCUIElementTypeButton type="XCUIElementTypeButton" name="앱 단축어 제안" label="앱 단축어 제안" enabled="true" visible="true" accessible="false" x="36" y="378" width="97" height="21" index="0" traits="StaticText, Button"/>
+                                            <XCUIElementTypeSwitch type="XCUIElementTypeSwitch" value="0" enabled="true" visible="true" accessible="false" x="305" y="374" width="63" height="29" index="1" traits="ToggleButton, Button"/>
+                                          </XCUIElementTypeSwitch>
+                                        </XCUIElementTypeOther>
+                                      </XCUIElementTypeOther>
+                                    </XCUIElementTypeCell>
+                                    <XCUIElementTypeCell type="XCUIElementTypeCell" name="최근 검색 보기" enabled="true" visible="true" accessible="false" x="20" y="414" width="362" height="55" index="6" traits="">
+                                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="20" y="414" width="362" height="55" index="0" traits="">
+                                        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="20" y="414" width="362" height="55" index="0" traits="">
+                                          <XCUIElementTypeSwitch type="XCUIElementTypeSwitch" value="0" name="최근 검색 보기" label="최근 검색 보기" enabled="true" visible="true" accessible="true" x="36" y="427" width="330" height="29" index="0" traits="ToggleButton, StaticText, Button">
+                                            <XCUIElementTypeButton type="XCUIElementTypeButton" name="최근 검색 보기" label="최근 검색 보기" enabled="true" visible="true" accessible="false" x="36" y="431" width="97" height="21" index="0" traits="StaticText, Button"/>
+                                            <XCUIElementTypeSwitch type="XCUIElementTypeSwitch" value="0" enabled="true" visible="true" accessible="false" x="305" y="427" width="63" height="29" index="1" traits="ToggleButton, Button"/>
+                                          </XCUIElementTypeSwitch>
+                                        </XCUIElementTypeOther>
+                                      </XCUIElementTypeOther>
+                                    </XCUIElementTypeCell>
+                                    <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="468" width="402" height="18" index="7" traits=""/>
+                                    <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="485" width="402" height="19" index="8" traits=""/>
+                                    <XCUIElementTypeCell type="XCUIElementTypeCell" name="SEARCH_ENGINE_SETTING" label="검색 엔진" enabled="true" visible="true" accessible="true" x="20" y="503" width="362" height="54" index="9" traits="Button">
+                                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="20" y="503" width="332" height="54" index="0" traits="">
+                                        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="20" y="503" width="332" height="54" index="0" traits="">
+                                          <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="검색 엔진" name="검색 엔진" label="검색 엔진" enabled="true" visible="true" accessible="false" x="36" y="519" width="64" height="22" index="0" traits="StaticText"/>
+                                        </XCUIElementTypeOther>
+                                      </XCUIElementTypeOther>
+                                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="20" y="503" width="362" height="54" index="1" traits="">
+                                        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="20" y="503" width="362" height="54" index="0" traits=""/>
+                                      </XCUIElementTypeOther>
+                                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="20" y="555" width="362" height="2" index="2" traits=""/>
+                                      <XCUIElementTypeButton type="XCUIElementTypeButton" name="chevron" label="chevron" enabled="false" visible="true" accessible="false" x="351" y="523" width="11" height="15" index="3" traits="NotEnabled, Button"/>
+                                    </XCUIElementTypeCell>
+                                    <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="556" width="402" height="19" index="10" traits=""/>
+                                    <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="574" width="402" height="18" index="11" traits=""/>
+                                    <XCUIElementTypeCell type="XCUIElementTypeCell" name="Apple의 검색 기능 향상에 기여하기" enabled="true" visible="true" accessible="false" x="20" y="591" width="362" height="54" index="12" traits="">
+                                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="20" y="591" width="362" height="54" index="0" traits="">
+                                        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="20" y="591" width="362" height="54" index="0" traits="">
+                                          <XCUIElementTypeSwitch type="XCUIElementTypeSwitch" value="1" name="Apple의 검색 기능 향상에 기여하기" label="Apple의 검색 기능 향상에 기여하기" enabled="true" visible="true" accessible="true" x="36" y="604" width="330" height="29" index="0" traits="ToggleButton, StaticText, Button">
+                                            <XCUIElementTypeButton type="XCUIElementTypeButton" name="Apple의 검색 기능 향상에 기여하기" label="Apple의 검색 기능 향상에 기여하기" enabled="true" visible="true" accessible="false" x="36" y="608" width="238" height="21" index="0" traits="StaticText, Button"/>
+                                            <XCUIElementTypeSwitch type="XCUIElementTypeSwitch" value="1" enabled="true" visible="true" accessible="false" x="305" y="604" width="63" height="29" index="1" traits="ToggleButton, Button"/>
+                                          </XCUIElementTypeSwitch>
+                                        </XCUIElementTypeOther>
+                                      </XCUIElementTypeOther>
+                                    </XCUIElementTypeCell>
+                                    <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="645" width="402" height="145" index="13" traits="">
+                                      <XCUIElementTypeTextView type="XCUIElementTypeTextView" value="Apple이 Safari, Siri 및 Spotlight에서 사용자가 입력한 검색어를 저장하도록 허용하여 검색 기능 향상에 도움을 줄 수 있습니다. 이때 입력한 검색어는 사용자와 연결되지 않는 방식으로 저장됩니다.&#10;&#10;검색어에는 일반적인 지식을 검색한 내용이나 음악 재생, 경로 찾기와 같은 요청이 포함됩니다. 검색 및 개인정보 보호에 관하여…" enabled="true" visible="true" accessible="false" x="36" y="653" width="330" height="129" index="0" traits="StaticText">
+                                        <XCUIElementTypeTextView type="XCUIElementTypeTextView" name="Apple이 Safari, Siri 및 Spotlight에서 사용자가 입력한 검색어를 저장하도록 허용하여 검색 기능 향상에 도움을 줄 수 있습니다. 이때 입력한 검색어는 사용자와 연결되지 않는 방식으로 저장됩니다." label="Apple이 Safari, Siri 및 Spotlight에서 사용자가 입력한 검색어를 저장하도록 허용하여 검색 기능 향상에 도움을 줄 수 있습니다. 이때 입력한 검색어는 사용자와 연결되지 않는 방식으로 저장됩니다." enabled="true" visible="true" accessible="true" x="36" y="653" width="303" height="65" index="0" traits="StaticText"/>
+                                        <XCUIElementTypeTextView type="XCUIElementTypeTextView" name="검색어에는 일반적인 지식을 검색한 내용이나 음악 재생, 경로 찾기와 같은 요청이 포함됩니다. 검색 및 개인정보 보호에 관하여…" label="검색어에는 일반적인 지식을 검색한 내용이나 음악 재생, 경로 찾기와 같은 요청이 포함됩니다. 검색 및 개인정보 보호에 관하여…" enabled="true" visible="true" accessible="true" x="36" y="733" width="314" height="49" index="1" traits="StaticText">
+                                          <XCUIElementTypeLink type="XCUIElementTypeLink" name="검색 및 개인정보 보호에 관하여…" label="검색 및 개인정보 보호에 관하여…" enabled="true" visible="true" accessible="false" x="36" y="749" width="292" height="33" index="0" traits="Link"/>
+                                        </XCUIElementTypeTextView>
+                                        <XCUIElementTypeOther type="XCUIElementTypeOther" value="0%" name="수평 스크롤 막대, 1페이지" label="수평 스크롤 막대, 1페이지" enabled="true" visible="true" accessible="false" x="36" y="748" width="330" height="31" index="2" traits="Adjustable">
+                                          <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="-3" y="775" width="36" height="4" index="0" traits=""/>
+                                        </XCUIElementTypeOther>
+                                      </XCUIElementTypeTextView>
+                                    </XCUIElementTypeOther>
+                                    <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="789" width="402" height="18" index="14" traits=""/>
+                                    <XCUIElementTypeCell type="XCUIElementTypeCell" name="앱 클립" label="앱 클립" enabled="true" visible="true" accessible="false" x="20" y="806" width="362" height="54" index="15" traits="Button">
+                                      <XCUIElementTypeImage type="XCUIElementTypeImage" enabled="true" visible="true" accessible="false" x="36" y="819" width="28" height="29" index="0" traits="Image"/>
+                                      <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="앱 클립" name="앱 클립" label="앱 클립" enabled="true" visible="true" accessible="true" x="79" y="806" width="265" height="54" index="1" traits="StaticText"/>
+                                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="79" y="858" width="287" height="2" index="2" traits=""/>
+                                      <XCUIElementTypeButton type="XCUIElementTypeButton" name="chevron" label="chevron" enabled="false" visible="true" accessible="false" x="351" y="826" width="11" height="15" index="3" traits="NotEnabled, Button"/>
+                                    </XCUIElementTypeCell>
+                                    <XCUIElementTypeCell type="XCUIElementTypeCell" name="com.apple.Health" label="건강" enabled="true" visible="true" accessible="false" x="20" y="859" width="362" height="54" index="16" traits="Button">
+                                      <XCUIElementTypeImage type="XCUIElementTypeImage" enabled="true" visible="false" accessible="false" x="36" y="872" width="28" height="29" index="0" traits="Image"/>
+                                      <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="건강" name="com.apple.Health" label="건강" enabled="true" visible="false" accessible="true" x="79" y="859" width="265" height="54" index="1" traits="StaticText"/>
+                                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="79" y="911" width="287" height="2" index="2" traits=""/>
+                                      <XCUIElementTypeButton type="XCUIElementTypeButton" name="chevron" label="chevron" enabled="false" visible="false" accessible="false" x="351" y="879" width="11" height="15" index="3" traits="NotEnabled, Button"/>
+                                    </XCUIElementTypeCell>
+                                    <XCUIElementTypeCell type="XCUIElementTypeCell" name="com.apple.shortcuts" label="단축어" enabled="true" visible="false" accessible="false" x="20" y="912" width="362" height="54" index="17" traits="Button">
+                                      <XCUIElementTypeImage type="XCUIElementTypeImage" enabled="true" visible="false" accessible="false" x="36" y="925" width="28" height="29" index="0" traits="Image"/>
+                                      <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="단축어" name="com.apple.shortcuts" label="단축어" enabled="true" visible="false" accessible="true" x="79" y="912" width="265" height="54" index="1" traits="StaticText"/>
+                                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="79" y="964" width="287" height="2" index="2" traits=""/>
+                                      <XCUIElementTypeButton type="XCUIElementTypeButton" name="chevron" label="chevron" enabled="false" visible="false" accessible="false" x="351" y="932" width="11" height="15" index="3" traits="NotEnabled, Button"/>
+                                    </XCUIElementTypeCell>
+                                    <XCUIElementTypeCell type="XCUIElementTypeCell" name="com.apple.TVRemoteApp" label="리모컨" enabled="true" visible="false" accessible="false" x="20" y="965" width="362" height="54" index="18" traits="Button">
+                                      <XCUIElementTypeButton type="XCUIElementTypeButton" name="chevron" label="chevron" enabled="false" visible="false" accessible="false" x="0" y="116" width="11" height="14" index="0" traits="NotEnabled, Button"/>
+                                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="0" y="116" width="287" height="1" index="1" traits=""/>
+                                      <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="리모컨" name="com.apple.TVRemoteApp" label="리모컨" enabled="true" visible="false" accessible="true" x="0" y="116" width="265" height="53" index="2" traits="StaticText"/>
+                                      <XCUIElementTypeImage type="XCUIElementTypeImage" enabled="true" visible="false" accessible="false" x="0" y="116" width="28" height="28" index="3" traits="Image"/>
+                                    </XCUIElementTypeCell>
+                                    <XCUIElementTypeCell type="XCUIElementTypeCell" name="com.apple.MobileSMS" label="메시지" enabled="true" visible="false" accessible="false" x="20" y="1018" width="362" height="54" index="19" traits="Button">
+                                      <XCUIElementTypeButton type="XCUIElementTypeButton" name="chevron" label="chevron" enabled="false" visible="false" accessible="false" x="0" y="116" width="11" height="14" index="0" traits="NotEnabled, Button"/>
+                                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="0" y="116" width="287" height="1" index="1" traits=""/>
+                                      <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="메시지" name="com.apple.MobileSMS" label="메시지" enabled="true" visible="false" accessible="true" x="0" y="116" width="265" height="53" index="2" traits="StaticText"/>
+                                      <XCUIElementTypeImage type="XCUIElementTypeImage" enabled="true" visible="false" accessible="false" x="0" y="116" width="28" height="28" index="3" traits="Image"/>
+                                    </XCUIElementTypeCell>
+                                    <XCUIElementTypeCell type="XCUIElementTypeCell" name="com.apple.reminders" label="미리 알림" enabled="true" visible="false" accessible="false" x="20" y="1071" width="362" height="54" index="20" traits="Button">
+                                      <XCUIElementTypeButton type="XCUIElementTypeButton" name="chevron" label="chevron" enabled="false" visible="false" accessible="false" x="0" y="116" width="11" height="14" index="0" traits="NotEnabled, Button"/>
+                                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="0" y="116" width="287" height="1" index="1" traits=""/>
+                                      <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="미리 알림" name="com.apple.reminders" label="미리 알림" enabled="true" visible="false" accessible="true" x="0" y="116" width="265" height="53" index="2" traits="StaticText"/>
+                                      <XCUIElementTypeImage type="XCUIElementTypeImage" enabled="true" visible="false" accessible="false" x="0" y="116" width="28" height="28" index="3" traits="Image"/>
+                                    </XCUIElementTypeCell>
+                                    <XCUIElementTypeCell type="XCUIElementTypeCell" name="com.apple.Preview" label="미리보기" enabled="true" visible="false" accessible="false" x="20" y="1124" width="362" height="54" index="21" traits="Button">
+                                      <XCUIElementTypeButton type="XCUIElementTypeButton" name="chevron" label="chevron" enabled="false" visible="false" accessible="false" x="0" y="116" width="11" height="14" index="0" traits="NotEnabled, Button"/>
+                                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="0" y="116" width="287" height="1" index="1" traits=""/>
+                                      <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="미리보기" name="com.apple.Preview" label="미리보기" enabled="true" visible="false" accessible="true" x="0" y="116" width="265" height="53" index="2" traits="StaticText"/>
+                                      <XCUIElementTypeImage type="XCUIElementTypeImage" enabled="true" visible="false" accessible="false" x="0" y="116" width="28" height="28" index="3" traits="Image"/>
+                                    </XCUIElementTypeCell>
+                                    <XCUIElementTypeCell type="XCUIElementTypeCell" name="com.apple.mobileslideshow" label="사진" enabled="true" visible="false" accessible="false" x="20" y="1177" width="362" height="54" index="22" traits="Button">
+                                      <XCUIElementTypeButton type="XCUIElementTypeButton" name="chevron" label="chevron" enabled="false" visible="false" accessible="false" x="0" y="116" width="11" height="14" index="0" traits="NotEnabled, Button"/>
+                                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="0" y="116" width="287" height="1" index="1" traits=""/>
+                                      <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="사진" name="com.apple.mobileslideshow" label="사진" enabled="true" visible="false" accessible="true" x="0" y="116" width="265" height="53" index="2" traits="StaticText"/>
+                                      <XCUIElementTypeImage type="XCUIElementTypeImage" enabled="true" visible="false" accessible="false" x="0" y="116" width="28" height="28" index="3" traits="Image"/>
+                                    </XCUIElementTypeCell>
+                                    <XCUIElementTypeCell type="XCUIElementTypeCell" name="com.apple.Preferences" label="설정" enabled="true" visible="false" accessible="false" x="20" y="1230" width="362" height="54" index="23" traits="Button">
+                                      <XCUIElementTypeButton type="XCUIElementTypeButton" name="chevron" label="chevron" enabled="false" visible="false" accessible="false" x="0" y="116" width="11" height="14" index="0" traits="NotEnabled, Button"/>
+                                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="0" y="116" width="287" height="1" index="1" traits=""/>
+                                      <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="설정" name="com.apple.Preferences" label="설정" enabled="true" visible="false" accessible="true" x="0" y="116" width="265" height="53" index="2" traits="StaticText"/>
+                                      <XCUIElementTypeImage type="XCUIElementTypeImage" enabled="true" visible="false" accessible="false" x="0" y="116" width="28" height="28" index="3" traits="Image"/>
+                                    </XCUIElementTypeCell>
+                                    <XCUIElementTypeCell type="XCUIElementTypeCell" name="com.apple.Passwords" label="암호" enabled="true" visible="false" accessible="false" x="20" y="1283" width="362" height="54" index="24" traits="Button">
+                                      <XCUIElementTypeButton type="XCUIElementTypeButton" name="chevron" label="chevron" enabled="false" visible="false" accessible="false" x="0" y="116" width="11" height="14" index="0" traits="NotEnabled, Button"/>
+                                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="0" y="116" width="287" height="1" index="1" traits=""/>
+                                      <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="암호" name="com.apple.Passwords" label="암호" enabled="true" visible="false" accessible="true" x="0" y="116" width="265" height="53" index="2" traits="StaticText"/>
+                                      <XCUIElementTypeImage type="XCUIElementTypeImage" enabled="true" visible="false" accessible="false" x="0" y="116" width="28" height="28" index="3" traits="Image"/>
+                                    </XCUIElementTypeCell>
+                                    <XCUIElementTypeCell type="XCUIElementTypeCell" name="com.apple.MobileAddressBook" label="연락처" enabled="true" visible="false" accessible="false" x="20" y="1336" width="362" height="54" index="25" traits="Button">
+                                      <XCUIElementTypeButton type="XCUIElementTypeButton" name="chevron" label="chevron" enabled="false" visible="false" accessible="false" x="0" y="116" width="11" height="14" index="0" traits="NotEnabled, Button"/>
+                                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="0" y="116" width="287" height="1" index="1" traits=""/>
+                                      <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="연락처" name="com.apple.MobileAddressBook" label="연락처" enabled="true" visible="false" accessible="true" x="0" y="116" width="265" height="53" index="2" traits="StaticText"/>
+                                      <XCUIElementTypeImage type="XCUIElementTypeImage" enabled="true" visible="false" accessible="false" x="0" y="116" width="28" height="28" index="3" traits="Image"/>
+                                    </XCUIElementTypeCell>
+                                    <XCUIElementTypeCell type="XCUIElementTypeCell" name="com.apple.Passbook" label="지갑" enabled="true" visible="false" accessible="false" x="20" y="1389" width="362" height="54" index="26" traits="Button">
+                                      <XCUIElementTypeButton type="XCUIElementTypeButton" name="chevron" label="chevron" enabled="false" visible="false" accessible="false" x="0" y="116" width="11" height="14" index="0" traits="NotEnabled, Button"/>
+                                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="0" y="116" width="287" height="1" index="1" traits=""/>
+                                      <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="지갑" name="com.apple.Passbook" label="지갑" enabled="true" visible="false" accessible="true" x="0" y="116" width="265" height="53" index="2" traits="StaticText"/>
+                                      <XCUIElementTypeImage type="XCUIElementTypeImage" enabled="true" visible="false" accessible="false" x="0" y="116" width="28" height="28" index="3" traits="Image"/>
+                                    </XCUIElementTypeCell>
+                                    <XCUIElementTypeCell type="XCUIElementTypeCell" name="com.apple.Maps" label="지도" enabled="true" visible="false" accessible="false" x="20" y="1442" width="362" height="54" index="27" traits="Button">
+                                      <XCUIElementTypeButton type="XCUIElementTypeButton" name="chevron" label="chevron" enabled="false" visible="false" accessible="false" x="0" y="116" width="11" height="14" index="0" traits="NotEnabled, Button"/>
+                                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="0" y="116" width="287" height="1" index="1" traits=""/>
+                                      <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="지도" name="com.apple.Maps" label="지도" enabled="true" visible="false" accessible="true" x="0" y="116" width="265" height="53" index="2" traits="StaticText"/>
+                                      <XCUIElementTypeImage type="XCUIElementTypeImage" enabled="true" visible="false" accessible="false" x="0" y="116" width="28" height="28" index="3" traits="Image"/>
+                                    </XCUIElementTypeCell>
+                                    <XCUIElementTypeCell type="XCUIElementTypeCell" name="com.apple.mobilecal" label="캘린더" enabled="true" visible="false" accessible="false" x="20" y="1495" width="362" height="54" index="28" traits="Button">
+                                      <XCUIElementTypeButton type="XCUIElementTypeButton" name="chevron" label="chevron" enabled="false" visible="false" accessible="false" x="0" y="116" width="11" height="14" index="0" traits="NotEnabled, Button"/>
+                                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="0" y="116" width="287" height="1" index="1" traits=""/>
+                                      <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="캘린더" name="com.apple.mobilecal" label="캘린더" enabled="true" visible="false" accessible="true" x="0" y="116" width="265" height="53" index="2" traits="StaticText"/>
+                                      <XCUIElementTypeImage type="XCUIElementTypeImage" enabled="true" visible="false" accessible="false" x="0" y="116" width="28" height="28" index="3" traits="Image"/>
+                                    </XCUIElementTypeCell>
+                                    <XCUIElementTypeCell type="XCUIElementTypeCell" name="com.apple.DocumentsApp" label="파일" enabled="true" visible="false" accessible="false" x="20" y="1548" width="362" height="54" index="29" traits="Button">
+                                      <XCUIElementTypeButton type="XCUIElementTypeButton" name="chevron" label="chevron" enabled="false" visible="false" accessible="false" x="0" y="116" width="11" height="14" index="0" traits="NotEnabled, Button"/>
+                                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="0" y="116" width="287" height="1" index="1" traits=""/>
+                                      <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="파일" name="com.apple.DocumentsApp" label="파일" enabled="true" visible="false" accessible="true" x="0" y="116" width="265" height="53" index="2" traits="StaticText"/>
+                                      <XCUIElementTypeImage type="XCUIElementTypeImage" enabled="true" visible="false" accessible="false" x="0" y="116" width="28" height="28" index="3" traits="Image"/>
+                                    </XCUIElementTypeCell>
+                                    <XCUIElementTypeCell type="XCUIElementTypeCell" name="com.apple.Fitness" label="Fitness" enabled="true" visible="false" accessible="false" x="20" y="1601" width="362" height="54" index="30" traits="Button">
+                                      <XCUIElementTypeButton type="XCUIElementTypeButton" name="chevron" label="chevron" enabled="false" visible="false" accessible="false" x="0" y="116" width="11" height="14" index="0" traits="NotEnabled, Button"/>
+                                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="0" y="116" width="287" height="1" index="1" traits=""/>
+                                      <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Fitness" name="com.apple.Fitness" label="Fitness" enabled="true" visible="false" accessible="true" x="0" y="116" width="265" height="53" index="2" traits="StaticText"/>
+                                      <XCUIElementTypeImage type="XCUIElementTypeImage" enabled="true" visible="false" accessible="false" x="0" y="116" width="28" height="28" index="3" traits="Image"/>
+                                    </XCUIElementTypeCell>
+                                    <XCUIElementTypeCell type="XCUIElementTypeCell" name="com.apple.news" label="News" enabled="true" visible="false" accessible="false" x="20" y="1654" width="362" height="54" index="31" traits="Button">
+                                      <XCUIElementTypeButton type="XCUIElementTypeButton" name="chevron" label="chevron" enabled="false" visible="false" accessible="false" x="0" y="116" width="11" height="14" index="0" traits="NotEnabled, Button"/>
+                                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="0" y="116" width="287" height="1" index="1" traits=""/>
+                                      <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="News" name="com.apple.news" label="News" enabled="true" visible="false" accessible="true" x="0" y="116" width="265" height="53" index="2" traits="StaticText"/>
+                                      <XCUIElementTypeImage type="XCUIElementTypeImage" enabled="true" visible="false" accessible="false" x="0" y="116" width="28" height="28" index="3" traits="Image"/>
+                                    </XCUIElementTypeCell>
+                                    <XCUIElementTypeCell type="XCUIElementTypeCell" name="com.apple.mobilesafari" label="Safari" enabled="true" visible="false" accessible="false" x="20" y="1707" width="362" height="54" index="32" traits="Button">
+                                      <XCUIElementTypeButton type="XCUIElementTypeButton" name="chevron" label="chevron" enabled="false" visible="false" accessible="false" x="0" y="116" width="11" height="14" index="0" traits="NotEnabled, Button"/>
+                                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="0" y="116" width="287" height="1" index="1" traits=""/>
+                                      <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Safari" name="com.apple.mobilesafari" label="Safari" enabled="true" visible="false" accessible="true" x="0" y="116" width="265" height="53" index="2" traits="StaticText"/>
+                                      <XCUIElementTypeImage type="XCUIElementTypeImage" enabled="true" visible="false" accessible="false" x="0" y="116" width="28" height="28" index="3" traits="Image"/>
+                                    </XCUIElementTypeCell>
+                                    <XCUIElementTypeCell type="XCUIElementTypeCell" name="com.apple.SiriApp" label="Siri" enabled="true" visible="false" accessible="false" x="20" y="1760" width="362" height="54" index="33" traits="Button">
+                                      <XCUIElementTypeButton type="XCUIElementTypeButton" name="chevron" label="chevron" enabled="false" visible="false" accessible="false" x="0" y="116" width="11" height="14" index="0" traits="NotEnabled, Button"/>
+                                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="0" y="116" width="287" height="1" index="1" traits=""/>
+                                      <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Siri" name="com.apple.SiriApp" label="Siri" enabled="true" visible="false" accessible="true" x="0" y="116" width="265" height="53" index="2" traits="StaticText"/>
+                                      <XCUIElementTypeImage type="XCUIElementTypeImage" enabled="true" visible="false" accessible="false" x="0" y="116" width="28" height="28" index="3" traits="Image"/>
+                                    </XCUIElementTypeCell>
+                                    <XCUIElementTypeCell type="XCUIElementTypeCell" name="com.apple.Bridge" label="Watch" enabled="true" visible="false" accessible="false" x="20" y="1813" width="362" height="54" index="34" traits="Button">
+                                      <XCUIElementTypeButton type="XCUIElementTypeButton" name="chevron" label="chevron" enabled="false" visible="false" accessible="false" x="0" y="116" width="11" height="14" index="0" traits="NotEnabled, Button"/>
+                                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="0" y="116" width="287" height="1" index="1" traits=""/>
+                                      <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Watch" name="com.apple.Bridge" label="Watch" enabled="true" visible="false" accessible="true" x="0" y="116" width="265" height="53" index="2" traits="StaticText"/>
+                                      <XCUIElementTypeImage type="XCUIElementTypeImage" enabled="true" visible="false" accessible="false" x="0" y="116" width="28" height="28" index="3" traits="Image"/>
+                                    </XCUIElementTypeCell>
+                                    <XCUIElementTypeCell type="XCUIElementTypeCell" name="com.facebook.WebDriverAgentRunner.xctrunner" label="WebDriverAgentRunner-Runner" enabled="true" visible="false" accessible="false" x="20" y="1866" width="362" height="54" index="35" traits="Button">
+                                      <XCUIElementTypeButton type="XCUIElementTypeButton" name="chevron" label="chevron" enabled="false" visible="false" accessible="false" x="0" y="116" width="11" height="14" index="0" traits="NotEnabled, Button"/>
+                                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="0" y="116" width="362" height="1" index="1" traits=""/>
+                                      <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="WebDriverAgentRunner-Runner" name="com.facebook.WebDriverAgentRunner.xctrunner" label="WebDriverAgentRunner-Runner" enabled="true" visible="false" accessible="true" x="0" y="116" width="265" height="53" index="2" traits="StaticText"/>
+                                      <XCUIElementTypeImage type="XCUIElementTypeImage" enabled="true" visible="false" accessible="false" x="0" y="116" width="28" height="28" index="3" traits="Image"/>
+                                    </XCUIElementTypeCell>
+                                    <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="822" width="402" height="18" index="36" traits=""/>
+                                    <XCUIElementTypeOther type="XCUIElementTypeOther" value="0%" name="수직 스크롤 막대, 3페이지" label="수직 스크롤 막대, 3페이지" enabled="true" visible="false" accessible="false" x="369" y="116" width="30" height="696" index="37" traits="Adjustable">
+                                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="396" y="119" width="3" height="305" index="0" traits=""/>
+                                    </XCUIElementTypeOther>
+                                    <XCUIElementTypeOther type="XCUIElementTypeOther" value="0%" name="수평 스크롤 막대, 1페이지" label="수평 스크롤 막대, 1페이지" enabled="true" visible="false" accessible="false" x="62" y="841" width="278" height="30" index="38" traits="Adjustable">
+                                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="65" y="868" width="272" height="3" index="0" traits=""/>
+                                    </XCUIElementTypeOther>
+                                  </XCUIElementTypeTable>
+                                </XCUIElementTypeOther>
+                              </XCUIElementTypeOther>
+                            </XCUIElementTypeOther>
+                          </XCUIElementTypeOther>
+                        </XCUIElementTypeOther>
+                        <XCUIElementTypeToolbar type="XCUIElementTypeToolbar" name="Toolbar" label="도구 막대" enabled="true" visible="false" accessible="false" x="0" y="0" width="402" height="874" index="2" traits="">
+                          <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="0" y="0" width="402" height="874" index="0" traits=""/>
+                        </XCUIElementTypeToolbar>
+                      </XCUIElementTypeOther>
+                    </XCUIElementTypeOther>
+                    <XCUIElementTypeToolbar type="XCUIElementTypeToolbar" name="Toolbar" label="도구 막대" enabled="true" visible="false" accessible="false" x="0" y="0" width="402" height="874" index="1" traits="">
+                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="0" y="0" width="402" height="874" index="0" traits=""/>
+                    </XCUIElementTypeToolbar>
+                  </XCUIElementTypeOther>
+                </XCUIElementTypeOther>
+                <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="402" height="874" index="1" traits="">
+                  <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="402" height="874" index="0" traits=""/>
+                </XCUIElementTypeOther>
+              </XCUIElementTypeOther>
+            </XCUIElementTypeOther>
+          </XCUIElementTypeOther>
+        </XCUIElementTypeOther>
+      </XCUIElementTypeOther>
+    </XCUIElementTypeWindow>
+  </XCUIElementTypeApplication>
+</AppiumAUT>

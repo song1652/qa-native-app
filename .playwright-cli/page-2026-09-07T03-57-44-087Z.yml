@@ -1,0 +1,87 @@
+- generic [active] [ref=f16e1]:
+  - generic [ref=f16e2]:
+    - text: ● LIVE
+    - heading "QA CONTROL CENTER" [level=1] [ref=f16e4]
+  - generic "실행 상태" [ref=f16e5]:
+    - generic [ref=f16e6]: 확인 중...
+    - generic [ref=f16e10]: 확인 중...
+    - generic "Android · ADB · UiAutomator2" [ref=f16e15]: "자동화: ADB"
+    - generic [ref=f16e17]:
+      - text: "파이프라인:"
+      - generic [ref=f16e18]: "-"
+  - generic [ref=f16e20]:
+    - complementary "주 메뉴" [ref=f16e21]:
+      - generic [ref=f16e22]:
+        - generic [ref=f16e23]: 개요
+        - generic [ref=f16e24] [cursor=pointer]: Dashboard
+      - generic [ref=f16e27]:
+        - generic [ref=f16e28]: Import
+        - generic [ref=f16e29] [cursor=pointer]: Import Studio
+      - generic [ref=f16e32]:
+        - generic [ref=f16e33]: 파이프라인
+        - generic [ref=f16e34] [cursor=pointer]: 파이프라인 실행
+        - generic [ref=f16e37] [cursor=pointer]: 빠른 실행
+      - generic [ref=f16e40]:
+        - generic [ref=f16e41]: 테스트 결과
+        - generic [ref=f16e42] [cursor=pointer]: 리포트 목록
+        - generic [ref=f16e45] [cursor=pointer]: 실행 히스토리
+      - generic [ref=f16e48]:
+        - generic [ref=f16e49]: 설정
+        - generic [ref=f16e50] [cursor=pointer]: Appium 설정
+    - main [ref=f16e53]:
+      - generic [ref=f16e54]:
+        - generic [ref=f16e55]: Dashboard
+        - generic [ref=f16e56]:
+          - generic [ref=f16e57]:
+            - img [ref=f16e58]:
+              - generic [ref=f16e61]: 0%
+              - generic [ref=f16e62]: PASS RATE
+            - generic [ref=f16e63]:
+              - generic [ref=f16e64]: 최근 실행 없음
+              - generic [ref=f16e65]:
+                - generic [ref=f16e66]:
+                  - generic [ref=f16e67]: "0"
+                  - generic [ref=f16e68]: Total
+                - generic [ref=f16e69]:
+                  - generic [ref=f16e70]: "0"
+                  - generic [ref=f16e71]: Passed
+                - generic [ref=f16e72]:
+                  - generic [ref=f16e73]: "0"
+                  - generic [ref=f16e74]: Failed
+              - generic [ref=f16e75]:
+                - generic [ref=f16e76]: 통과
+                - generic [ref=f16e78]: 실패
+                - generic [ref=f16e80]: 경고 (80%↑)
+          - generic [ref=f16e82]:
+            - generic [ref=f16e83]: Run History
+            - generic [ref=f16e84]:
+              - generic [ref=f16e85]: 실행 이력 없음
+              - generic [ref=f16e86]:
+                - generic [ref=f16e87]: 실행 추이
+                - generic [ref=f16e88]:
+                  - generic [ref=f16e89]: 100%
+                  - generic [ref=f16e91]: 80%↑
+                  - generic [ref=f16e93]: 80%↓
+        - generic [ref=f16e95]:
+          - generic [ref=f16e96]:
+            - generic [ref=f16e97]: ◆
+            - generic [ref=f16e98]:
+              - generic [ref=f16e99]: Appium
+              - generic [ref=f16e100]: 미기동
+          - generic [ref=f16e101]:
+            - generic [ref=f16e102]: ◆
+            - generic [ref=f16e103]:
+              - generic [ref=f16e104]: Generated Tests
+              - generic [ref=f16e105]: 6개
+          - generic [ref=f16e106]:
+            - generic [ref=f16e107]: ◆
+            - generic [ref=f16e108]:
+              - generic [ref=f16e109]: Healing
+              - generic [ref=f16e110]: 0회
+        - generic [ref=f16e111]:
+          - generic [ref=f16e112]:
+            - generic [ref=f16e113]: Recent Logs
+            - button "↻" [ref=f16e114] [cursor=pointer]
+          - generic [ref=f16e115]: 로그 없음
+      - text: ◆
+  - text: "\"\"\""

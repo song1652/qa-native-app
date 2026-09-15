@@ -17,10 +17,10 @@
 01_analyze → 02_generate → 03_lint → 05_execute → 06_heal
 ```
 
-- `01_analyze.py`: Appium `page_source`로 native UI hierarchy 수집
-- `02_generate.py`: TC Markdown과 locator registry를 이용한 플랫폼별 pytest 생성
+- `01_analyze.py`: Appium native hierarchy와 감지된 WebView DOM을 분리 수집
+- `02_generate.py`: native 우선·선택적 Playwright WebView pytest 생성
 - `03_lint.py`: 생성 코드 flake8 검사
-- `05_execute.py`: pytest/Appium 실행 및 리포트 저장
+- `05_execute.py`: pytest/Appium 실행 및 리포트 저장. `pytest-rerunfailures`가 설치된 경우 `--reruns 2 --reruns-delay 5` 자동 적용
 - `06_heal.py`: 실패 직전 최신 hierarchy를 다시 수집하고 유일 후보만 healing
 
 대시보드의 전체 실행은 위 순서의 단일 파이프라인입니다. 제품에는 단일/병렬 실행 유형을 별도로 노출하지 않습니다.
@@ -49,12 +49,45 @@ testcases/ios/{group}/     → tests/generated/ios/{group}/
 - 파일명 충돌은 시트별 하위 폴더로 방지합니다.
 - 안전한 반영의 기본 정책은 `skip-conflict`이며 기존 Markdown을 보존합니다. 명시적으로 `overwrite`를 선택하면 동일 경로 파일을 덮어씁니다.
 
+## Capture Studio
+
+대시보드의 Capture Studio 탭에서 실제 앱 화면을 보며 요소를 선택하고 TC를 직접 생성합니다.
+
+**현재 구현 상태 (2026-09-12):**
+- Phase 0–1 완료: FastAPI 전환, 세션 충돌 방지, MJPEG/iOS poll 환경 확인, 세션 설정 화면
+- Phase 2–4 완료: hierarchy 트리 렌더링·노드 선택, 동작 기록(tap/scroll/back/wait), Locator 후보·승인
+- Phase 7 완료: `저장 및 생성` 버튼 → `/capture/generate_from_actions` → 자체 완결형 pytest 파일 생성
+- 생성 코드 구조: `_build_driver()` + `_el()` + `_ios_tap()` (iOS 전용) + class + test 함수
+- Healing 연계: 실패 TC에서 Locator 검토 4단계 재진입 완료
+- **iOS 화면 미러링**: XCUITest + `GET /capture/screenshot` polling (1.2초), 25회 실패 후 에러 표시 (WDA 안정화 30초 여유)
+- **화면 전환 자동 감지**: `GET /capture/page_source_hash` 4초 폴링 → hash 변경 시 hierarchy 자동 새로고침 (쿨다운 3초)
+- **back 액션**: 실행 후 1.2초 뒤 hierarchy 자동 새로고침
+- **세션 복구**: mirror 에러 시 "🔄 세션 재연결" 버튼 → `csReLaunch()` → Back 없이 드라이버 재시작
+
+**TC 파일 명명 규칙:**
+- `tc_group` → 폴더명: `tests/generated/{platform}/{tc_group}/`
+- `tc_id` → 파일명: `{tc_id}.py` (같은 그룹에 여러 TC 누적 가능)
+- 예: group=`settings`, id=`tc_settings_v1` → `tests/generated/android/settings/tc_settings_v1.py`
+- `pytest tests/generated/android/settings/` 한 번에 그룹 전체 실행
+
+**Locator 생성 규칙:**
+- Android: app-specific `resource-id` > `content-desc` > `text` > generic-id(android:id/*) > class
+- iOS: `label`(사람이 읽는 텍스트) > `name`(bundle ID 스타일) > predicate > xpath
+- iOS accessibility-id tap → `_ios_tap(label)` 헬퍼 생성: `find_element` 실패 시 `mobile: scroll` 자동 스크롤 후 탭
+
+**제약 및 주의사항:**
+- Android: MJPEG 스트리밍은 포트 8093, Appium 서버에 `--allow-insecure=uiautomator2:adb_screen_streaming` 플래그 필요 (Appium 3.x)
+- iOS: XCUITest 세션에는 `bundle_id`와 `device_name`(Simulator 이름)이 필요합니다. `xcrun simctl list`로 정확한 이름 확인
+- **iOS XCUITest 세션 충돌**: 시뮬레이터당 세션 1개만 허용. Capture Studio iOS 세션이 열려 있으면 iOS pytest TC를 동시에 실행할 수 없음 (반대도 동일). 충돌 시 드라이버가 None이 되며 "🔄 세션 재연결" 버튼으로 복구
+- Capture Studio 세션과 파이프라인 실행 세션은 동시에 존재할 수 없습니다 (대시보드에 상태 표시)
+- Android 세션 key는 `app_package` / `app_activity`, iOS는 `bundle_id`를 사용합니다
+
 ## Locator 작업 규칙
 
 1. Appium Inspector 또는 native hierarchy에서 요소 속성을 확인합니다.
 2. 확인한 플랫폼별 locator를 `config/locators.json`에 저장합니다.
 3. strict 생성으로 registry 누락을 차단합니다.
-4. 실패 시 `06_heal.py`가 최신 Appium `page_source`에서 후보를 찾습니다.
+4. 실패 시 `06_heal.py`가 locator surface에 따라 native XML 또는 WebView DOM에서 후보를 찾습니다.
 5. 후보가 유일하고 신뢰도가 높을 때만 registry를 갱신합니다.
 6. 후보가 모호하거나 snapshot이 없으면 자동 변경하지 않고 실패 상태로 남깁니다.
 
@@ -70,19 +103,19 @@ python scripts/02_generate.py --platform ios --strict-locators
 | 파일 | 역할 |
 |---|---|
 | `config/test_data.json` | 앱 package/activity, bundle ID, 테스트 데이터 |
-| `config/devices.json` | Android/iOS capability |
+| `config/devices.json` | Android/iOS capability. **스키마 (v0.6 확정)**: 모든 모드 키는 **단수형 배열** — `android.emulator[]`, `android.real_device[]`, `ios.simulator[]`, `ios.real_device[]`. 각 항목에 `default: true`로 기본 디바이스 지정. **케이스 규칙**: Appium에 직접 전달되는 필드는 camelCase(`deviceName`, `mjpegServerPort` 등), 대시보드 전용 필드는 snake_case(`default`, `wifi_ip`, `team_id`). ENV Setup UI에서 관리 — 직접 편집 시 배열 형식·케이스 규칙 유지 필수. **MJPEG caps**는 각 emulator 항목 안에 flat하게 포함 (`mjpegServerPort`, `mjpegScalingFactor`, `mjpegServerScreenshotQuality`). **Android 실기기 식별자**: `android.real_device[]` 항목에서 adb serial은 `udid` 키에 저장하고, `/api/env/status` 응답에서는 `serial`로 노출됨 — `config/devices.json` 직접 편집 시 `udid` 키 사용 필수. |
 | `config/screens.json` | 분석 화면과 진입 action |
 | `config/locators.json` | 플랫폼별 target locator registry |
 | `config/jira_config.json` | 이 제품 전용 Jira 프로젝트/이슈 설정 |
 
-`config/locators.json` target key는 기본적으로 `{tc_slug}.{selector_key}` 형식이며, entry는 플랫폼별 `strategy`와 `value`를 가집니다.
+`config/locators.json` target key는 `{tc_slug}.{selector_key}` 형식입니다. entry의 `surface`는 `auto`(native 우선), `native`, `webview` 중 하나이며 WebView locator는 `webview` 객체에 별도로 둡니다. WebView가 감지되지 않으면 Playwright를 시작하지 않으며, CDP 미지원 WebView는 Appium context로 실행합니다.
 
 대시보드 전체 실행이 healing 3회 후에도 실패하면 `scripts/jira_reporter.py`가 이 프로젝트의 Jira 설정으로 Bug를 생성하고 스크린샷/영상을 첨부합니다. `JIRA_TOKEN`이 없으면 Jira 보고만 건너뛰며 테스트 결과는 유지합니다. Jira 설정은 다른 제품과 공유하지 않습니다.
 
 ## 실행 명령
 
 ```bash
-appium --address 0.0.0.0 --port 4723
+appium --address 127.0.0.1 --port 4723
 python agents/dashboard/serve.py
 
 # Android
@@ -109,8 +142,10 @@ testcases/{android,ios}/   # OS별 입력 TC Markdown
 tests/generated/{android,ios}/ # OS별 생성 코드
 tests/reports/             # 실행 리포트
 state/pipeline.json        # 실행 상태와 snapshot
+state/capture_session.json # Capture Studio 세션 상태
 logs/                      # 단계별 로그
 docs/LOCATOR_HEALING.md    # healing 정책
+docs/CAPTURE_STUDIO_PLAN.md # Capture Studio 구현 플랜
 ```
 
 ## 변경 시 검증
@@ -122,4 +157,54 @@ python3 scripts/02_generate.py --platform ios --strict-locators
 git diff --check
 ```
 
+`pytest-rerunfailures` 동작 확인: `pip show pytest-rerunfailures` 후 `05_execute.py` 실행 로그에서 `--reruns 2 --reruns-delay 5` 포함 여부를 확인합니다.
+
 실제 Appium 실행은 연결된 서버와 디바이스가 있을 때 별도로 수행합니다.
+
+## ENV Setup UI
+
+대시보드 ENV Setup 탭에서 Appium 서버와 디바이스(에뮬레이터/시뮬레이터/실기기)를 관리합니다.
+
+**PRD**: `docs/ENV_SETUP_PRD.md` (v0.8 — F1·F3·F6 코드 반영 완료 · US-3 디바이스 CRUD API)  
+**디자인 스펙**: https://claude.ai/code/artifact/55ba3c71-e480-4493-b60a-d0a2aad70fb1  
+**목업**: https://claude.ai/code/artifact/466103b7-6be2-4811-b34e-f0c088462334
+
+**M2.0 마이그레이션 선행 5단계** (M2.0 스프린트 착수 시 순서대로 수행):
+1. `config/devices.json` 단일 객체 → 배열 전환 + `.bak` 백업
+2. `utils/system.py`에 `default: true` 리더 함수 추가 (dict 하위호환 분기 포함)
+3. 소비 코드 3곳 교체: `android_driver.py:35`, `02_generate.py:388`, `capture.py:645`
+4. `capture.py:128-130` MJPEG 하드코딩 제거 → devices.json에서 읽도록 통일
+5. caps 조립 시 `default`/`wifi_ip`/`team_id` 등 비-Appium 필드 제거
+
+각 단계 후 `python3 -m py_compile scripts/*.py` + `02_generate --strict-locators` 회귀 확인 필수.
+
+**Appium 5값 상태 모델**: `stopped` / `starting` / `managed` / `external` / `error`  
+`error` 상태는 자동 해소 없음 — 사용자가 "다시 시도" 클릭 또는 명시적 액션 시에만 전이.
+
+**Appium 바인딩**: `--address 127.0.0.1` 고정. Appium은 인증 없이 앱 설치·파일 전송·셸 실행 권한을 노출하므로 `0.0.0.0` 바인딩을 금지합니다. 원격 디바이스 팜이 필요하면 인증·TLS를 포함한 별도 설계로 다룹니다.
+
+**에뮬레이터/시뮬레이터는 Appium과 독립적으로 시작합니다.** Appium이 `stopped`/`error` 상태여도 AVD 시작·시뮬레이터 부팅이 가능합니다. Appium은 **Capture Studio 세션 시작과 파이프라인 실행**의 선행 조건일 뿐이며, 디바이스 컨트롤에 잠금(`locked`) 상태를 표시하지 않습니다.
+
+**Capture 가드는 플랫폼별로 분리됩니다**: `is_capture_active(platform: str | None = None)` (`agents/dashboard/utils/state.py`). 인자를 생략하면 플랫폼 무관 전체 확인이고, `"android"` / `"ios"`를 넘기면 해당 플랫폼 세션만 확인합니다. `state/capture_session.json`에 `platform` 필드가 없는 구버전 레코드는 보수적으로 `True`(차단)를 반환합니다. 무인자 기존 호출부는 하위호환으로 그대로 동작합니다.
+
+**API 가드 정책**:
+- `POST /api/env/appium/stop`: `is_capture_active()` (플랫폼 무관 전체) 활성 시 `403 capture_session_active`, 파이프라인 실행 중 `409 pipeline_running`. **`external` 상태에서도 중지 가능** — `lsof -ti :<port>`로 PID 탐색 후 SIGTERM (v1.0)
+- `POST /api/env/android/avd/stop`: `is_capture_active("android")` 활성 시 `403 capture_session_active` — iOS Capture 세션은 차단 사유가 아님
+- `POST /api/env/ios/simulator/stop`: `is_capture_active("ios")` 활성 시 `403 capture_session_active` — Android Capture 세션은 차단 사유가 아님
+- `POST /api/env/android/avd/start`: 다른 에뮬레이터 실행 중 `409 already_running`. **Appium 상태 가드 없음**
+- `POST /api/env/ios/simulator/start`: **Appium 상태 가드 없음**. 생략 시 `devices.json`의 `default: true` 시뮬레이터를 사용. `subprocess.Popen`(비동기)으로 즉시 202 + `status: "starting"` 반환 — 3초 폴링이 `simctl list` Booted 감지 시 `running` 전환 (v1.0)
+
+> ⚠️ start 계열(`avd/start`, `simulator/start`)은 아직 `is_capture_active()`를 무인자로 호출해 무관한 플랫폼 세션도 시작을 차단합니다. 플랫폼 분리는 stop 계열에만 적용된 상태입니다 (PRD §15-7 항목 5).
+
+**디바이스 추가/삭제**: `POST /api/env/{android,ios}/{add,remove}` 4종이 구현되어 있으며, 모든 `devices.json` 쓰기는 `agents/dashboard/utils/state.py`의 `save_devices_json()`을 경유합니다 (`.json.tmp` 기록 → `Path.replace()` 원자적 교체, `default` 중복 시 `ValueError` → 400). `config/devices.json`에 직접 `write_text()`하는 경로를 새로 만들지 마세요.
+
+- 요청 스키마: `add` = `{mode, deviceName, avd?|udid?, default?}`, `remove` = `{mode, deviceName}`. `mode`는 Android `emulator|real_device`, iOS `simulator|real_device`
+- 마지막 1개 항목은 삭제 불가 (`400 last_device`). `default: true` 항목 삭제 시 남은 첫 항목이 승계
+- ⚠️ **대시보드 UI는 아직 없습니다** — 추가 버튼·모달·✕ 삭제가 `dashboard.html`에 미구현이라 현재는 `devices.json` 직접 편집 또는 API 직접 호출이 필요합니다 (PRD §15-7 항목 1)
+- ⚠️ add·remove에 Capture/파이프라인 **잠금 가드가 없습니다**. 실행 중 호출하면 설정이 교체됩니다 (PRD §15-7 항목 2)
+
+`is_capture_active(platform: str | None = None)` — 인자를 생략하면 전체 플랫폼을 확인합니다(기존 무인자 호출부와 하위호환). 세션 레코드에서 플랫폼을 식별할 수 없으면 보수적으로 `True`를 반환합니다.
+
+## 연속 Appium 세션 주의사항
+
+3개 이상의 테스트를 순차 실행할 때 3번째 이후 세션에서 UiAutomator2 초기화 실패가 발생할 수 있습니다. `pytest-rerunfailures`(`--reruns 2 --reruns-delay 5`)가 이를 제품 레벨에서 처리합니다. 테스트 파일을 수정하지 않아도 됩니다. 재시도 후에도 반복 실패하면 `agents/lessons_learned.md`를 확인하고 Appium 서버를 재기동하세요.

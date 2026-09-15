@@ -46,6 +46,119 @@
         "strategy": "ACCESSIBILITY_ID",
         "value": "일반"
       }
+    },
+    "ApiDemos_네이티브_WebView_탐지.native_header": {
+      "android": {
+        "surface": "native",
+        "strategy": "XPATH",
+        "value": "//*[@text=\"Views/WebView\"]"
+      }
+    },
+    "ApiDemos_네이티브_WebView_탐지.webview_heading": {
+      "android": {
+        "surface": "webview",
+        "strategy": "ACCESSIBILITY_ID",
+        "value": "h1",
+        "webview": {
+          "strategy": "css",
+          "value": "h1"
+        }
+      }
+    },
+    "ApiDemos_WebView_텍스트_입력.native_header": {
+      "android": {
+        "surface": "native",
+        "strategy": "XPATH",
+        "value": "//*[@text=\"Views/WebView\"]"
+      }
+    },
+    "ApiDemos_WebView_텍스트_입력.webview_textbox": {
+      "android": {
+        "surface": "webview",
+        "strategy": "ACCESSIBILITY_ID",
+        "value": "#i_am_a_textbox",
+        "webview": {
+          "strategy": "css",
+          "value": "#i_am_a_textbox"
+        }
+      }
+    },
+    "ApiDemos_WebView_링크_이동.webview_link": {
+      "android": {
+        "surface": "webview",
+        "strategy": "ACCESSIBILITY_ID",
+        "value": "[id=\"i am a link\"]",
+        "webview": {
+          "strategy": "css",
+          "value": "[id=\"i am a link\"]"
+        }
+      }
+    },
+    "ApiDemos_WebView_링크_이동.linked_page_content": {
+      "android": {
+        "surface": "webview",
+        "strategy": "ACCESSIBILITY_ID",
+        "value": "body",
+        "webview": {
+          "strategy": "css",
+          "value": "body"
+        }
+      }
+    },
+    "ApiDemos_WebView_링크_이동.native_header": {
+      "android": {
+        "surface": "native",
+        "strategy": "XPATH",
+        "value": "//*[@text=\"Views/WebView\"]"
+      }
     }
+  },
+  "tc_001_settings_main.title": {
+    "surface": "native",
+    "android": {
+      "strategy": "id",
+      "value": "com.android.settings:id/homepage_title"
+    },
+    "rating": 5
+  },
+  "tc_001_settings_main.search_bar": {
+    "surface": "native",
+    "android": {
+      "strategy": "id",
+      "value": "com.android.settings:id/search_action_bar"
+    },
+    "rating": 5
+  },
+  "tc_001_settings_main.network_item": {
+    "surface": "native",
+    "android": {
+      "strategy": "xpath",
+      "value": "//android.widget.TextView[@resource-id='com.android.settings:id/title' and @text='Network & internet']"
+    },
+    "rating": 3
+  },
+  "tc_001_settings_main_ui.title": {
+    "surface": "native",
+    "android": {
+      "strategy": "id",
+      "value": "com.android.settings:id/homepage_title"
+    },
+    "rating": 5
+  },
+  "tc_001_settings_main_ui.search_bar": {
+    "surface": "native",
+    "android": {
+      "strategy": "id",
+      "value": "com.android.settings:id/search_action_bar"
+    },
+    "rating": 5
+  },
+  "tc_001_settings_main_ui.network_item": {
+    "surface": "native",
+    "android": {
+      "strategy": "xpath",
+      "value": "//android.widget.TextView[@text=\"Network & internet\"]"
+    },
+    "rating": 3
   }
 }

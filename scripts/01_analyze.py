@@ -1,5 +1,5 @@
 """
-01_analyze.py — Appium page_source 기반 앱 UI 수집.
+01_analyze.py — native hierarchy와 선택적 WebView DOM 수집.
 
 screens.json에 정의된 각 화면에 접근해 UI XML을 수집하고
 state/pipeline.json의 dom_info에 저장한다.
@@ -13,6 +13,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from hybrid_runtime import HybridSession
 
 ROOT = Path(__file__).parent.parent
 SCRIPTS_DIR = Path(__file__).parent
@@ -133,6 +134,9 @@ def main():
             print(f"  collecting: {screen_name}")
             xml = collect_screen_xml(driver, screen_name, screen_cfg,
                                      test_data)
+            hybrid = HybridSession(driver)
+            webviews = hybrid.capture_webviews()
+            hybrid.close()
             # Android/iOS를 같은 state에 보관해 서로 덮어쓰지 않도록
             # platform을 1차 키로 둔다. 기존 screen 단위 state도 읽을 수
             # 있지만, 새 수집부터는 플랫폼별 Inspector snapshot을 유지한다.
@@ -143,6 +147,8 @@ def main():
             platform_info[args.platform] = {
                 "platform": args.platform,
                 "xml": xml,
+                "native": {"xml": xml, "source": "appium_page_source"},
+                "webviews": webviews,
                 "description": screen_cfg.get("description", ""),
             }
 

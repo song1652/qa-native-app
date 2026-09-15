@@ -1,0 +1,16 @@
+{
+  "session_id": "a6b7798c-8165-4e8a-a642-d258b6367645",
+  "platform": "android",
+  "target": "emulator",
+  "app_package": "com.android.settings",
+  "app_activity": ".Settings",
+  "bundle_id": "",
+  "device_name": "iPhone Simulator",
+  "tc_group": "settings_multi_step",
+  "mjpeg_port": 8093,
+  "screenshot_mode": "mjpeg",
+  "active": true,
+  "started_at": "2026-09-12T11:51:25.453134",
+  "last_activity_at": "2026-09-12T11:51:25.453150",
+  "actions": []
+}

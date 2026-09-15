@@ -1,0 +1,64 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - text: ● LIVE
+    - heading "QA CONTROL CENTER" [level=1] [ref=e4]
+  - generic "실행 상태" [ref=e5]:
+    - generic [ref=e6]: Appium 미기동
+    - generic [ref=e10]: 디바이스 없음
+    - generic "iOS · XCUITest · Simulator / 실기기" [ref=e116]: "자동화: XCUITest"
+    - generic [ref=e17]:
+      - text: "파이프라인:"
+      - generic [ref=e18]: generated
+  - generic [ref=e20]:
+    - complementary "주 메뉴" [ref=e21]:
+      - generic [ref=e22]:
+        - generic [ref=e23]: 개요
+        - generic [ref=e24] [cursor=pointer]: Dashboard
+      - generic [ref=e27]:
+        - generic [ref=e28]: Import
+        - generic [ref=e29] [cursor=pointer]: Import Studio
+      - generic [ref=e32]:
+        - generic [ref=e33]: 파이프라인
+        - generic [ref=e34] [cursor=pointer]: 파이프라인 실행
+        - generic [ref=e37] [cursor=pointer]: 빠른 실행
+      - generic [ref=e40]:
+        - generic [ref=e41]: 테스트 결과
+        - generic [ref=e42] [cursor=pointer]: 리포트 목록
+        - generic [ref=e45] [cursor=pointer]: 실행 히스토리
+      - generic [ref=e48]:
+        - generic [ref=e49]: 설정
+        - generic [ref=e50] [cursor=pointer]: Appium 설정
+    - main [ref=e53]:
+      - generic [ref=e120]:
+        - generic [ref=e121]:
+          - generic [ref=e122]: Excel Import Studio
+          - generic [ref=e123]:
+            - generic [ref=e124]:
+              - generic [ref=e125]: "1"
+              - generic [ref=e126]: 파일 선택
+            - generic [ref=e128]:
+              - generic [ref=e129]: "2"
+              - generic [ref=e130]: 열 매핑
+            - generic [ref=e132]:
+              - generic [ref=e133]: "3"
+              - generic [ref=e134]: 미리보기
+            - generic [ref=e136]:
+              - generic [ref=e137]: "4"
+              - generic [ref=e138]: 안전한 반영
+            - generic [ref=e140]:
+              - generic [ref=e141]: "5"
+              - generic [ref=e142]: 완료
+        - generic [ref=e143]:
+          - generic [ref=e144]:
+            - paragraph [ref=e145]: import/ 폴더의 Excel 파일을 선택하고, 가져올 시트와 대상 그룹을 지정하세요.
+            - checkbox "X qa_testcases_sample.xlsx 9.0 KB · 2026. 9. 7. · 3개 시트" [ref=e147] [cursor=pointer]:
+              - generic [ref=e148]:
+                - generic [ref=e149]: X
+                - generic [ref=e150]:
+                  - generic [ref=e151]: qa_testcases_sample.xlsx
+                  - generic [ref=e152]: 9.0 KB · 2026. 9. 7. · 3개 시트
+          - generic [ref=e154]:
+            - generic [ref=e155]: ◆ 원본 파일은 변경되지 않습니다
+            - generic [ref=e156]: 0개 파일 선택됨
+            - 'button "다음: 열 매핑 →" [disabled] [ref=e157]'
+  - text: "\"\"\""

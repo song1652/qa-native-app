@@ -1,10 +1,15 @@
 """pytest conftest — 실패 시 Appium driver screenshot 자동 캡처."""
 import json
+import sys
 from pathlib import Path
 
 import pytest
 
 ROOT = Path(__file__).parent.parent
+if str(ROOT) not in sys.path:
+    # --import-mode=importlib does not guarantee that the repository root is
+    # importable, while generated artifacts intentionally reuse scripts/*.
+    sys.path.insert(0, str(ROOT))
 SCREENSHOTS_JSON = ROOT / "state" / "screenshots.json"
 
 

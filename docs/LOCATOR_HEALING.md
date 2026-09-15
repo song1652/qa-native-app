@@ -2,9 +2,9 @@
 
 ## 목적
 
-네이티브 앱의 UI 구조가 변경되어 생성된 locator가 실패했을 때, 사용자가 매번 GUI Appium Inspector를 조작하지 않아도 최신 native hierarchy를 기준으로 안전하게 locator를 갱신합니다.
+앱의 UI 구조가 변경되어 locator가 실패했을 때 최신 native hierarchy 또는 실제로 감지된 WebView DOM을 기준으로 안전하게 locator를 갱신합니다.
 
-기준은 GUI 화면이 아니라 Appium이 제공하는 `page_source` XML입니다. Appium Inspector가 보여주는 native hierarchy와 같은 계층 정보를 자동 수집해 사용합니다.
+native 기준은 Appium `page_source` XML이며 WebView 기준은 Playwright CDP HTML입니다. Android Chromium 이외처럼 CDP를 사용할 수 없는 환경에서는 Appium WebView context HTML을 수집하고 같은 context에서 실행합니다.
 
 ## 전체 흐름
 
@@ -13,9 +13,11 @@
   ↓
 06_heal.py 시작
   ↓
-01_analyze.py를 통해 최신 page_source 수집
+01_analyze.py를 통해 native XML + 감지된 WebView DOM 수집
   ↓
-resource-id/content-desc/name/label/value/hint/text 후보 추출
+locator surface 판별 (`auto`/`native`/`webview`)
+  ↓
+native 속성 또는 WebView role/label/test-id/placeholder/id 후보 추출
   ↓
 원래 locator와 후보의 유사도·속성·플랫폼 비교
   ↓
@@ -35,7 +37,7 @@ resource-id/content-desc/name/label/value/hint/text 후보 추출
   "schema_version": 1,
   "targets": {
     "login.username_field": {
-      "android": {"strategy": "ID", "value": "com.example:id/username"},
+      "android": {"surface": "auto", "strategy": "ID", "value": "com.example:id/username", "webview": {"strategy": "label", "value": "아이디"}},
       "ios": {"strategy": "ACCESSIBILITY_ID", "value": "username"}
     }
   }
@@ -45,6 +47,17 @@ resource-id/content-desc/name/label/value/hint/text 후보 추출
 생성된 `tests/generated/**/*.py`는 산출물입니다. healing 결과를 산출물에만 반영하지 않고 registry를 갱신한 뒤 다시 생성해야 다음 실행에도 유지됩니다.
 
 ## 후보 탐색 규칙
+
+`auto` 실행은 native를 먼저 시도하고, native 실패와 WebView context 존재가 모두 확인된 경우에만 WebView로 이동합니다. `native`와 `webview`는 지정 surface 밖으로 자동 전환하지 않습니다.
+
+### WebView
+
+1. role + accessible name
+2. label 또는 `data-testid`
+3. placeholder
+4. 고유 CSS id
+
+동일 최고점 후보가 둘 이상이면 자동 healing하지 않습니다. WebView가 존재하지 않는 화면에서 WebView locator를 추측하거나 Playwright를 시작하지 않습니다.
 
 ### Android
 
@@ -85,6 +98,29 @@ resource-id/content-desc/name/label/value/hint/text 후보 추출
 python scripts/02_generate.py --platform android --strict-locators
 python scripts/02_generate.py --platform ios --strict-locators
 ```
+
+## Capture Studio에서 Healing 재확인 진입
+
+자동 healing이 모호하거나 실패한 경우, 대시보드 실행 결과의 실패 TC에서 "재확인" 버튼을 클릭하면 Capture Studio Locator 검토(4단계)로 바로 이동합니다.
+
+```text
+실행 결과 → 실패 TC → "재확인" 버튼
+  → Capture Studio Locator 검토 화면 (해당 TC 컨텍스트로 진입)
+  → 새 요소 선택 → Registry 갱신 → 코드 재생성
+```
+
+Healing 재확인은 기존 Appium 세션이 없어도 Locator 후보만 검토할 수 있습니다. 실제 디바이스 세션이 필요한 경우 세션 설정(1단계)부터 시작합니다.
+
+## pytest-rerunfailures와 healing의 관계
+
+두 메커니즘은 서로 다른 레이어에서 동작하며 역할이 다릅니다.
+
+| 메커니즘 | 레이어 | 역할 |
+|---|---|---|
+| `pytest-rerunfailures` (`--reruns 2 --reruns-delay 5`) | 실행 레이어 | Appium 세션 초기화 오류 등 일시적인 인프라 장애를 재시도로 흡수 |
+| `06_heal.py` | 코드 레이어 | locator 자체가 변경된 경우 registry를 갱신하고 코드를 재생성 |
+
+재시도(`--reruns`)로 해결되면 locator는 정상이고 인프라 문제입니다. 재시도 후에도 계속 실패하면 healing을 시작합니다. healing이 모호하면 Capture Studio 재확인으로 이동합니다.
 
 ## 운영상 주의사항
 
