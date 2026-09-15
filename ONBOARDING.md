@@ -302,30 +302,187 @@ echo "   http://localhost:8767"
 
 ---
 
-## 수동 필수 단계 (자동화 불가)
+## STEP 16 — Android 에뮬레이터(AVD) 생성 및 시작
 
-### Android 에뮬레이터 시작
+### 16-1. 사용 가능한 시스템 이미지 설치
+
+사용자에게 물어보세요:
+> "어떤 Android 버전으로 테스트하실 건가요? (예: 15, 14, 13)"
+
+입력받은 버전에 맞는 시스템 이미지를 설치합니다:
+
 ```bash
-# AVD 이름 목록 확인
-emulator -list-avds
-
-# 에뮬레이터 시작 (AVD 이름을 실제 이름으로 교체)
-$ANDROID_HOME/emulator/emulator -avd Pixel_7_Android15 &
+# Android 15 (API 35) 예시 — 버전에 따라 API 레벨 교체
+$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "system-images;android-35;google_apis;arm64-v8a"
+$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-35"
 ```
 
-또는 **대시보드 → 환경 설정 → Android → ▶ 시작** 클릭
+API 레벨 참고:
+- Android 15 → `android-35`
+- Android 14 → `android-34`
+- Android 13 → `android-33`
 
-### iOS 시뮬레이터 시작
+**검증**:
 ```bash
-# 사용 가능한 시뮬레이터 목록
-xcrun simctl list devices available
+$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --list_installed | grep "system-images"
+```
 
-# 시뮬레이터 이름으로 부팅
+**cmdline-tools가 없으면**:
+Android Studio → SDK Manager → SDK Tools 탭 → "Android SDK Command-line Tools" 체크 후 설치 (수동)
+
+---
+
+### 16-2. AVD 생성
+
+사용자에게 물어보세요:
+> "AVD 이름을 정해주세요 (예: Pixel_7_Android15). 기기 종류는요? (예: pixel_7, pixel_6, pixel_4)"
+
+```bash
+# AVD 생성 (이름과 API 레벨, 기기 종류를 입력값으로 교체)
+$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
+  --name "Pixel_7_Android15" \
+  --package "system-images;android-35;google_apis;arm64-v8a" \
+  --device "pixel_7" \
+  --force
+```
+
+기기 종류 목록 확인:
+```bash
+$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager list device | grep -E "^id:|Name:"
+```
+
+**검증**:
+```bash
+$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager list avd
+```
+
+**기대 결과**: 생성한 AVD 이름이 목록에 표시됨
+
+---
+
+### 16-3. 에뮬레이터 시작
+
+```bash
+nohup $ANDROID_HOME/emulator/emulator -avd Pixel_7_Android15 \
+  -no-snapshot-save \
+  -gpu swiftshader_indirect \
+  > /tmp/emulator.log 2>&1 &
+
+echo "에뮬레이터 시작 중... (30–60초 소요)"
+```
+
+**부팅 완료 대기**:
+```bash
+# adb로 부팅 완료 감지 (최대 90초)
+for i in $(seq 1 18); do
+  STATUS=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
+  if [ "$STATUS" = "1" ]; then
+    echo "✅ 에뮬레이터 부팅 완료"
+    break
+  fi
+  echo "부팅 대기 중... ($((i*5))초)"
+  sleep 5
+done
+```
+
+**검증**:
+```bash
+adb devices
+```
+
+**기대 결과**: `emulator-5554   device` 출력
+
+> 이후에는 **대시보드 → 환경 설정 → Android → ▶ 시작**으로 관리할 수 있습니다.
+
+---
+
+## STEP 17 — iOS 시뮬레이터 생성 및 시작
+
+> iOS 테스트를 사용하지 않는다면 이 단계를 건너뛰세요.
+
+### 17-1. 사용 가능한 런타임 확인
+
+```bash
+xcrun simctl list runtimes
+```
+
+**기대 결과**: `iOS 17.x` 또는 `iOS 18.x` 항목 출력
+
+**런타임이 없으면**: Xcode → Preferences → Platforms → 원하는 iOS 버전 다운로드 (수동, Xcode 내 GUI)
+
+---
+
+### 17-2. 시뮬레이터 생성
+
+사용자에게 물어보세요:
+> "어떤 기기로 시뮬레이터를 만들까요? (예: iPhone 16 Pro, iPhone 15) iOS 버전은요? (예: 18.0)"
+
+```bash
+# 사용 가능한 기기 타입 목록
+xcrun simctl list devicetypes | grep iPhone
+
+# 시뮬레이터 생성 (기기명과 런타임을 입력값으로 교체)
+DEVICE_NAME="iPhone 16 Pro"
+IOS_VERSION="18.0"
+RUNTIME_ID=$(xcrun simctl list runtimes | grep "iOS $IOS_VERSION" | awk '{print $NF}')
+
+xcrun simctl create "$DEVICE_NAME" "$DEVICE_NAME" "$RUNTIME_ID"
+```
+
+**검증**:
+```bash
+xcrun simctl list devices | grep "iPhone 16 Pro"
+```
+
+**기대 결과**: 생성된 시뮬레이터 UDID와 함께 `(Shutdown)` 상태 출력
+
+---
+
+### 17-3. 시뮬레이터 UDID를 devices.json에 반영
+
+```bash
+# 방금 생성한 시뮬레이터 UDID 추출
+UDID=$(xcrun simctl list devices | grep "iPhone 16 Pro" | head -1 | grep -oE '[A-F0-9-]{36}')
+echo "UDID: $UDID"
+```
+
+추출한 UDID를 `config/devices.json`의 `ios.simulator[0].udid` 필드에 기록합니다.
+
+---
+
+### 17-4. 시뮬레이터 시작
+
+```bash
+# 부팅
 xcrun simctl boot "iPhone 16 Pro"
+
+# Simulator.app 열기
 open /Applications/Simulator.app
+
+echo "iOS 시뮬레이터 시작 중... (30–60초 소요)"
 ```
 
-또는 **대시보드 → 환경 설정 → iOS → ▶ 시작** 클릭
+**부팅 완료 대기**:
+```bash
+for i in $(seq 1 20); do
+  STATUS=$(xcrun simctl list devices | grep "iPhone 16 Pro" | grep -o "Booted")
+  if [ "$STATUS" = "Booted" ]; then
+    echo "✅ 시뮬레이터 부팅 완료"
+    break
+  fi
+  echo "부팅 대기 중... ($((i*3))초)"
+  sleep 3
+done
+```
+
+**검증**:
+```bash
+xcrun simctl list devices | grep "Booted"
+```
+
+**기대 결과**: `(Booted)` 상태 출력
+
+> 이후에는 **대시보드 → 환경 설정 → iOS → ▶ 시작**으로 관리할 수 있습니다.
 
 ---
 
