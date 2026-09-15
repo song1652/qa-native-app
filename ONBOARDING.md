@@ -166,7 +166,6 @@ echo $ANDROID_HOME
 
 **shell 프로파일에 영구 등록**:
 ```bash
-# 아래 경로를 실제 경로로 교체하세요
 ANDROID_SDK_PATH="$HOME/Library/Android/sdk"
 
 if ! grep -q "ANDROID_HOME" ~/.zshrc 2>/dev/null; then
@@ -174,19 +173,24 @@ if ! grep -q "ANDROID_HOME" ~/.zshrc 2>/dev/null; then
   echo "# Android SDK" >> ~/.zshrc
   echo "export ANDROID_HOME=\"$ANDROID_SDK_PATH\"" >> ~/.zshrc
   echo "export PATH=\"\$PATH:\$ANDROID_HOME/platform-tools\"" >> ~/.zshrc
+  echo "export PATH=\"\$PATH:\$ANDROID_HOME/emulator\"" >> ~/.zshrc
+  echo "export PATH=\"\$PATH:\$ANDROID_HOME/cmdline-tools/latest/bin\"" >> ~/.zshrc
 fi
 
 export ANDROID_HOME="$ANDROID_SDK_PATH"
-export PATH="$PATH:$ANDROID_HOME/platform-tools"
+export PATH="$PATH:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$ANDROID_HOME/cmdline-tools/latest/bin"
 ```
 
 **검증**:
 ```bash
+# adb는 SDK 또는 Homebrew(brew install android-platform-tools) 중 하나면 됩니다
 adb --version
 echo "ANDROID_HOME=$ANDROID_HOME"
 ```
 
 **기대 결과**: `Android Debug Bridge version 1.x.x` + ANDROID_HOME 경로 출력
+
+> adb가 없으면: `brew install android-platform-tools`
 
 ---
 
@@ -281,19 +285,22 @@ echo "문법 오류 없음"
 
 ```bash
 echo "=== 온보딩 체크리스트 ==="
-echo -n "Python venv: " && source .venv/bin/activate && python3 -c "import fastapi" && echo "✅" || echo "❌"
-echo -n "Appium: " && appium --version > /dev/null && echo "✅" || echo "❌"
-echo -n "adb: " && adb --version > /dev/null && echo "✅" || echo "❌"
-echo -n "ANDROID_HOME: " && [ -n "$ANDROID_HOME" ] && echo "✅ $ANDROID_HOME" || echo "❌ 미설정"
-echo -n "devices.json: " && python3 -c "import json; json.load(open('config/devices.json'))" && echo "✅" || echo "❌"
-echo -n "test_data.json: " && python3 -c "import json; json.load(open('config/test_data.json'))" && echo "✅" || echo "❌"
+source .venv/bin/activate 2>/dev/null
+echo -n "Python venv: " && python3 -c "import fastapi" 2>/dev/null && echo "✅" || echo "❌"
+echo -n "Appium: " && appium --version > /dev/null 2>&1 && echo "✅" || echo "❌"
+echo -n "adb: " && adb --version > /dev/null 2>&1 && echo "✅" || echo "❌ (brew install android-platform-tools 또는 SDK 설치 필요)"
+echo -n "ANDROID_HOME: " && [ -n "$ANDROID_HOME" ] && echo "✅ $ANDROID_HOME" || echo "❌ 미설정 — STEP 9 재실행"
+echo -n "cmdline-tools: " && (find "$ANDROID_HOME/cmdline-tools" -name avdmanager 2>/dev/null | grep -q .) && echo "✅" || echo "⚠️  없음 (AVD 생성 시 필요, 지금 당장 필수 아님)"
+echo -n "devices.json: " && python3 -c "import json; json.load(open('config/devices.json'))" 2>/dev/null && echo "✅" || echo "❌"
+echo -n "test_data.json: " && python3 -c "import json; json.load(open('config/test_data.json'))" 2>/dev/null && echo "✅" || echo "❌"
+echo -n "Playwright: " && python3 -c "from playwright.sync_api import sync_playwright" 2>/dev/null && echo "✅" || echo "❌"
 echo ""
 echo "=== 실행 방법 ==="
-echo "1. Appium 서버 시작:"
-echo "   export ANDROID_HOME=$HOME/Library/Android/sdk"
+echo "1. Appium 서버 시작 (새 터미널):"
+echo "   export ANDROID_HOME=\$HOME/Library/Android/sdk"
 echo "   appium --address 127.0.0.1 --port 4723 --allow-insecure=uiautomator2:adb_screen_streaming"
 echo ""
-echo "2. 대시보드 시작:"
+echo "2. 대시보드 시작 (새 터미널):"
 echo "   source .venv/bin/activate && python agents/dashboard/serve.py"
 echo ""
 echo "3. 브라우저에서 열기:"
@@ -304,31 +311,61 @@ echo "   http://localhost:8767"
 
 ## STEP 16 — Android 에뮬레이터(AVD) 생성 및 시작
 
+### 16-0. cmdline-tools 설치 확인 (필수 선행)
+
+```bash
+# avdmanager 경로 탐색 (여러 경로 시도)
+AVDMANAGER=""
+for path in \
+  "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" \
+  "$ANDROID_HOME/cmdline-tools/bin/avdmanager" \
+  "$(find $ANDROID_HOME/cmdline-tools -name avdmanager 2>/dev/null | head -1)"; do
+  if [ -f "$path" ]; then
+    AVDMANAGER="$path"
+    break
+  fi
+done
+
+if [ -z "$AVDMANAGER" ]; then
+  echo "❌ cmdline-tools 없음 — 아래 설치 필요"
+else
+  echo "✅ avdmanager 발견: $AVDMANAGER"
+fi
+```
+
+**없으면 설치** (Android Studio에서 수동):
+> Android Studio → Settings → Languages & Frameworks → Android SDK → SDK Tools 탭  
+> → **"Android SDK Command-line Tools (latest)"** 체크 → OK
+
+설치 후 경로 재확인:
+```bash
+ls "$ANDROID_HOME/cmdline-tools/latest/bin/"
+```
+
+이후 단계에서 `avdmanager` / `sdkmanager` 명령은 찾은 경로로 실행합니다.
+
+---
+
 ### 16-1. 사용 가능한 시스템 이미지 설치
 
 사용자에게 물어보세요:
 > "어떤 Android 버전으로 테스트하실 건가요? (예: 15, 14, 13)"
-
-입력받은 버전에 맞는 시스템 이미지를 설치합니다:
-
-```bash
-# Android 15 (API 35) 예시 — 버전에 따라 API 레벨 교체
-$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "system-images;android-35;google_apis;arm64-v8a"
-$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-35"
-```
 
 API 레벨 참고:
 - Android 15 → `android-35`
 - Android 14 → `android-34`
 - Android 13 → `android-33`
 
-**검증**:
 ```bash
-$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --list_installed | grep "system-images"
+# Android 15 (API 35) 예시 — API 레벨을 입력값으로 교체
+$AVDMANAGER/../sdkmanager "system-images;android-35;google_apis;arm64-v8a"
+$AVDMANAGER/../sdkmanager "platform-tools" "platforms;android-35"
 ```
 
-**cmdline-tools가 없으면**:
-Android Studio → SDK Manager → SDK Tools 탭 → "Android SDK Command-line Tools" 체크 후 설치 (수동)
+**검증**:
+```bash
+$AVDMANAGER/../sdkmanager --list_installed | grep "system-images"
+```
 
 ---
 
@@ -337,23 +374,23 @@ Android Studio → SDK Manager → SDK Tools 탭 → "Android SDK Command-line T
 사용자에게 물어보세요:
 > "AVD 이름을 정해주세요 (예: Pixel_7_Android15). 기기 종류는요? (예: pixel_7, pixel_6, pixel_4)"
 
+기기 종류 목록 확인:
 ```bash
-# AVD 생성 (이름과 API 레벨, 기기 종류를 입력값으로 교체)
-$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
+$AVDMANAGER list device | grep -E "^id:|Name:"
+```
+
+AVD 생성:
+```bash
+$AVDMANAGER create avd \
   --name "Pixel_7_Android15" \
   --package "system-images;android-35;google_apis;arm64-v8a" \
   --device "pixel_7" \
   --force
 ```
 
-기기 종류 목록 확인:
-```bash
-$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager list device | grep -E "^id:|Name:"
-```
-
 **검증**:
 ```bash
-$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager list avd
+$AVDMANAGER list avd
 ```
 
 **기대 결과**: 생성한 AVD 이름이 목록에 표시됨
@@ -363,17 +400,31 @@ $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager list avd
 ### 16-3. 에뮬레이터 시작
 
 ```bash
-nohup $ANDROID_HOME/emulator/emulator -avd Pixel_7_Android15 \
-  -no-snapshot-save \
-  -gpu swiftshader_indirect \
-  > /tmp/emulator.log 2>&1 &
+# emulator 바이너리 경로 탐색
+EMULATOR=""
+for path in \
+  "$ANDROID_HOME/emulator/emulator" \
+  "$(which emulator 2>/dev/null)"; do
+  if [ -f "$path" ] || command -v "$path" &>/dev/null; then
+    EMULATOR="$path"
+    break
+  fi
+done
 
-echo "에뮬레이터 시작 중... (30–60초 소요)"
+if [ -z "$EMULATOR" ]; then
+  echo "❌ emulator 바이너리 없음 — Android Studio에서 에뮬레이터 실행 후 진행하세요"
+else
+  echo "✅ emulator 발견: $EMULATOR"
+  nohup "$EMULATOR" -avd Pixel_7_Android15 \
+    -no-snapshot-save \
+    -gpu swiftshader_indirect \
+    > /tmp/emulator.log 2>&1 &
+  echo "에뮬레이터 시작 중... (30–60초 소요)"
+fi
 ```
 
 **부팅 완료 대기**:
 ```bash
-# adb로 부팅 완료 감지 (최대 90초)
 for i in $(seq 1 18); do
   STATUS=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
   if [ "$STATUS" = "1" ]; then
