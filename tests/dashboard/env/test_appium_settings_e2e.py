@@ -189,7 +189,7 @@ def test_managed_state_matches_mockup_information_hierarchy(appium_page):
     expect(appium_page.locator("#env-appium-log-path")).to_have_text("logs/appium_server.log")
 
 
-def test_external_state_explains_ownership_and_offers_refresh_only(appium_page):
+def test_external_state_explains_ownership_and_offers_stop_and_refresh(appium_page):
     _render(
         appium_page,
         _appium(
@@ -201,11 +201,11 @@ def test_external_state_explains_ownership_and_offers_refresh_only(appium_page):
 
     expect(appium_page.locator("#env-appium-card")).to_have_attribute("data-state", "external")
     expect(appium_page.locator("#env-appium-state-note")).to_contain_text("외부")
-    expect(appium_page.locator("#env-appium-state-note")).to_contain_text("종료할 수 없습니다")
+    expect(appium_page.locator("#env-appium-state-note")).to_contain_text("종료할 수 있습니다")
     expect(appium_page.locator("#env-btn-refresh")).to_be_visible()
     expect(appium_page.locator("#env-btn-stop")).to_be_visible()
-    expect(appium_page.locator("#env-btn-stop")).to_be_disabled()
-    expect(appium_page.locator("#env-btn-stop")).to_have_text("■ 중지 불가")
+    expect(appium_page.locator("#env-btn-stop")).to_be_enabled()
+    expect(appium_page.locator("#env-btn-stop")).to_have_text("■ 중지")
     expect(appium_page.locator("#env-btn-restart")).to_be_hidden()
     expect(appium_page.locator("#env-appium-mjpeg-panel")).to_contain_text("MJPEG 플래그")
     expect(appium_page.locator("#env-appium-driver-help")).to_contain_text(
@@ -335,7 +335,7 @@ def test_rapid_start_clicks_send_only_one_request(appium_page):
     assert calls["start"] == 1
 
 
-def test_external_ownership_blocks_programmatic_stop_request(appium_page):
+def test_external_ownership_allows_programmatic_stop_request(appium_page):
     calls = {"stop": 0}
 
     def _stop(route):
@@ -352,8 +352,7 @@ def test_external_ownership_blocks_programmatic_stop_request(appium_page):
     appium_page.evaluate("envAppiumAction('stop')")
     appium_page.wait_for_timeout(150)
 
-    assert calls["stop"] == 0
-    expect(appium_page.locator("#env-appium-error")).to_contain_text("외부")
+    assert calls["stop"] == 1
 
 
 def test_android_start_failure_is_shown_inside_android_card(appium_page):
@@ -476,7 +475,7 @@ def test_ios_successful_stop_refreshes_card(appium_page):
     appium_page.get_by_role("button", name="iPhone 18 Pro 종료").click()
 
     appium_page.wait_for_function(
-        "document.getElementById('env-ios-badge').textContent.includes('Shutdown')"
+        "document.getElementById('env-ios-badge').textContent.includes('중지됨')"
     )
 
 

@@ -409,15 +409,20 @@ class TestPostAppiumStop:
         assert res.status_code == 409
         assert res.json()["error"] == "pipeline_running"
 
-    def test_returns_403_when_external_status(self, client, tmp_path, monkeypatch):
-        """external 상태이면 403 external_process."""
+    def test_external_status_stops_the_process_owning_the_port(self, client, tmp_path, monkeypatch):
+        """external 상태이면 포트를 점유한 프로세스를 안전하게 종료한다."""
         session_file = _session_file(tmp_path, "external")
         monkeypatch.setattr("utils.state.ENV_SESSION_PATH", session_file)
-        with patch("routes.env.is_capture_active", return_value=False):
-            with patch("routes.env.is_pipeline_active", return_value=False):
-                res = client.post("/api/env/appium/stop")
-        assert res.status_code == 403
-        assert res.json()["error"] == "external_process"
+        owner = MagicMock(stdout="4242\n", stderr="", returncode=0)
+        with patch("routes.env.is_capture_active", return_value=False), \
+                patch("routes.env.is_pipeline_active", return_value=False), \
+                patch("routes.env.subprocess.run", return_value=owner), \
+                patch("routes.env.os.kill") as kill, \
+                patch("routes.env._wait_for_appium_exit", return_value=True):
+            res = client.post("/api/env/appium/stop")
+        assert res.status_code == 200
+        assert res.json()["status"] == "stopped"
+        kill.assert_called_once_with(4242, signal.SIGTERM)
 
     def test_stop_sends_sigterm_and_clears_pid(self, client, tmp_path, monkeypatch):
         """정상 stop → SIGTERM 전송 후 pid=None, status=stopped."""
@@ -770,11 +775,9 @@ class TestPostIosSimulatorStart:
         """A long simctl boot must not freeze every dashboard button and poll."""
         f = self._session_with_ios(tmp_path)
         monkeypatch.setattr("utils.state.ENV_SESSION_PATH", f)
-        success = MagicMock(returncode=0, stdout="", stderr="")
-
-        def slow_run(*_args, **_kwargs):
+        def slow_popen(*_args, **_kwargs):
             time.sleep(0.4)
-            return success
+            return MagicMock()
 
         stopped = {
             "status": "stopped", "pid": None, "port": 4723,
@@ -782,7 +785,6 @@ class TestPostIosSimulatorStart:
         }
         with patch("routes.env.is_capture_active", return_value=False), \
                 patch("routes.env.get_default_device", return_value={"deviceName": "iPhone 18 Pro"}), \
-                patch("routes.env.subprocess.run", side_effect=slow_run), \
                 patch("routes.env.detect_appium_status", return_value=stopped), \
                 patch("routes.env.detect_android_runtime", side_effect=lambda value: value), \
                 patch("routes.env.detect_ios_runtime", side_effect=lambda value: value), \
@@ -791,11 +793,11 @@ class TestPostIosSimulatorStart:
                 patch("routes.env.check_ios_real_devices", return_value={}):
             entered = threading.Event()
 
-            def marked_slow_run(*args, **kwargs):
+            def marked_slow_popen(*args, **kwargs):
                 entered.set()
-                return slow_run(*args, **kwargs)
+                return slow_popen(*args, **kwargs)
 
-            with patch("routes.env.subprocess.run", side_effect=marked_slow_run), \
+            with patch("routes.env.subprocess.Popen", side_effect=marked_slow_popen), \
                     TestClient(app, raise_server_exceptions=False) as live_client:
                 boot = threading.Thread(
                     target=lambda: live_client.post("/api/env/ios/simulator/start")
@@ -823,10 +825,9 @@ class TestPostIosSimulatorStart:
                 "default": True,
             }]}
         }
-        success = MagicMock(returncode=0, stdout="", stderr="")
         with patch("routes.env.is_capture_active", return_value=False), \
                 patch("routes.env.load_devices_json", return_value=configured), \
-                patch("routes.env.subprocess.run", return_value=success) as runner:
+                patch("routes.env.subprocess.Popen") as runner:
             response = client.post(
                 "/api/env/ios/simulator/start", json={"udid": udid}
             )
@@ -851,7 +852,7 @@ class TestPostIosSimulatorStart:
         f = self._session_with_ios(tmp_path)
         monkeypatch.setattr("utils.state.ENV_SESSION_PATH", f)
         with patch("routes.env.is_capture_active", return_value=False):
-            with patch("routes.env.subprocess.run"):
+            with patch("routes.env.subprocess.Popen"):
                 with patch("routes.env.get_default_device", return_value={"deviceName": "iPhone 18 Pro"}):
                     res = client.post("/api/env/ios/simulator/start")
         assert res.status_code == 202
@@ -874,7 +875,7 @@ class TestPostIosSimulatorStart:
         f = self._session_with_ios(tmp_path)
         monkeypatch.setattr("utils.state.ENV_SESSION_PATH", f)
         with patch("routes.env.is_capture_active", return_value=False):
-            with patch("routes.env.subprocess.run"):
+            with patch("routes.env.subprocess.Popen"):
                 with patch("routes.env.get_default_device", return_value={"deviceName": "iPhone 18 Pro"}) as mock_d:
                     res = client.post("/api/env/ios/simulator/start", json={})
         assert res.status_code == 202
@@ -885,7 +886,7 @@ class TestPostIosSimulatorStart:
         f = self._session_with_ios(tmp_path)
         monkeypatch.setattr("utils.state.ENV_SESSION_PATH", f)
         with patch("routes.env.is_capture_active", return_value=False):
-            with patch("routes.env.subprocess.run") as mock_run:
+            with patch("routes.env.subprocess.Popen") as mock_run:
                 res = client.post("/api/env/ios/simulator/start", json={"simulator": "iPhone 15"})
         assert res.status_code == 202
         saved = json.loads(f.read_text())
@@ -897,9 +898,8 @@ class TestPostIosSimulatorStart:
         """simctl 오류를 성공처럼 저장하지 않고 웹 사용자에게 반환한다."""
         f = self._session_with_ios(tmp_path)
         monkeypatch.setattr("utils.state.ENV_SESSION_PATH", f)
-        failure = MagicMock(returncode=2, stdout="", stderr="Unable to boot device")
         with patch("routes.env.is_capture_active", return_value=False), \
-                patch("routes.env.subprocess.run", return_value=failure), \
+                patch("routes.env.subprocess.Popen", side_effect=OSError("Unable to boot device")), \
                 patch("routes.env.get_default_device", return_value={"deviceName": "iPhone 18 Pro"}):
             response = client.post("/api/env/ios/simulator/start")
 
@@ -914,13 +914,8 @@ class TestPostIosSimulatorStart:
         """상태 조회와 클릭 사이에 이미 Booted가 되어도 사용자 요청은 성공한다."""
         f = self._session_with_ios(tmp_path)
         monkeypatch.setattr("utils.state.ENV_SESSION_PATH", f)
-        already_booted = MagicMock(
-            returncode=149,
-            stdout="",
-            stderr="Unable to boot device in current state: Booted",
-        )
         with patch("routes.env.is_capture_active", return_value=False), \
-                patch("routes.env.subprocess.run", return_value=already_booted), \
+                patch("routes.env.subprocess.Popen"), \
                 patch("routes.env.get_default_device", return_value={"deviceName": "iPhone 18 Pro"}):
             response = client.post("/api/env/ios/simulator/start")
 

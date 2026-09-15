@@ -111,12 +111,29 @@ def _find_emulator_bin(
     return "emulator"
 
 
-def subprocess_env_for(binary: str) -> dict[str, str]:
-    """env shebang이 같은 설치 폴더의 런타임을 찾도록 PATH를 보강한다."""
-    env = dict(os.environ)
+def subprocess_env_for(
+    binary: str,
+    home: Path | None = None,
+    environ: dict | None = None,
+) -> dict[str, str]:
+    """Build a GUI-safe environment for Appium and Android tooling."""
+    home = Path.home() if home is None else Path(home)
+    env = dict(os.environ if environ is None else environ)
     binary_dir = str(Path(binary).expanduser().parent)
     current_path = env.get("PATH", "")
     path_parts = [part for part in current_path.split(os.pathsep) if part]
+
+    sdk_root = env.get("ANDROID_SDK_ROOT") or env.get("ANDROID_HOME")
+    if not sdk_root:
+        for candidate in (home / "Library" / "Android" / "sdk", home / "Android" / "Sdk"):
+            if candidate.is_dir():
+                sdk_root = str(candidate)
+                break
+    if sdk_root:
+        env.setdefault("ANDROID_HOME", sdk_root)
+        env.setdefault("ANDROID_SDK_ROOT", sdk_root)
+        path_parts = [str(Path(sdk_root) / "platform-tools"), str(Path(sdk_root) / "emulator")] + path_parts
+
     env["PATH"] = os.pathsep.join(
         [binary_dir] + [part for part in path_parts if part != binary_dir]
     )
