@@ -19,8 +19,8 @@
 아래 항목은 자동화가 불가능합니다. 시작 전 사람이 직접 확인하세요.
 
 - [ ] **macOS** 13 이상
-- [ ] **Android Studio** 설치 + AVD 하나 이상 생성 완료
-  - AVD 이름 메모 (예: `Pixel_7_Android15`)
+- [ ] **Android Studio** 설치 완료
+  - AVD 생성은 STEP 16에서 자동화 — 아직 없어도 됩니다
 - [ ] **Xcode** 설치 완료 (iOS 테스트를 사용하는 경우)
   - `xcrun simctl list` 로 시뮬레이터 이름 확인
 
@@ -169,11 +169,21 @@ echo $ANDROID_HOME
 # 아래 경로를 실제 경로로 교체하세요
 ANDROID_SDK_PATH="$HOME/Library/Android/sdk"
 
-if ! grep -q "ANDROID_HOME" ~/.zshrc 2>/dev/null; then
-  echo "" >> ~/.zshrc
-  echo "# Android SDK" >> ~/.zshrc
-  echo "export ANDROID_HOME=\"$ANDROID_SDK_PATH\"" >> ~/.zshrc
-  echo "export PATH=\"\$PATH:\$ANDROID_HOME/platform-tools\"" >> ~/.zshrc
+# 현재 shell에 맞는 프로파일 감지
+if [ -n "$ZSH_VERSION" ] || [ "$SHELL" = "/bin/zsh" ]; then
+  PROFILE_FILE="$HOME/.zshrc"
+elif [ -f "$HOME/.bash_profile" ]; then
+  PROFILE_FILE="$HOME/.bash_profile"
+else
+  PROFILE_FILE="$HOME/.bashrc"
+fi
+echo "프로파일: $PROFILE_FILE"
+
+if ! grep -q "ANDROID_HOME" "$PROFILE_FILE" 2>/dev/null; then
+  echo "" >> "$PROFILE_FILE"
+  echo "# Android SDK" >> "$PROFILE_FILE"
+  echo "export ANDROID_HOME=\"$ANDROID_SDK_PATH\"" >> "$PROFILE_FILE"
+  echo "export PATH=\"\$PATH:\$ANDROID_HOME/platform-tools\"" >> "$PROFILE_FILE"
 fi
 
 export ANDROID_HOME="$ANDROID_SDK_PATH"
@@ -194,9 +204,11 @@ echo "ANDROID_HOME=$ANDROID_HOME"
 
 사용자에게 다음 항목을 물어보세요:
 
-1. **Android AVD 이름**: Android Studio에서 만든 AVD 이름 (예: `Pixel_7_Android15`)
+> **Android AVD가 아직 없으면** 1–2번을 건너뛰고 STEP 16 완료 후 돌아와 입력하세요.
+
+1. **Android AVD 이름**: 이미 AVD가 있으면 입력 (예: `Pixel_7_Android15`). 없으면 STEP 16 후 입력
 2. **Android 플랫폼 버전**: 에뮬레이터 OS 버전 (예: `15.0`)
-3. **iOS 시뮬레이터 이름** (iOS 사용 시): `xcrun simctl list | grep Booted` 결과 또는 원하는 시뮬레이터 이름
+3. **iOS 시뮬레이터 이름** (iOS 사용 시): `xcrun simctl list | grep Booted` 결과 또는 원하는 시뮬레이터 이름 — STEP 17에서 생성 가능
 4. **iOS 플랫폼 버전** (iOS 사용 시): 시뮬레이터 iOS 버전 (예: `18.0`)
 
 입력값으로 `config/devices.json`의 다음 필드를 업데이트하세요:
@@ -240,10 +252,14 @@ echo "ANDROID_HOME=$ANDROID_HOME"
 
 ```bash
 source .venv/bin/activate
-timeout 8 python agents/dashboard/serve.py &
+python agents/dashboard/serve.py &
+SERVER_PID=$!
 sleep 4
-curl -s http://localhost:8767/api/status | python3 -c "import sys,json; d=json.load(sys.stdin); print('서버 OK' if 'appium' in str(d) else 'FAIL')"
-kill %1 2>/dev/null
+curl -s http://localhost:8767/api/status \
+  | python3 -c "import sys,json; d=json.load(sys.stdin); print('서버 OK' if 'appium' in str(d) else 'FAIL')" \
+  2>/dev/null || echo "서버 응답 없음 — 의존성 확인 필요"
+kill $SERVER_PID 2>/dev/null
+wait $SERVER_PID 2>/dev/null
 ```
 
 **기대 결과**: `서버 OK`
@@ -304,6 +320,32 @@ echo "   http://localhost:8767"
 
 ## STEP 16 — Android 에뮬레이터(AVD) 생성 및 시작
 
+### 16-0. cmdline-tools 경로 탐지
+
+```bash
+# sdkmanager / avdmanager 위치 자동 탐지
+SDKMANAGER=""
+AVDMANAGER=""
+for BIN_DIR in \
+  "$ANDROID_HOME/cmdline-tools/latest/bin" \
+  "$ANDROID_HOME/cmdline-tools/bin" \
+  "$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager 2>/dev/null | xargs -I{} dirname {} | head -1)"; do
+  if [ -x "$BIN_DIR/sdkmanager" ]; then
+    SDKMANAGER="$BIN_DIR/sdkmanager"
+    AVDMANAGER="$BIN_DIR/avdmanager"
+    echo "✅ cmdline-tools: $BIN_DIR"
+    break
+  fi
+done
+
+if [ -z "$SDKMANAGER" ]; then
+  echo "⚠️  cmdline-tools 없음"
+  echo "   Android Studio → SDK Manager → SDK Tools → Android SDK Command-line Tools 설치 후 재시도"
+fi
+```
+
+---
+
 ### 16-1. 사용 가능한 시스템 이미지 설치
 
 사용자에게 물어보세요:
@@ -313,8 +355,8 @@ echo "   http://localhost:8767"
 
 ```bash
 # Android 15 (API 35) 예시 — 버전에 따라 API 레벨 교체
-$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "system-images;android-35;google_apis;arm64-v8a"
-$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-35"
+$SDKMANAGER "system-images;android-35;google_apis;arm64-v8a"
+$SDKMANAGER "platform-tools" "platforms;android-35"
 ```
 
 API 레벨 참고:
@@ -324,11 +366,10 @@ API 레벨 참고:
 
 **검증**:
 ```bash
-$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --list_installed | grep "system-images"
+$SDKMANAGER --list_installed | grep "system-images"
 ```
 
-**cmdline-tools가 없으면**:
-Android Studio → SDK Manager → SDK Tools 탭 → "Android SDK Command-line Tools" 체크 후 설치 (수동)
+**cmdline-tools가 없으면**: 16-0 오류 메시지에 따라 Android Studio에서 수동 설치 후 STEP 16 전체 재시도
 
 ---
 
@@ -338,32 +379,48 @@ Android Studio → SDK Manager → SDK Tools 탭 → "Android SDK Command-line T
 > "AVD 이름을 정해주세요 (예: Pixel_7_Android15). 기기 종류는요? (예: pixel_7, pixel_6, pixel_4)"
 
 ```bash
+# 기기 종류 목록 확인
+$AVDMANAGER list device | grep -E "^id:|Name:"
+
 # AVD 생성 (이름과 API 레벨, 기기 종류를 입력값으로 교체)
-$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
+$AVDMANAGER create avd \
   --name "Pixel_7_Android15" \
   --package "system-images;android-35;google_apis;arm64-v8a" \
   --device "pixel_7" \
   --force
 ```
 
-기기 종류 목록 확인:
-```bash
-$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager list device | grep -E "^id:|Name:"
-```
-
 **검증**:
 ```bash
-$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager list avd
+$AVDMANAGER list avd
 ```
 
 **기대 결과**: 생성한 AVD 이름이 목록에 표시됨
+
+> STEP 10에서 AVD 이름을 건너뛰었다면 지금 `config/devices.json`의 `android.emulator[0].avd`를 업데이트하세요.
 
 ---
 
 ### 16-3. 에뮬레이터 시작
 
 ```bash
-nohup $ANDROID_HOME/emulator/emulator -avd Pixel_7_Android15 \
+# emulator 바이너리 탐지
+EMULATOR=""
+for path in \
+  "$ANDROID_HOME/emulator/emulator" \
+  "$(which emulator 2>/dev/null)"; do
+  if [ -x "$path" ]; then
+    EMULATOR="$path"
+    break
+  fi
+done
+
+if [ -z "$EMULATOR" ]; then
+  echo "⚠️  emulator 없음 — Android Studio → SDK Manager → SDK Tools → Android Emulator 설치 필요"
+  exit 1
+fi
+
+nohup "$EMULATOR" -avd Pixel_7_Android15 \
   -no-snapshot-save \
   -gpu swiftshader_indirect \
   > /tmp/emulator.log 2>&1 &
@@ -441,12 +498,26 @@ xcrun simctl list devices | grep "iPhone 16 Pro"
 ### 17-3. 시뮬레이터 UDID를 devices.json에 반영
 
 ```bash
-# 방금 생성한 시뮬레이터 UDID 추출
+# UDID 추출 (기기명은 앞 단계에서 생성한 이름으로 교체)
 UDID=$(xcrun simctl list devices | grep "iPhone 16 Pro" | head -1 | grep -oE '[A-F0-9-]{36}')
 echo "UDID: $UDID"
-```
 
-추출한 UDID를 `config/devices.json`의 `ios.simulator[0].udid` 필드에 기록합니다.
+# config/devices.json에 자동 반영
+python3 << EOF
+import json
+udid = "$UDID"
+with open('config/devices.json', 'r') as f:
+    d = json.load(f)
+sims = d.get('ios', {}).get('simulator', [])
+if sims:
+    sims[0]['udid'] = udid
+    with open('config/devices.json', 'w') as f:
+        json.dump(d, f, indent=2, ensure_ascii=False)
+    print(f'✅ UDID {udid} → config/devices.json 반영 완료')
+else:
+    print('⚠️  ios.simulator 배열이 비어 있습니다. STEP 10을 확인하세요.')
+EOF
+```
 
 ---
 
