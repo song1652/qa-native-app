@@ -111,7 +111,7 @@ def test_capture_ui_has_a_single_launch_in_progress_guard():
     assert HTML.count("if(_cs.launching)") >= 3
 
 
-def _generated_code(tmp_path, platform, actions):
+def _generated_code(tmp_path, platform, actions, *, include_app_id=True):
     config_dir = tmp_path / "config"
     config_dir.mkdir()
     (config_dir / "devices.json").write_text(
@@ -128,11 +128,14 @@ def _generated_code(tmp_path, platform, actions):
         "title": "repeatable test",
         "platform": platform,
         "tc_group": "settings",
-        "app_pkg": "com.android.settings",
-        "app_activity": ".Settings",
-        "bundle_id": "com.apple.Preferences",
         "actions": actions,
     }
+    if include_app_id:
+        body.update(
+            app_pkg="com.android.settings",
+            app_activity=".Settings",
+            bundle_id="com.apple.Preferences",
+        )
     with (
         patch.object(capture, "PROJECT_ROOT", tmp_path),
         patch.object(capture, "load_capture_session", return_value={}),
@@ -163,6 +166,15 @@ def test_generated_ios_test_resets_app_on_every_setup(tmp_path):
     assert "driver.terminate_app(APP_ID)" in code
     assert "driver.activate_app(APP_ID)" in code
     assert "_reset_to_start(self.driver)" in code
+
+
+def test_generated_test_uses_config_app_id_for_reset_when_session_has_no_app_id(tmp_path):
+    code = _generated_code(
+        tmp_path, "android", [{"type": "wait", "wait_seconds": 0}], include_app_id=False
+    )
+
+    assert "APP_ID = _load_json(CONFIG_DIR / 'test_data.json')['app']['android']['package']" in code
+    assert "APP_ACTIVITY = _load_json(CONFIG_DIR / 'test_data.json')['app']['android']['activity']" in code
 
 
 def test_coordinate_tap_generation_never_emits_empty_xpath(tmp_path):

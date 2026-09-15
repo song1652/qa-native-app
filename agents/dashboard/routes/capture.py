@@ -650,10 +650,25 @@ async def capture_generate_from_actions(request: Request):
         f'CONFIG_DIR = (Path(__file__).resolve().parent / "{parents.rstrip("/")}" / "config").resolve()',
         f'APPIUM_URL  = "http://localhost:4723"',
         f'PLATFORM_MODE = "{"emulator" if platform == "android" else "simulator"}"',
-        f"APP_ID = {(app_pkg if platform == 'android' else bundle_id)!r}",
-        f"APP_ACTIVITY = {app_act!r}",
         f"",
         f"def _load_json(p): return json.loads(Path(p).read_text(encoding='utf-8'))",
+        f"",
+        (
+            f"APP_ID = {app_pkg!r}"
+            if platform == "android" and app_pkg
+            else f"APP_ID = _load_json(CONFIG_DIR / 'test_data.json')['app']['android']['package']"
+            if platform == "android"
+            else f"APP_ID = {bundle_id!r}"
+            if bundle_id
+            else f"APP_ID = _load_json(CONFIG_DIR / 'test_data.json')['app']['ios']['bundle_id']"
+        ),
+        (
+            f"APP_ACTIVITY = {app_act!r}"
+            if platform == "android" and app_act
+            else f"APP_ACTIVITY = _load_json(CONFIG_DIR / 'test_data.json')['app']['android']['activity']"
+            if platform == "android"
+            else f"APP_ACTIVITY = ''"
+        ),
         f"",
         f"_NON_APPIUM_KEYS = frozenset({{'default', 'wifi_ip', 'team_id', 'label', 'note'}})",
         f"",

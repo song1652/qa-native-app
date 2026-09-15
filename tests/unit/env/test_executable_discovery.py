@@ -75,3 +75,18 @@ def test_python_discovery_skips_runtime_without_pytest(monkeypatch, tmp_path):
     monkeypatch.setattr(shared.sys, "executable", str(appium_only_python))
 
     assert shared._find_python_bin() == str(project_python)
+
+
+def test_appium_environment_adds_macos_android_sdk_for_gui_launch(tmp_path):
+    """대시보드에서 시작한 Appium도 Android SDK 위치를 알아야 한다."""
+    sdk = tmp_path / "Library" / "Android" / "sdk"
+    sdk.mkdir(parents=True)
+    appium = _executable(tmp_path / ".nvm" / "versions" / "node" / "v24" / "bin" / "appium")
+
+    env = shared.subprocess_env_for(
+        str(appium), home=tmp_path, environ={"PATH": "/usr/bin"}
+    )
+
+    assert env["ANDROID_HOME"] == str(sdk)
+    assert env["ANDROID_SDK_ROOT"] == str(sdk)
+    assert str(sdk / "platform-tools") in env["PATH"].split(":")

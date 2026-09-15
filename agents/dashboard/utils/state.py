@@ -146,13 +146,17 @@ def list_generated(platform: str | None = None) -> list[dict]:
                 if "caps = devs['android'][PLATFORM_MODE].copy()" in source or \
                         "caps = devs['ios'][PLATFORM_MODE].copy()" in source:
                     stale_files.append(str(generated_path.relative_to(platform_dir)))
-            result.append({
+            item = {
                 "platform": platform_dir.name,
                 "files": files,
                 "count": len(files),
-                "stale_files": stale_files,
-                "stale_count": len(stale_files),
-            })
+            }
+            # Keep the established response shape for current artifacts while
+            # attaching actionable metadata only when an upgrade is needed.
+            if stale_files:
+                item["stale_files"] = stale_files
+                item["stale_count"] = len(stale_files)
+            result.append(item)
     return result
 
 
