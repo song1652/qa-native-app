@@ -8,19 +8,23 @@ from pathlib import Path
 from appium import webdriver
 from appium.options.ios.xcuitest.base import XCUITestOptions
 from appium.webdriver.common.appiumby import AppiumBy
+from scripts.generated_runtime import (
+    CAPTURE_TEMPLATE_VERSION, appium_capabilities, find_with_wait,
+    reset_to_start, select_device,
+)
 
 CONFIG_DIR = (Path(__file__).resolve().parent / "../../../.." / "config").resolve()
 APPIUM_URL  = "http://localhost:4723"
 PLATFORM_MODE = "simulator"
+APP_ID = "com.apple.Preferences"
 
 def _load_json(p): return json.loads(Path(p).read_text(encoding='utf-8'))
 
 def _build_driver():
-    devs = _load_json(CONFIG_DIR / 'devices.json')
-    caps = devs['ios'][PLATFORM_MODE].copy()
+    caps = appium_capabilities(select_device(CONFIG_DIR / 'devices.json', 'ios', PLATFORM_MODE))
     caps['platformName'] = 'iOS'
     caps.pop('app', None)  # 설치된 앱 사용
-    caps['bundleId'] = 'com.apple.Preferences'
+    caps['bundleId'] = APP_ID
     opts = XCUITestOptions().load_capabilities(caps)
     return webdriver.Remote(APPIUM_URL, options=opts)
 
@@ -30,6 +34,7 @@ class TestTcIosSettingsV1:
 
     def setup_method(self):
         self.driver = _build_driver()
+        reset_to_start(self.driver, 'ios', APP_ID)
 
     def teardown_method(self):
         if hasattr(self, 'driver') and self.driver:
@@ -44,7 +49,7 @@ class TestTcIosSettingsV1:
             'AppiumBy.ACCESSIBILITY_ID': AppiumBy.ACCESSIBILITY_ID,
             'AppiumBy.CLASS_NAME': AppiumBy.CLASS_NAME,
         }
-        return self.driver.find_element(by_map.get(strategy, AppiumBy.XPATH), value)
+        return find_with_wait(self.driver, by_map.get(strategy, AppiumBy.XPATH), value)
 
     def test_tc_ios_settings_v1(self):
         """단계별 동작 및 검증"""

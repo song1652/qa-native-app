@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import json
 import sys
+import threading
 import time as _time
 import xml.etree.ElementTree as ET
 from datetime import datetime
@@ -36,9 +37,15 @@ from utils.state import (  # noqa: E402
     load_json,
     save_capture_session,
 )
+from utils.system import filter_appium_caps, get_default_device  # noqa: E402
 from ws import broadcast_timeline_sync  # noqa: E402
 
 router = APIRouter()
+
+# A WebDriverAgent instance is shared by every Capture request.  Starting two
+# sessions for the same simulator concurrently makes both Appium requests race
+# for WDA's port and can leave WDA running without a session.
+_capture_launch_lock = threading.Lock()
 
 
 # ── Appium 드라이버 헬퍼 ──────────────────────────────────────
@@ -125,9 +132,13 @@ def _do_start_android_session(session: dict) -> dict:
     opts.set_capability("forceAppLaunch", True)
     opts.set_capability("autoLaunch", True)
     opts.set_capability("newCommandTimeout", 300)
-    opts.set_capability("mjpegServerPort", session.get("mjpeg_port", 8093))
-    opts.set_capability("mjpegScalingFactor", 75)
-    opts.set_capability("mjpegServerScreenshotQuality", 70)
+    _dev = get_default_device("android", "emulator") or {}
+    _mjpeg_port = _dev.get("mjpegServerPort", 8093)
+    _mjpeg_scale = _dev.get("mjpegScalingFactor", 50)
+    _mjpeg_quality = _dev.get("mjpegServerScreenshotQuality", 50)
+    opts.set_capability("mjpegServerPort", session.get("mjpeg_port", _mjpeg_port))
+    opts.set_capability("mjpegScalingFactor", _mjpeg_scale)
+    opts.set_capability("mjpegServerScreenshotQuality", _mjpeg_quality)
 
     old_driver = clear_capture_driver()
     if old_driver is not None:
@@ -633,28 +644,41 @@ async def capture_generate_from_actions(request: Request):
             else f"from appium.options.ios.xcuitest.base import XCUITestOptions"
         ),
         f"from appium.webdriver.common.appiumby import AppiumBy",
+        f"from selenium.webdriver.support.ui import WebDriverWait",
         f"",
+        f"CAPTURE_TEMPLATE_VERSION = 2",
         f'CONFIG_DIR = (Path(__file__).resolve().parent / "{parents.rstrip("/")}" / "config").resolve()',
         f'APPIUM_URL  = "http://localhost:4723"',
         f'PLATFORM_MODE = "{"emulator" if platform == "android" else "simulator"}"',
+        f"APP_ID = {(app_pkg if platform == 'android' else bundle_id)!r}",
+        f"APP_ACTIVITY = {app_act!r}",
         f"",
         f"def _load_json(p): return json.loads(Path(p).read_text(encoding='utf-8'))",
         f"",
+        f"_NON_APPIUM_KEYS = frozenset({{'default', 'wifi_ip', 'team_id', 'label', 'note'}})",
+        f"",
+        f"def _get_device(platform, mode):",
+        f"    _s = _load_json(CONFIG_DIR / 'devices.json').get(platform, {{}}).get(mode)",
+        f"    if isinstance(_s, dict): return _s",
+        f"    if isinstance(_s, list):",
+        f"        return next((d for d in _s if d.get('default')), _s[0] if _s else {{}})",
+        f"    return {{}}",
+        f"",
         f"def _build_driver():",
-        f"    devs = _load_json(CONFIG_DIR / 'devices.json')",
-        f"    caps = devs['{platform}'][PLATFORM_MODE].copy()",
+        f"    _raw = _get_device('{platform}', PLATFORM_MODE)",
+        f"    caps = {{k: v for k, v in _raw.items() if k not in _NON_APPIUM_KEYS}}",
         f"    caps['platformName'] = '{'Android' if platform == 'android' else 'iOS'}'",
         f"    caps.pop('app', None)  # 설치된 앱 사용",
     ]
     if platform == "android":
         lines += [
             (
-                f"    caps['appPackage'] = {app_pkg!r}"
+                f"    caps['appPackage'] = APP_ID"
                 if app_pkg
                 else f"    caps['appPackage'] = _load_json(CONFIG_DIR / 'test_data.json')['app']['android']['package']"
             ),
             (
-                f"    caps['appActivity'] = {app_act!r}"
+                f"    caps['appActivity'] = APP_ACTIVITY"
                 if app_act
                 else f"    caps['appActivity'] = _load_json(CONFIG_DIR / 'test_data.json')['app']['android']['activity']"
             ),
@@ -663,7 +687,7 @@ async def capture_generate_from_actions(request: Request):
     else:
         lines += [
             (
-                f"    caps['bundleId'] = {bundle_id!r}"
+                f"    caps['bundleId'] = APP_ID"
                 if bundle_id
                 else f"    caps['bundleId'] = _load_json(CONFIG_DIR / 'test_data.json')['app']['ios']['bundle_id']"
             ),
@@ -672,12 +696,53 @@ async def capture_generate_from_actions(request: Request):
     lines += [
         f"    return webdriver.Remote(APPIUM_URL, options=opts)",
         f"",
+        f"def _reset_to_start(driver):",
+        f"    \"\"\"Every pytest attempt starts in the target app's native root state.\"\"\"",
+        f"    try:",
+        f"        if driver.current_context != 'NATIVE_APP':",
+        f"            driver.switch_to.context('NATIVE_APP')",
+        f"    except Exception:",
+        f"        pass",
+        *(
+            [
+                f"    try:",
+                f"        _foreground = driver.current_package",
+                f"        if _foreground and _foreground != APP_ID:",
+                f"            driver.terminate_app(_foreground)",
+                f"    except Exception:",
+                f"        pass",
+            ]
+            if platform == "android"
+            else []
+        ),
+        f"    try:",
+        f"        driver.terminate_app(APP_ID)",
+        f"    except Exception:",
+        f"        pass",
+        f"    _time.sleep(0.3)",
+        f"    driver.activate_app(APP_ID)",
+        *(
+            [
+                f"    if APP_ACTIVITY:",
+                f"        try:",
+                f"            driver.execute_script('mobile: startActivity', {{",
+                f"                'intent': f'{{APP_ID}}/{{APP_ACTIVITY}}', 'wait': True, 'stop': True",
+                f"            }})",
+                f"        except Exception:",
+                f"            driver.activate_app(APP_ID)",
+            ]
+            if platform == "android"
+            else []
+        ),
+        f"    _time.sleep(1.0)",
+        f"",
         f"",
         f"class Test{class_name}:",
         f'    """Capture Studio — {title}"""',
         f"",
         f"    def setup_method(self):",
         f"        self.driver = _build_driver()",
+        f"        _reset_to_start(self.driver)",
         f"",
         f"    def teardown_method(self):",
         f"        if hasattr(self, 'driver') and self.driver:",
@@ -692,7 +757,8 @@ async def capture_generate_from_actions(request: Request):
         f"            'AppiumBy.ACCESSIBILITY_ID': AppiumBy.ACCESSIBILITY_ID,",
         f"            'AppiumBy.CLASS_NAME': AppiumBy.CLASS_NAME,",
         f"        }}",
-        f"        return self.driver.find_element(by_map.get(strategy, AppiumBy.XPATH), value)",
+        f"        by = by_map.get(strategy, AppiumBy.XPATH)",
+        f"        return WebDriverWait(self.driver, 15).until(lambda d: d.find_element(by, value))",
         f"",
         *(
             [
@@ -739,8 +805,16 @@ async def capture_generate_from_actions(request: Request):
         lines.append(f"        # Step {i}: {label}")
 
         if atype in ("tap", "click"):
+            device_x = act.get("device_x")
+            device_y = act.get("device_y")
+            if not value and device_x is not None and device_y is not None:
+                gesture = "mobile: clickGesture" if platform == "android" else "mobile: tap"
+                lines.append(
+                    f"        self.driver.execute_script({gesture!r}, "
+                    f"{{'x': {int(device_x)}, 'y': {int(device_y)}}})"
+                )
             # iOS + accessibility-id → _ios_tap() (화면 밖 자동 스크롤 지원)
-            if platform == "ios" and strategy.lower().strip() in ("accessibility-id", "accessibility id"):
+            elif platform == "ios" and strategy.lower().strip() in ("accessibility-id", "accessibility id"):
                 lines.append(f"        self._ios_tap({value!r})")
             else:
                 lines.append(f"        self._el({_by(strategy)!r}, {value!r}).click()")
@@ -866,6 +940,16 @@ async def capture_end_session(request: Request):
         "end_reason": "user_ended",
         "ended_at":   datetime.now().isoformat(),
     })
+
+    driver = clear_capture_driver()
+    if driver is not None:
+        try:
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(None, driver.quit)
+        except Exception:
+            # Metadata is already inactive; a dead Appium connection must not
+            # prevent the user from ending the Capture session.
+            pass
     return JSONResponse({"ok": True, "message": "Capture 세션 종료됨"})
 
 
@@ -964,9 +1048,19 @@ async def capture_launch(request: Request):
     if not is_capture_active() or session.get("session_id") != session_id:
         return JSONResponse({"ok": False, "error": "Capture 세션 없음 또는 불일치"}, status_code=400)
 
-    loop   = asyncio.get_event_loop()
-    result = await loop.run_in_executor(None, _do_start_appium_session, session)
-    return JSONResponse(result, status_code=200 if result["ok"] else 500)
+    if not _capture_launch_lock.acquire(blocking=False):
+        return JSONResponse({
+            "ok": False,
+            "error": "iOS/Android 앱 실행이 이미 진행 중입니다. 잠시 기다려 주세요.",
+            "code": "capture_launch_in_progress",
+        }, status_code=409)
+
+    try:
+        loop   = asyncio.get_event_loop()
+        result = await loop.run_in_executor(None, _do_start_appium_session, session)
+        return JSONResponse(result, status_code=200 if result["ok"] else 500)
+    finally:
+        _capture_launch_lock.release()
 
 
 @router.post("/capture/snapshot")

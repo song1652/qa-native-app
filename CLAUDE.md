@@ -103,7 +103,7 @@ python scripts/02_generate.py --platform ios --strict-locators
 | 파일 | 역할 |
 |---|---|
 | `config/test_data.json` | 앱 package/activity, bundle ID, 테스트 데이터 |
-| `config/devices.json` | Android/iOS capability. **스키마**: `android.emulator`는 단일 객체가 아니라 배열이며 각 항목에 `default: true` 필드로 기본 디바이스를 지정합니다. ENV Setup UI에서 관리 — 직접 편집 시 배열 형식 유지 필수 |
+| `config/devices.json` | Android/iOS capability. **스키마 (v0.6 확정)**: 모든 모드 키는 **단수형 배열** — `android.emulator[]`, `android.real_device[]`, `ios.simulator[]`, `ios.real_device[]`. 각 항목에 `default: true`로 기본 디바이스 지정. **케이스 규칙**: Appium에 직접 전달되는 필드는 camelCase(`deviceName`, `mjpegServerPort` 등), 대시보드 전용 필드는 snake_case(`default`, `wifi_ip`, `team_id`). ENV Setup UI에서 관리 — 직접 편집 시 배열 형식·케이스 규칙 유지 필수. **MJPEG caps**는 각 emulator 항목 안에 flat하게 포함 (`mjpegServerPort`, `mjpegScalingFactor`, `mjpegServerScreenshotQuality`). **Android 실기기 식별자**: `android.real_device[]` 항목에서 adb serial은 `udid` 키에 저장하고, `/api/env/status` 응답에서는 `serial`로 노출됨 — `config/devices.json` 직접 편집 시 `udid` 키 사용 필수. |
 | `config/screens.json` | 분석 화면과 진입 action |
 | `config/locators.json` | 플랫폼별 target locator registry |
 | `config/jira_config.json` | 이 제품 전용 Jira 프로젝트/이슈 설정 |
@@ -115,7 +115,7 @@ python scripts/02_generate.py --platform ios --strict-locators
 ## 실행 명령
 
 ```bash
-appium --address 0.0.0.0 --port 4723
+appium --address 127.0.0.1 --port 4723
 python agents/dashboard/serve.py
 
 # Android
@@ -160,6 +160,50 @@ git diff --check
 `pytest-rerunfailures` 동작 확인: `pip show pytest-rerunfailures` 후 `05_execute.py` 실행 로그에서 `--reruns 2 --reruns-delay 5` 포함 여부를 확인합니다.
 
 실제 Appium 실행은 연결된 서버와 디바이스가 있을 때 별도로 수행합니다.
+
+## ENV Setup UI
+
+대시보드 ENV Setup 탭에서 Appium 서버와 디바이스(에뮬레이터/시뮬레이터/실기기)를 관리합니다.
+
+**PRD**: `docs/ENV_SETUP_PRD.md` (v0.8 — F1·F3·F6 코드 반영 완료 · US-3 디바이스 CRUD API)  
+**디자인 스펙**: https://claude.ai/code/artifact/55ba3c71-e480-4493-b60a-d0a2aad70fb1  
+**목업**: https://claude.ai/code/artifact/466103b7-6be2-4811-b34e-f0c088462334
+
+**M2.0 마이그레이션 선행 5단계** (M2.0 스프린트 착수 시 순서대로 수행):
+1. `config/devices.json` 단일 객체 → 배열 전환 + `.bak` 백업
+2. `utils/system.py`에 `default: true` 리더 함수 추가 (dict 하위호환 분기 포함)
+3. 소비 코드 3곳 교체: `android_driver.py:35`, `02_generate.py:388`, `capture.py:645`
+4. `capture.py:128-130` MJPEG 하드코딩 제거 → devices.json에서 읽도록 통일
+5. caps 조립 시 `default`/`wifi_ip`/`team_id` 등 비-Appium 필드 제거
+
+각 단계 후 `python3 -m py_compile scripts/*.py` + `02_generate --strict-locators` 회귀 확인 필수.
+
+**Appium 5값 상태 모델**: `stopped` / `starting` / `managed` / `external` / `error`  
+`error` 상태는 자동 해소 없음 — 사용자가 "다시 시도" 클릭 또는 명시적 액션 시에만 전이.
+
+**Appium 바인딩**: `--address 127.0.0.1` 고정. Appium은 인증 없이 앱 설치·파일 전송·셸 실행 권한을 노출하므로 `0.0.0.0` 바인딩을 금지합니다. 원격 디바이스 팜이 필요하면 인증·TLS를 포함한 별도 설계로 다룹니다.
+
+**에뮬레이터/시뮬레이터는 Appium과 독립적으로 시작합니다.** Appium이 `stopped`/`error` 상태여도 AVD 시작·시뮬레이터 부팅이 가능합니다. Appium은 **Capture Studio 세션 시작과 파이프라인 실행**의 선행 조건일 뿐이며, 디바이스 컨트롤에 잠금(`locked`) 상태를 표시하지 않습니다.
+
+**Capture 가드는 플랫폼별로 분리됩니다**: `is_capture_active(platform: str | None = None)` (`agents/dashboard/utils/state.py`). 인자를 생략하면 플랫폼 무관 전체 확인이고, `"android"` / `"ios"`를 넘기면 해당 플랫폼 세션만 확인합니다. `state/capture_session.json`에 `platform` 필드가 없는 구버전 레코드는 보수적으로 `True`(차단)를 반환합니다. 무인자 기존 호출부는 하위호환으로 그대로 동작합니다.
+
+**API 가드 정책**:
+- `POST /api/env/appium/stop`: `is_capture_active()` (플랫폼 무관 전체) 활성 시 `403 capture_session_active`, 파이프라인 실행 중 `409 pipeline_running`. **`external` 상태에서도 중지 가능** — `lsof -ti :<port>`로 PID 탐색 후 SIGTERM (v1.0)
+- `POST /api/env/android/avd/stop`: `is_capture_active("android")` 활성 시 `403 capture_session_active` — iOS Capture 세션은 차단 사유가 아님
+- `POST /api/env/ios/simulator/stop`: `is_capture_active("ios")` 활성 시 `403 capture_session_active` — Android Capture 세션은 차단 사유가 아님
+- `POST /api/env/android/avd/start`: 다른 에뮬레이터 실행 중 `409 already_running`. **Appium 상태 가드 없음**
+- `POST /api/env/ios/simulator/start`: **Appium 상태 가드 없음**. 생략 시 `devices.json`의 `default: true` 시뮬레이터를 사용. `subprocess.Popen`(비동기)으로 즉시 202 + `status: "starting"` 반환 — 3초 폴링이 `simctl list` Booted 감지 시 `running` 전환 (v1.0)
+
+> ⚠️ start 계열(`avd/start`, `simulator/start`)은 아직 `is_capture_active()`를 무인자로 호출해 무관한 플랫폼 세션도 시작을 차단합니다. 플랫폼 분리는 stop 계열에만 적용된 상태입니다 (PRD §15-7 항목 5).
+
+**디바이스 추가/삭제**: `POST /api/env/{android,ios}/{add,remove}` 4종이 구현되어 있으며, 모든 `devices.json` 쓰기는 `agents/dashboard/utils/state.py`의 `save_devices_json()`을 경유합니다 (`.json.tmp` 기록 → `Path.replace()` 원자적 교체, `default` 중복 시 `ValueError` → 400). `config/devices.json`에 직접 `write_text()`하는 경로를 새로 만들지 마세요.
+
+- 요청 스키마: `add` = `{mode, deviceName, avd?|udid?, default?}`, `remove` = `{mode, deviceName}`. `mode`는 Android `emulator|real_device`, iOS `simulator|real_device`
+- 마지막 1개 항목은 삭제 불가 (`400 last_device`). `default: true` 항목 삭제 시 남은 첫 항목이 승계
+- ⚠️ **대시보드 UI는 아직 없습니다** — 추가 버튼·모달·✕ 삭제가 `dashboard.html`에 미구현이라 현재는 `devices.json` 직접 편집 또는 API 직접 호출이 필요합니다 (PRD §15-7 항목 1)
+- ⚠️ add·remove에 Capture/파이프라인 **잠금 가드가 없습니다**. 실행 중 호출하면 설정이 교체됩니다 (PRD §15-7 항목 2)
+
+`is_capture_active(platform: str | None = None)` — 인자를 생략하면 전체 플랫폼을 확인합니다(기존 무인자 호출부와 하위호환). 세션 레코드에서 플랫폼을 식별할 수 없으면 보수적으로 `True`를 반환합니다.
 
 ## 연속 Appium 세션 주의사항
 

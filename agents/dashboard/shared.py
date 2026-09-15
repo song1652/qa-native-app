@@ -9,6 +9,9 @@ WebSocket 연결 목록을 한 곳에서 관리합니다.
 from __future__ import annotations
 
 import asyncio
+import os
+import re
+import shutil
 import subprocess
 import sys
 import threading
@@ -21,6 +24,7 @@ PORT         = 8767
 
 STATE_PATH           = PROJECT_ROOT / "state" / "pipeline.json"
 CAPTURE_SESSION_PATH = PROJECT_ROOT / "state" / "capture_session.json"
+ENV_SESSION_PATH     = PROJECT_ROOT / "state" / "env_session.json"
 REPORTS_DIR          = PROJECT_ROOT / "tests" / "reports"
 GENERATED_DIR        = PROJECT_ROOT / "tests" / "generated"
 SCREENSHOTS_DIR      = PROJECT_ROOT / "reports" / "screenshots"
@@ -35,11 +39,95 @@ for _d in (LOGS_DIR, REPORTS_DIR, SCREENSHOTS_DIR, IMPORT_DIR, CAPTURES_DIR):
 
 # ── Python / ADB 바이너리 ──────────────────────────────────────
 
+def _is_executable(path: str | Path) -> bool:
+    candidate = Path(path).expanduser()
+    return candidate.is_file() and os.access(candidate, os.X_OK)
+
+
+def _node_version_key(path: Path) -> tuple[int, ...]:
+    match = re.search(r"/v(\d+(?:\.\d+)*)/bin/", str(path))
+    return tuple(int(part) for part in match.group(1).split(".")) if match else ()
+
+
+def _find_appium_bin(
+    home: Path | None = None,
+    environ: dict | None = None,
+    path_lookup=None,
+) -> str:
+    """NVM을 포함해 비대화형 서버에서도 Appium 실행 파일을 찾는다."""
+    home = Path.home() if home is None else Path(home)
+    environ = os.environ if environ is None else environ
+    path_lookup = shutil.which if path_lookup is None else path_lookup
+
+    candidates: list[str | Path] = []
+    if environ.get("APPIUM_BIN"):
+        candidates.append(environ["APPIUM_BIN"])
+    path_appium = path_lookup("appium")
+    if path_appium:
+        candidates.append(path_appium)
+    candidates.extend([
+        home / ".local" / "bin" / "appium",
+        Path("/opt/homebrew/bin/appium"),
+        Path("/usr/local/bin/appium"),
+    ])
+    nvm_candidates = sorted(
+        (home / ".nvm" / "versions" / "node").glob("v*/bin/appium"),
+        key=_node_version_key,
+        reverse=True,
+    )
+    candidates.extend(nvm_candidates)
+    for candidate in candidates:
+        if _is_executable(candidate):
+            return str(Path(candidate).expanduser())
+    return "appium"
+
+
+def _find_emulator_bin(
+    home: Path | None = None,
+    environ: dict | None = None,
+    path_lookup=None,
+) -> str:
+    """ANDROID_HOME이 없는 GUI 실행에서도 Android Emulator를 찾는다."""
+    home = Path.home() if home is None else Path(home)
+    environ = os.environ if environ is None else environ
+    path_lookup = shutil.which if path_lookup is None else path_lookup
+
+    candidates: list[str | Path] = []
+    if environ.get("EMULATOR_BIN"):
+        candidates.append(environ["EMULATOR_BIN"])
+    for key in ("ANDROID_SDK_ROOT", "ANDROID_HOME"):
+        if environ.get(key):
+            candidates.append(Path(environ[key]) / "emulator" / "emulator")
+    candidates.extend([
+        home / "Library" / "Android" / "sdk" / "emulator" / "emulator",
+        home / "Android" / "Sdk" / "emulator" / "emulator",
+    ])
+    path_emulator = path_lookup("emulator")
+    if path_emulator:
+        candidates.append(path_emulator)
+    for candidate in candidates:
+        if _is_executable(candidate):
+            return str(Path(candidate).expanduser())
+    return "emulator"
+
+
+def subprocess_env_for(binary: str) -> dict[str, str]:
+    """env shebang이 같은 설치 폴더의 런타임을 찾도록 PATH를 보강한다."""
+    env = dict(os.environ)
+    binary_dir = str(Path(binary).expanduser().parent)
+    current_path = env.get("PATH", "")
+    path_parts = [part for part in current_path.split(os.pathsep) if part]
+    env["PATH"] = os.pathsep.join(
+        [binary_dir] + [part for part in path_parts if part != binary_dir]
+    )
+    return env
+
 def _find_python_bin() -> str:
     import os
     import shutil
 
     candidates = [
+        str(PROJECT_ROOT / ".venv" / "bin" / "python"),
         os.path.expanduser("~/.pyenv/versions/3.12.9/bin/python"),
         os.path.expanduser("~/.pyenv/shims/python3"),
         shutil.which("python3") or "",
@@ -50,7 +138,7 @@ def _find_python_bin() -> str:
             continue
         try:
             r = subprocess.run(
-                [c, "-c", "import appium"],
+                [c, "-c", "import appium, pytest"],
                 capture_output=True, timeout=3,
             )
             if r.returncode == 0:
@@ -77,6 +165,8 @@ def _find_adb_bin() -> str:
 
 PYTHON_BIN = _find_python_bin()
 ADB_BIN    = _find_adb_bin()
+APPIUM_BIN = _find_appium_bin()
+EMULATOR_BIN = _find_emulator_bin()
 
 
 # ── 스크립트 맵 ───────────────────────────────────────────────

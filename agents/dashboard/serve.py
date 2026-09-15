@@ -28,6 +28,7 @@ from utils.system import kill_port  # noqa: E402
 import ws  # noqa: E402
 from routes.api import router as api_router  # noqa: E402
 from routes.capture import router as capture_router  # noqa: E402
+from routes.env import router as env_router  # noqa: E402
 from routes.import_studio import router as import_router  # noqa: E402
 from routes.pipeline import router as pipeline_router  # noqa: E402
 
@@ -46,6 +47,7 @@ app.include_router(api_router)
 app.include_router(pipeline_router)
 app.include_router(import_router)
 app.include_router(capture_router)
+app.include_router(env_router)
 
 
 # ── 서버 시작 ─────────────────────────────────────────────────

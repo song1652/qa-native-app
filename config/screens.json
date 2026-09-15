@@ -41,5 +41,12 @@
       "action": "launch",
       "app": "com.android.settings"
     }
+  },
+  "capture_studio_e2e": {
+    "name": "capture_studio_e2e",
+    "entry": {
+      "action": "launch",
+      "app": "com.android.settings"
+    }
   }
 }

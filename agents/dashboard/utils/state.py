@@ -3,16 +3,22 @@ utils/state.py — 파이프라인/캡처 세션 상태 읽기쓰기, 파일 목
 """
 from __future__ import annotations
 
+import fcntl
 import json
+import os
 import sys
+import threading
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+import copy
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from shared import (  # noqa: E402
     STATE_PATH,
     CAPTURE_SESSION_PATH,
+    ENV_SESSION_PATH,
     REPORTS_DIR,
     GENERATED_DIR,
     SCREENSHOTS_DIR,
@@ -60,8 +66,13 @@ def save_capture_session(data: dict) -> None:
     )
 
 
-def is_capture_active() -> bool:
-    """Capture Studio 세션이 활성 상태인지 확인. 30분 비활동 시 자동 비활성화."""
+def is_capture_active(platform: str | None = None) -> bool:
+    """Capture Studio 세션이 활성 상태인지 확인. 30분 비활동 시 자동 비활성화.
+
+    platform=None      → 전체 확인 (Appium 종료 등)
+    platform="android" → Android Capture 세션만 확인
+    platform="ios"     → iOS Capture 세션만 확인
+    """
     session = load_capture_session()
     if not session.get("active"):
         return False
@@ -75,7 +86,13 @@ def is_capture_active() -> bool:
                 return False
         except Exception:
             pass
-    return True
+    if platform is None:
+        return True
+    # platform 필드가 없으면 (구버전 세션) 전체 확인으로 fallback
+    session_platform = session.get("platform", "").lower()
+    if not session_platform:
+        return True
+    return session_platform == platform.lower()
 
 
 def is_pipeline_active() -> bool:
@@ -117,15 +134,24 @@ def list_generated(platform: str | None = None) -> list[dict]:
             continue
         if platform and platform_dir.name != platform:
             continue
-        files = sorted([
-            str(f.relative_to(platform_dir))
-            for f in platform_dir.rglob("tc_*.py")
-        ])
+        generated_paths = sorted(platform_dir.rglob("tc_*.py"))
+        files = [str(f.relative_to(platform_dir)) for f in generated_paths]
         if files:
+            stale_files = []
+            for generated_path in generated_paths:
+                try:
+                    source = generated_path.read_text(encoding="utf-8")
+                except OSError:
+                    continue
+                if "caps = devs['android'][PLATFORM_MODE].copy()" in source or \
+                        "caps = devs['ios'][PLATFORM_MODE].copy()" in source:
+                    stale_files.append(str(generated_path.relative_to(platform_dir)))
             result.append({
                 "platform": platform_dir.name,
                 "files": files,
                 "count": len(files),
+                "stale_files": stale_files,
+                "stale_count": len(stale_files),
             })
     return result
 
@@ -206,3 +232,102 @@ def list_tc_folders(platform: str | None = None) -> list[str]:
         d.name for d in TESTCASES_DIR.iterdir()
         if d.is_dir() and not d.name.startswith(".") and list(d.glob("tc_*.md"))
     ])
+
+
+# ── devices.json 읽기/쓰기 ────────────────────────────────────────
+
+_DEVICES_PATH = PROJECT_ROOT / "config" / "devices.json"
+
+
+def load_devices_json() -> dict:
+    """config/devices.json 로드. 파일 없거나 손상 시 빈 dict 반환."""
+    return load_json(_DEVICES_PATH) or {}
+
+
+def save_devices_json(data: dict) -> None:
+    """devices.json을 임시 파일 → 원자적 교체로 저장.
+
+    스키마 검증: 각 플랫폼/모드 섹션에서 default:true가 2개 이상이면 ValueError.
+    F5: flock(배타적 잠금) + fsync(디스크 동기화) → 동시 쓰기 충돌 방지.
+    """
+    for platform in ("android", "ios"):
+        modes = (
+            ["emulator", "real_device"]
+            if platform == "android"
+            else ["simulator", "real_device"]
+        )
+        for mode in modes:
+            section = data.get(platform, {}).get(mode, [])
+            if isinstance(section, list):
+                defaults = [x for x in section if x.get("default")]
+                if len(defaults) > 1:
+                    raise ValueError(
+                        f"{platform}.{mode}: default:true가 2개 이상 존재합니다"
+                    )
+    content = json.dumps(data, ensure_ascii=False, indent=2)
+    tmp = _DEVICES_PATH.with_suffix(".json.tmp")
+    # flock으로 배타적 잠금 후 기록 → fsync → replace (원자적 교체)
+    lock_path = _DEVICES_PATH.with_suffix(".json.lock")
+    lock_path.touch(exist_ok=True)
+    with open(lock_path, "r", encoding="utf-8") as lf:
+        fcntl.flock(lf.fileno(), fcntl.LOCK_EX)
+        try:
+            with open(tmp, "w", encoding="utf-8") as f:
+                f.write(content)
+                f.flush()
+                os.fsync(f.fileno())
+            tmp.replace(_DEVICES_PATH)
+        finally:
+            fcntl.flock(lf.fileno(), fcntl.LOCK_UN)
+
+
+# ── ENV Setup 세션 ─────────────────────────────────────────────────
+
+ENV_SESSION_DEFAULT: dict = {
+    "appium": {
+        "status": "stopped",
+        "pid": None,
+        "port": 4723,
+        "error_msg": None,
+        "started_at": None,
+    },
+    "android": {"status": "stopped", "avd": None, "started_at": None},
+    "ios": {"status": "stopped", "simulator": None, "started_at": None},
+}
+
+_ENV_SESSION_LOCK = threading.RLock()
+
+
+def _write_env_session_unlocked(data: dict) -> None:
+    ENV_SESSION_PATH.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = ENV_SESSION_PATH.with_suffix(".json.tmp")
+    tmp_path.write_text(
+        json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    tmp_path.replace(ENV_SESSION_PATH)
+
+
+def load_env_session() -> dict:
+    """env_session.json 로드. 파일 없거나 손상 시 기본값 반환."""
+    with _ENV_SESSION_LOCK:
+        return load_json(ENV_SESSION_PATH) or copy.deepcopy(ENV_SESSION_DEFAULT)
+
+
+def save_env_session(data: dict) -> None:
+    """env_session.json을 프로세스 내 잠금과 원자적 교체로 저장한다."""
+    with _ENV_SESSION_LOCK:
+        _write_env_session_unlocked(data)
+
+
+def update_env_session_sections(
+    sections: dict[str, dict],
+    expected: dict[str, dict] | None = None,
+) -> dict:
+    """지정 섹션만 원자적으로 갱신하며 선택적으로 오래된 쓰기를 거부한다."""
+    with _ENV_SESSION_LOCK:
+        current = load_json(ENV_SESSION_PATH) or copy.deepcopy(ENV_SESSION_DEFAULT)
+        for key, value in sections.items():
+            if expected is None or current.get(key) == expected.get(key):
+                current[key] = value
+        _write_env_session_unlocked(current)
+        return current

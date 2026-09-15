@@ -68,9 +68,13 @@ WebView가 없는 앱과 화면에서는 Playwright를 시작하지 않습니다
 ### Appium 서버 및 대시보드
 
 ```bash
-ANDROID_HOME="$HOME/Library/Android/sdk" appium --address 0.0.0.0 --port 4723
+ANDROID_HOME="$HOME/Library/Android/sdk" appium --address 127.0.0.1 --port 4723 \
+  --allow-insecure=uiautomator2:adb_screen_streaming
 python agents/dashboard/serve.py
 ```
+
+> ⚠️ `--address 127.0.0.1` 고정 필수. `0.0.0.0` 바인딩은 보안상 금지됩니다.  
+> `--allow-insecure=uiautomator2:adb_screen_streaming` 없이 시작하면 Android MJPEG 미러링이 동작하지 않습니다.
 
 브라우저에서 <http://localhost:8767>을 엽니다. 대시보드에는 Appium 연결, Android/iOS 플랫폼, 디바이스 연결, 분석·생성·린트·실행·힐링 단계, 로그, 생성 테스트, 리포트, 실행 히스토리가 표시됩니다.
 
@@ -112,29 +116,49 @@ testcases/ios/{시트명}/     → tests/generated/ios/{시트명}/
 
 서로 다른 시트에서 같은 TC 번호를 사용해도 시트별 하위 폴더로 분리되므로 파일이 덮어써지지 않습니다. 빠른 실행은 선택한 OS의 `tests/generated/{platform}`만 조회합니다.
 
+### ENV Setup UI
+
+대시보드 **ENV Setup 탭**에서 Appium 서버와 에뮬레이터/시뮬레이터를 터미널 없이 관리합니다.
+
+```text
+Appium 카드  — 시작·중지·재시작. managed(대시보드 관리) / external(외부 실행) 모두 중지 가능
+Android 카드 — AVD 목록 · 부팅 · 중지 · 기기 추가/삭제
+iOS 카드     — 시뮬레이터 목록 · 부팅(비동기) · 종료 · 기기 추가/삭제
+```
+
+- Appium 상태: `stopped` / `starting` / `managed` / `external` / `error`
+- `external` 상태에서도 대시보드 중지 버튼으로 종료 가능 (포트 기반 PID 탐색 후 SIGTERM)
+- 에뮬레이터/시뮬레이터는 Appium과 독립적으로 시작·종료 가능
+- 최소 보유 정책: 가상 기기(에뮬레이터/시뮬레이터) 최소 1대 유지 (삭제 시 disabled), 실기기 0대 허용
+- Capture Studio iOS 세션 활성 중 시뮬레이터 종료 차단 (Android 세션과 독립)
+- 자세한 스펙: [docs/ENV_SETUP_PRD.md](docs/ENV_SETUP_PRD.md)
+
 ### Capture Studio
 
 대시보드의 Capture Studio 탭에서 실제 앱 화면을 보면서 요소를 선택하고 TC를 직접 생성합니다.
 
 ```text
-1. 세션 설정   — OS(Android) · 디바이스 · 앱 package/activity 선택 후 세션 시작
-2. 화면 탐색   — MJPEG 미러링 + hierarchy 트리에서 요소 선택
-3. 동작 기록   — Tap/Input/Back 등 실제 조작을 Action Timeline에 기록
+1. 세션 설정   — OS(Android/iOS) · 디바이스 · 앱 설정 후 세션 시작
+2. 화면 탐색   — Android: MJPEG 미러링 / iOS: XCUITest 스크린샷 폴링 + hierarchy 트리
+3. 동작 기록   — Tap/Input/Scroll/Back/Wait 실제 조작을 Action Timeline에 기록
 4. Locator 검토 — 후보 별점 확인 및 승인
-5. 미리보기   — Markdown TC와 pytest 코드 나란히 확인
-6. 저장 및 생성 — registry·TC 저장 후 02_generate.py 실행
+5. 저장 및 생성 — /capture/generate_from_actions → 자체 완결형 pytest 파일 생성
 ```
 
-**현재 구현된 기능:**
-- Phase 0: FastAPI 전환 완료, 세션 충돌 방지 UX, MJPEG 환경 확인
-- Phase 1: 세션 설정 화면 (앱·디바이스·그룹 설정), Appium 세션 시작 API
-- `/capture/generate_from_actions` 엔드포인트: actions 배열로 pytest 코드 자동 생성
-- 실패 TC에서 Capture Studio Locator 재확인 화면 재진입 (Healing 연계)
+**구현 완료 기능 (Phase 0–7):**
+- Android MJPEG 화면 미러링 (포트 8093)
+- iOS XCUITest 스크린샷 폴링 (1.2초), WDA 안정화 30초 여유
+- hierarchy 트리 렌더링·노드 선택, 화면 전환 자동 감지 (4초 폴링, 쿨다운 3초)
+- 동작 기록: tap / scroll / back / wait / input
+- Locator 후보 및 승인 (Android: resource-id > content-desc > text, iOS: label > name > predicate)
+- `저장 및 생성` → `_build_driver()` + `_el()` + `_ios_tap()` 포함 자체 완결형 pytest 생성
+- Healing 연계: 실패 TC에서 Locator 검토 4단계 재진입
+- 세션 재연결 버튼 (`csReLaunch()`)
 
 **제약사항:**
-- iOS 미지원 (MJPEG 방식이 iOS Simulator에서 동작하지 않음; 후속 범위)
-- MJPEG 스트리밍 포트 8093이 열려 있어야 합니다
-- Capture Studio 세션과 파이프라인 실행 세션은 동시에 존재할 수 없습니다
+- Android MJPEG: Appium `--allow-insecure=uiautomator2:adb_screen_streaming` 필수, 포트 8093 개방 필요
+- iOS: 시뮬레이터당 XCUITest 세션 1개 — Capture Studio iOS 세션과 파이프라인 iOS TC 동시 실행 불가
+- Capture Studio 세션과 파이프라인 실행 세션은 동시에 존재할 수 없습니다 (플랫폼별 독립)
 
 생성된 pytest 파일은 자체 완결형(`_build_driver()` + `_el()` + class 구조 포함)으로, 수정 없이 `05_execute.py`로 바로 실행할 수 있습니다.
 
@@ -195,9 +219,11 @@ DOM을 모르는 상태에서 locator를 추측해 코드를 확정하지 않습
 | `config/locators.json` | 플랫폼별 locator source of truth |
 | `state/pipeline.json` | 단계별 상태와 UI hierarchy snapshot |
 | `docs/PRD.md` | 요소 중심 Capture Studio 제품 요구사항 |
+| `docs/ENV_SETUP_PRD.md` | ENV Setup UI 제품 요구사항 (v1.0) |
 | `docs/LOCATOR_HEALING.md` | locator healing 운영 정책 |
 | `docs/CAPTURE_STUDIO_PLAN.md` | 반수동 Capture Studio 기획·화면·상태 계약 |
 | `docs/mockups/capture_studio.html` | 브라우저에서 확인하는 Capture Studio 인터랙티브 목업 |
+| `agents/lessons_learned.md` | 운영 중 발견된 패턴과 교훈 (Appium 환경변수, iOS 부팅 방식 등) |
 | `DESIGN.md` | 대시보드와 Import Studio 디자인 계약 |
 
 ## 산출물 및 제한사항

@@ -507,9 +507,18 @@ button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(
       </div>
     </div>
     <div class="sidebar-section">
-      <div class="sidebar-label">Import</div>
+      <div class="sidebar-label">환경</div>
+      <div class="sidebar-item" data-view="config" onclick="selectView('config',this)">
+        <span class="sidebar-dot"></span><span>환경 설정</span>
+      </div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">TC 작성</div>
       <div class="sidebar-item" data-view="import" onclick="selectView('import',this)">
         <span class="sidebar-dot"></span><span>Import Studio</span>
+      </div>
+      <div class="sidebar-item" data-view="capture" onclick="selectView('capture',this)" id="sidebar-capture">
+        <span class="sidebar-dot" style="background:rgba(167,139,250,.4)"></span><span>Capture Studio</span>
       </div>
     </div>
     <div class="sidebar-section">
@@ -528,18 +537,6 @@ button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(
       </div>
       <div class="sidebar-item" data-view="history" onclick="selectView('history',this)">
         <span class="sidebar-dot"></span><span>실행 히스토리</span>
-      </div>
-    </div>
-    <div class="sidebar-section">
-      <div class="sidebar-label">설정</div>
-      <div class="sidebar-item" data-view="config" onclick="selectView('config',this)">
-        <span class="sidebar-dot"></span><span>Appium 설정</span>
-      </div>
-    </div>
-    <div class="sidebar-section">
-      <div class="sidebar-label">Capture</div>
-      <div class="sidebar-item" data-view="capture" onclick="selectView('capture',this)" id="sidebar-capture">
-        <span class="sidebar-dot" style="background:rgba(167,139,250,.4)"></span><span>Capture Studio</span>
       </div>
     </div>
   </aside>
@@ -795,6 +792,184 @@ button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(
 
     <!-- 컨피그 작성 가이드 -->
     <div class="card" id="view-config">
+      <header class="env-page-head">
+        <div>
+          <h1>환경 설정</h1>
+          <p>Appium과 테스트 기기를 준비합니다.</p>
+        </div>
+      </header>
+      <!-- ── Appium 상태 카드 ─────────────────────────────── -->
+      <style>
+        .env-page-head{margin:0 0 18px;padding:2px 2px 0}.env-page-head h1{margin:0 0 5px;font-size:20px;line-height:1.3}.env-page-head p{margin:0;color:var(--text3);font-size:11px}
+        @keyframes env-blink{0%,100%{opacity:1}50%{opacity:.35}}
+        @keyframes env-progress{0%{transform:translateX(-100%)}100%{transform:translateX(330%)}}
+        .env-appium-card{--env-state:var(--text3);position:relative;overflow:hidden;margin-bottom:20px;padding:22px;border:1px solid var(--border);border-radius:14px;background:linear-gradient(145deg,rgba(30,27,65,.82),rgba(13,12,35,.78));box-shadow:0 14px 36px rgba(0,0,0,.22);transition:border-color .2s,box-shadow .2s}
+        .env-appium-card::before{content:'';position:absolute;inset:0 0 auto;height:2px;background:linear-gradient(90deg,transparent,var(--env-state),transparent);opacity:.75}
+        .env-appium-card[data-state="managed"]{--env-state:var(--pass);border-color:rgba(52,211,153,.28);box-shadow:0 14px 38px rgba(16,185,129,.08)}
+        .env-appium-card[data-state="starting"]{--env-state:var(--warn);border-color:rgba(251,191,36,.28)}
+        .env-appium-card[data-state="external"]{--env-state:#22d3ee;border-color:rgba(34,211,238,.42);border-style:dashed}
+        .env-appium-card[data-state="error"]{--env-state:var(--fail);border-color:rgba(251,113,133,.36)}
+        .env-appium-head{display:flex;align-items:center;gap:13px;margin-bottom:18px}
+        .env-appium-icon{width:42px;height:42px;display:grid;place-items:center;flex:0 0 auto;border:1px solid color-mix(in srgb,var(--env-state) 38%,transparent);border-radius:12px;background:color-mix(in srgb,var(--env-state) 10%,transparent);color:var(--env-state);font-size:20px}
+        .env-appium-title{min-width:0;flex:1}.env-appium-title h2{font-size:16px;line-height:1.3;margin:0 0 3px}.env-appium-endpoint{font:11px/1.4 monospace;color:var(--text3)}
+        .env-appium-badge{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;padding:5px 10px;border:1px solid color-mix(in srgb,var(--env-state) 32%,transparent);border-radius:999px;background:color-mix(in srgb,var(--env-state) 10%,transparent);color:var(--env-state);font-size:11px;font-weight:750}
+        .env-appium-badge::before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor;box-shadow:0 0 7px currentColor}
+        [data-state="starting"] .env-appium-badge::before{animation:env-blink 1s ease-in-out infinite}
+        .env-appium-note{margin-bottom:16px;padding:11px 13px;border:1px solid color-mix(in srgb,var(--env-state) 20%,transparent);border-radius:9px;background:color-mix(in srgb,var(--env-state) 6%,transparent);color:var(--text2);font-size:12px;line-height:1.55}
+        .env-appium-progress{display:none;height:4px;overflow:hidden;margin:-7px 0 16px;border-radius:999px;background:rgba(251,191,36,.1)}
+        .env-appium-progress span{display:block;width:30%;height:100%;border-radius:inherit;background:linear-gradient(90deg,transparent,var(--warn),transparent);animation:env-progress 1.4s ease-in-out infinite}
+        [data-state="starting"] .env-appium-progress{display:block}
+        .env-appium-details{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:15px}
+        .env-appium-detail{min-width:0;padding:10px 11px;border:1px solid var(--border);border-radius:9px;background:rgba(8,7,27,.38)}
+        .env-appium-detail dt{margin-bottom:5px;color:var(--text3);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.65px}
+        .env-appium-detail dd{overflow:hidden;margin:0;color:var(--text);font:600 11px/1.4 monospace;text-overflow:ellipsis;white-space:nowrap}
+        .env-appium-driver-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}.env-appium-section-label{margin-right:2px;color:var(--text3);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.65px}
+        .env-appium-driver{padding:4px 8px;border:1px solid var(--border);border-radius:999px;color:var(--text3);background:rgba(255,255,255,.025);font-size:10px;font-weight:650}.env-appium-driver.is-ready{border-color:rgba(52,211,153,.28);color:var(--pass);background:rgba(52,211,153,.07)}.env-appium-driver.is-missing{border-color:rgba(251,113,133,.28);color:var(--fail);background:rgba(251,113,133,.07)}
+        .env-appium-driver-help{display:none;margin:-2px 0 12px;padding:10px 12px;border:1px solid rgba(251,113,133,.22);border-radius:9px;background:rgba(251,113,133,.055);color:var(--text2);font-size:11px;line-height:1.65}.env-appium-driver-command{display:flex;align-items:center;gap:8px;margin-top:6px}.env-appium-driver-help code{min-width:0;flex:1;color:#fda4af;font-size:10px;user-select:all;word-break:break-all}.env-appium-copy{flex:0 0 auto;padding:3px 8px;border:1px solid rgba(139,92,246,.38);border-radius:5px;background:rgba(139,92,246,.1);color:#c4b5fd;font:600 10px inherit;cursor:pointer}
+        .env-appium-mjpeg{display:none;margin-bottom:14px;padding:10px 12px;border:1px solid rgba(52,211,153,.22);border-radius:9px;background:rgba(52,211,153,.06);color:var(--pass);font-size:11px;font-weight:600}.env-appium-mjpeg.warning{border-color:rgba(251,191,36,.28);background:rgba(251,191,36,.07);color:var(--warn)}
+        .env-appium-error{display:none;margin-bottom:14px;padding:11px 13px;border:1px solid rgba(251,113,133,.28);border-radius:9px;background:rgba(251,113,133,.07);color:#fda4af;font:11px/1.6 monospace;word-break:break-word}
+        .env-device-error{display:none;margin:0 0 10px;padding:9px 11px;border:1px solid rgba(251,113,133,.28);border-radius:8px;background:rgba(251,113,133,.07);color:#fda4af;font:11px/1.55 monospace;word-break:break-word}
+        .env-device-card{margin-bottom:14px;overflow:hidden;border:1px solid rgba(139,92,246,.24);border-radius:12px;background:linear-gradient(145deg,rgba(30,27,65,.72),rgba(13,12,35,.68));box-shadow:0 12px 30px rgba(0,0,0,.16)}
+        .env-device-head{display:flex;align-items:center;gap:11px;padding:15px 16px;border-bottom:1px solid var(--border)}
+        .env-device-icon{width:34px;height:34px;display:grid;place-items:center;border:1px solid rgba(139,92,246,.28);border-radius:9px;background:rgba(139,92,246,.08);font-size:17px}
+        .env-device-heading{min-width:0;flex:1}.env-device-heading h2{margin:0 0 2px;font-size:14px}.env-device-heading p{margin:0;color:var(--text3);font-size:10px}
+        .env-device-summary{padding:4px 8px;border:1px solid var(--border);border-radius:999px;color:var(--text3);font-size:10px;font-weight:700}
+        .env-device-refresh{height:30px;padding:0 10px;display:grid;place-items:center;border:1px solid rgba(139,92,246,.38);border-radius:7px;background:#7c3aed;color:#fff;font:700 10px inherit;cursor:pointer}.env-device-refresh:hover{background:#8b5cf6}
+        .env-device-body{padding:10px 12px 12px}.env-device-list{display:grid;gap:7px}
+        .env-device-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;padding:11px 12px;border:1px solid var(--border);border-radius:9px;background:rgba(8,7,27,.36)}
+        .env-device-row.is-active{border-color:rgba(52,211,153,.3);background:rgba(52,211,153,.045)}.env-device-row.is-starting{border-color:rgba(251,191,36,.3);background:rgba(251,191,36,.045)}
+        .env-device-main{min-width:0;display:flex;align-items:center;gap:9px}.env-device-dot{width:7px;height:7px;flex:0 0 auto;border-radius:50%;background:var(--text3)}.is-active .env-device-dot{background:var(--pass);box-shadow:0 0 7px var(--pass)}.is-starting .env-device-dot{background:var(--warn);animation:env-blink 1s ease-in-out infinite}
+        .env-device-copy{min-width:0}.env-device-name{display:flex;align-items:center;gap:6px;min-width:0;color:var(--text);font-size:12px;font-weight:700}.env-device-name strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.env-device-version{color:var(--text3);font-size:10px;font-weight:500}.env-device-key{overflow:hidden;margin-top:3px;color:var(--text3);font:9px/1.4 monospace;text-overflow:ellipsis;white-space:nowrap}
+        .env-default-badge{padding:2px 6px;border:1px solid rgba(139,92,246,.32);border-radius:999px;background:rgba(139,92,246,.09);color:#c4b5fd;font-size:9px;font-weight:700}
+        .env-device-actions{display:flex;align-items:center;gap:6px}.env-row-action{padding:5px 10px;border:1px solid rgba(139,92,246,.38);border-radius:6px;background:rgba(139,92,246,.1);color:#ddd6fe;font:650 10px inherit;cursor:pointer}.env-row-action.stop{border-color:rgba(251,113,133,.32);background:rgba(251,113,133,.08);color:#fda4af}.env-row-action:disabled{cursor:not-allowed;opacity:.38}.env-row-remove{width:25px;height:25px;border:0;background:transparent;color:var(--text3);font-size:13px;cursor:pointer}.env-row-remove:hover{color:var(--fail)}
+        .env-device-empty{padding:14px;text-align:center;color:var(--text3);font-size:11px}
+        .env-device-add{width:100%;margin-top:8px;padding:9px 12px;border:1px dashed rgba(139,92,246,.42);border-radius:8px;background:rgba(139,92,246,.035);color:#c4b5fd;font:650 11px inherit;cursor:pointer}.env-device-add:hover{border-color:#8b5cf6;background:rgba(139,92,246,.08)}
+        .env-add-overlay{display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;padding:18px;background:rgba(3,2,13,.72);backdrop-filter:blur(5px)}.env-add-dialog{width:min(360px,calc(100vw - 28px));overflow:hidden;border:1px solid rgba(139,92,246,.34);border-radius:12px;background:#17132e;box-shadow:0 24px 70px rgba(0,0,0,.56)}
+        .env-add-head{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border)}.env-add-head strong{flex:1;font-size:13px}.env-add-close{width:27px;height:27px;border:0;background:transparent;color:var(--text3);font-size:17px;cursor:pointer}.env-add-close:hover{color:var(--text)}
+        .env-add-fields{display:grid;gap:11px;padding:15px 16px}.env-add-field label{display:block;margin-bottom:5px;color:var(--text3);font-size:10px;font-weight:650}.env-add-field input,.env-add-field select{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:#211b40;color:var(--text);font:11px inherit}.env-add-field input[readonly]{color:#aaa1c8;background:#1c1736}.env-add-field select:focus,.env-add-field input:focus{outline:2px solid rgba(139,92,246,.45);outline-offset:1px}
+        .env-add-error{display:none;padding:9px 10px;border:1px solid rgba(251,113,133,.27);border-radius:7px;background:rgba(251,113,133,.07);color:#fda4af;font-size:10px;line-height:1.5}.env-add-hint{color:var(--text3);font-size:9px;line-height:1.5}
+        .env-add-footer{display:flex;justify-content:flex-end;gap:8px;padding:11px 16px;border-top:1px solid var(--border);background:rgba(8,7,27,.2)}.env-add-footer .btn{flex:none;padding:6px 14px;font-size:11px}.env-add-register{border-color:#7c3aed!important;background:#7c3aed!important;color:white!important}
+        .env-appium-actions{display:flex;gap:8px;flex-wrap:wrap}.env-appium-actions .btn{flex:none;min-width:92px;padding:7px 13px;font-size:12px;justify-content:center}.env-appium-actions .danger{border-color:rgba(251,113,133,.38);background:rgba(251,113,133,.1);color:var(--fail)}
+        .env-appium-card[data-state="external"] #env-btn-stop{border-color:var(--danger,#f87171);color:var(--danger,#f87171)}
+        .env-appium-log{display:none;margin-top:18px;padding-top:15px;border-top:1px solid var(--border)}.env-appium-log-head{display:flex;align-items:center;gap:7px;margin-bottom:8px}.env-appium-log-title{margin-right:auto;color:var(--text2);font-size:11px;font-weight:700}.env-appium-log-tool{padding:3px 7px;border:1px solid var(--border);border-radius:5px;background:rgba(255,255,255,.025);color:var(--text3);font:600 9px inherit;cursor:pointer}.env-appium-log-tool:hover{border-color:rgba(139,92,246,.38);color:var(--text2)}.env-appium-log-output{min-height:64px;max-height:190px;overflow:auto;margin:0;padding:12px;border:1px solid rgba(140,120,220,.14);border-radius:9px;background:#060512;color:#9de9c2;font:10px/1.65 monospace;white-space:pre-wrap;word-break:break-word}.env-appium-log-path{display:block;margin-top:7px;color:var(--text3);font:9px/1.4 monospace;text-align:right}
+        .env-appium-log-modal{display:none;position:fixed;inset:0;z-index:1200;align-items:center;justify-content:center;padding:28px;background:rgba(3,2,13,.78);backdrop-filter:blur(5px)}.env-appium-log-dialog{width:min(900px,96vw);max-height:82vh;display:flex;flex-direction:column;overflow:hidden;border:1px solid rgba(139,92,246,.3);border-radius:12px;background:#100d24;box-shadow:0 24px 80px rgba(0,0,0,.55)}.env-appium-log-dialog-head{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--border)}.env-appium-log-dialog-head strong{margin-right:auto;font-size:12px}.env-appium-log-dialog-head code{color:var(--text3);font-size:9px}.env-appium-log-modal-output{min-height:280px;overflow:auto;margin:14px;padding:14px;border:1px solid var(--border);border-radius:8px;background:#060512;color:#9de9c2;font:10px/1.7 monospace;white-space:pre-wrap;word-break:break-word}
+        @media(max-width:760px){.env-appium-card{padding:17px}.env-appium-head{align-items:flex-start;flex-wrap:wrap}.env-appium-badge{margin-left:55px;margin-top:-12px}.env-appium-details{grid-template-columns:repeat(2,minmax(0,1fr))}.env-device-row{grid-template-columns:1fr}.env-device-actions{padding-left:16px}.env-device-summary{display:none}}
+      </style>
+      <section id="env-appium-card" class="env-appium-card" data-state="stopped" aria-labelledby="env-appium-heading">
+        <div class="env-appium-head">
+          <div class="env-appium-icon" aria-hidden="true">🔌</div>
+          <div class="env-appium-title">
+            <h2 id="env-appium-heading">Appium 서버</h2>
+            <div id="env-appium-endpoint" class="env-appium-endpoint">localhost:4723</div>
+          </div>
+          <span id="env-appium-badge" class="env-appium-badge" role="status">확인 중</span>
+        </div>
+        <div id="env-appium-state-note" class="env-appium-note">Appium 상태를 확인하고 있습니다.</div>
+        <div id="env-appium-progress" class="env-appium-progress" aria-label="Appium 시작 진행 중"><span></span></div>
+        <dl id="env-appium-details" class="env-appium-details">
+          <div class="env-appium-detail"><dt>상태</dt><dd id="env-appium-owner">—</dd></div>
+          <div class="env-appium-detail"><dt>버전</dt><dd id="env-appium-version">확인 전</dd></div>
+          <div class="env-appium-detail"><dt>활성 세션</dt><dd id="env-appium-sessions">0개</dd></div>
+          <div class="env-appium-detail"><dt>업타임</dt><dd id="env-appium-uptime">—</dd></div>
+        </dl>
+        <div class="env-appium-driver-row" aria-label="Appium 드라이버 설치 상태">
+          <span class="env-appium-section-label">Drivers</span>
+          <span class="env-appium-driver" data-driver="uiautomator2">확인 중 · UiAutomator2</span>
+          <span class="env-appium-driver" data-driver="xcuitest">확인 중 · XCUITest</span>
+        </div>
+        <div id="env-appium-driver-help" class="env-appium-driver-help"></div>
+        <div id="env-appium-mjpeg-panel" class="env-appium-mjpeg"></div>
+        <div id="env-appium-error" class="env-appium-error" role="alert"></div>
+        <div class="env-appium-actions">
+          <button id="env-btn-start" class="btn primary" onclick="envAppiumAction('start')">▶ 시작</button>
+          <button id="env-btn-stop" class="btn danger" style="display:none" onclick="envAppiumAction('stop')">■ 중지</button>
+          <button id="env-btn-restart" class="btn" style="display:none" onclick="envAppiumAction('restart')">↺ 재시작</button>
+          <button id="env-btn-refresh" class="btn" style="display:none" onclick="pollEnvStatus()">↺ 상태 새로고침</button>
+          <button id="env-btn-retry" class="btn primary" style="display:none" onclick="envAppiumAction('start')">↺ 다시 시도</button>
+        </div>
+        <div id="env-appium-log-section" class="env-appium-log">
+          <div class="env-appium-log-head">
+            <span class="env-appium-log-title">최근 Appium 로그</span>
+            <button id="env-appium-log-refresh" class="env-appium-log-tool" type="button" onclick="refreshEnvAppiumLog()">↺ 새로고침</button>
+            <button id="env-appium-log-more" class="env-appium-log-tool" type="button" onclick="openEnvAppiumLogModal()">200줄</button>
+          </div>
+          <pre id="env-appium-log-output" class="env-appium-log-output">로그를 불러오는 중...</pre>
+          <code id="env-appium-log-path" class="env-appium-log-path">logs/appium_server.log</code>
+        </div>
+        <div id="env-appium-log-modal" class="env-appium-log-modal" role="dialog" aria-modal="true" aria-labelledby="env-appium-log-modal-title" onclick="if(event.target===this)closeEnvAppiumLogModal()">
+          <div class="env-appium-log-dialog">
+            <div class="env-appium-log-dialog-head">
+              <strong id="env-appium-log-modal-title">Appium 로그 전체 보기</strong>
+              <code>logs/appium_server.log</code>
+              <button id="env-appium-log-modal-close" class="env-appium-log-tool" type="button" onclick="closeEnvAppiumLogModal()">닫기</button>
+            </div>
+            <pre id="env-appium-log-modal-output" class="env-appium-log-modal-output">로그를 불러오는 중...</pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Android 에뮬레이터 카드 ─────────────────────────── -->
+      <section id="env-android-card" class="env-device-card" aria-labelledby="env-android-heading">
+        <div class="env-device-head">
+          <span class="env-device-icon" aria-hidden="true">🤖</span>
+          <div class="env-device-heading"><h2 id="env-android-heading">Android 에뮬레이터</h2><p>설치된 AVD를 등록하고 실행합니다.</p></div>
+          <span id="env-android-badge" class="env-device-summary" role="status">중지됨</span>
+          <button class="env-device-refresh" type="button" aria-label="Android 에뮬레이터 새로고침" onclick="pollEnvStatus()">↻ 새로고침</button>
+        </div>
+        <div class="env-device-body">
+          <div id="env-android-error" class="env-device-error" role="alert"></div>
+          <div id="env-android-emulator-list" class="env-device-list"></div>
+          <button class="env-device-add" type="button" onclick="envShowAddModal('android','emulator')">＋ Android 에뮬레이터 추가</button>
+        </div>
+      </section>
+
+      <!-- ── Android 실기기 카드 (M3.0) ──────────────────────── -->
+      <div id="env-android-real-card" style="margin-bottom:12px;padding:14px 16px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2)">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <span style="font-size:12px;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);font-weight:600">Android 실기기</span>
+        </div>
+        <div id="env-android-real-list" style="margin-bottom:6px"></div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:8px">
+          USB 연결 후 <code style="font-size:10px;background:var(--surface3,var(--surface2));padding:1px 4px;border-radius:3px;border:1px solid var(--border)">adb devices</code>로 확인.
+          <code style="font-size:10px;background:var(--surface3,var(--surface2));padding:1px 4px;border-radius:3px;border:1px solid var(--border)">wifi_ip</code> 설정 시 WiFi ADB 연결/해제 버튼이 표시됩니다.
+        </div>
+        <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center">
+          <button class="btn" style="flex:none;padding:4px 10px;font-size:11px" onclick="envShowAddModal('android','real_device')">＋ 추가</button>
+          <button class="btn" style="flex:none;padding:4px 10px;font-size:11px" onclick="envShowWifiPairModal()" title="Android 11+ 무선 디버깅 페어링">📡 WiFi 페어링</button>
+        </div>
+      </div>
+
+      <!-- ── iOS 시뮬레이터 카드 ────────────────────────────── -->
+      <section id="env-ios-card" class="env-device-card" aria-labelledby="env-ios-heading">
+        <div class="env-device-head">
+          <span class="env-device-icon" aria-hidden="true">🍎</span>
+          <div class="env-device-heading"><h2 id="env-ios-heading">iOS 시뮬레이터</h2><p>Xcode의 시뮬레이터를 등록하고 부팅합니다.</p></div>
+          <span id="env-ios-badge" class="env-device-summary" role="status">중지됨</span>
+          <button class="env-device-refresh" type="button" aria-label="iOS 시뮬레이터 새로고침" onclick="pollEnvStatus()">↻ 새로고침</button>
+        </div>
+        <div class="env-device-body">
+          <div id="env-ios-error" class="env-device-error" role="alert"></div>
+          <div id="env-ios-simulator-list" class="env-device-list"></div>
+          <button class="env-device-add" type="button" onclick="envShowAddModal('ios','simulator')">＋ iOS 시뮬레이터 추가</button>
+        </div>
+      </section>
+
+      <!-- ── iOS 실기기 카드 (M3.0) ────────────────────────── -->
+      <div id="env-ios-real-card" style="margin-bottom:20px;padding:14px 16px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2)">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <span style="font-size:12px;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);font-weight:600">iOS 실기기</span>
+        </div>
+        <div id="env-ios-real-list" style="margin-bottom:6px"></div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:8px">
+          Lightning/USB-C 연결 후 신뢰 허용. 연결 상태는 자동으로 감지됩니다.
+          WDA 빌드는 Apple Developer 계정과 Xcode가 필요합니다.
+        </div>
+        <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center">
+          <button class="btn" style="flex:none;padding:4px 10px;font-size:11px" onclick="envShowAddModal('ios','real_device')">＋ 추가</button>
+          <button class="btn" style="flex:none;padding:4px 10px;font-size:11px" onclick="envShowWdaBuildModal()" title="WebDriverAgent 빌드 및 설치">🔨 WDA 빌드</button>
+        </div>
+      </div>
+
       <div class="card-title">컨피그 작성 가이드</div>
       <div class="guide-tabs">
         <button class="guide-tab active" onclick="switchGuide('screens',this)">screens.json</button>
@@ -1996,12 +2171,16 @@ async function refreshGenerated(){
     var groupMap={};
     data.forEach(function(g){ g.files.forEach(function(file){ var key=g.platform+':'+file.split('/')[0]; (groupMap[key]||(groupMap[key]=[])).push({platform:g.platform,file:file}); }); });
     var groups=Object.keys(groupMap);
+    var staleFiles=data.reduce(function(all,g){return all.concat(g.stale_files||[]);},[]);
+    var staleHtml=staleFiles.length
+      ? '<div class="env-error-banner">⚠️ 구버전 테스트 '+staleFiles.length+'개가 감지되었습니다. Capture Studio에서 다시 저장·생성한 뒤 실행하세요.</div>'
+      : '';
     var folderHtml=groups.map(function(key){ return '<label class="quick-group-item"><input type="checkbox" class="quick-group-cb" value="'+esc(key)+'" checked onchange="syncQuickSelection()">'
       +'<span class="quick-group-name">'+esc(key.split(':').slice(1).join(':'))+'</span><span class="quick-group-count">'+groupMap[key].length+'개 파일</span></label>'; }).join('');
     var savedQuickResult='';
     try{ savedQuickResult=localStorage.getItem('qa-native-app.quick-result-v3.'+_quickPlatform)||''; }catch(_){ }
     window._quickRunResultVisible=!!savedQuickResult;
-    var quickHtml='<div class="quick-view-title">빠른 실행</div><p class="quick-view-subtitle">선택한 OS의 tests/generated 폴더에 생성된 테스트 코드만 실행합니다.</p>'
+    var quickHtml='<div class="quick-view-title">빠른 실행</div><p class="quick-view-subtitle">선택한 OS의 tests/generated 폴더에 생성된 테스트 코드만 실행합니다.</p>'+staleHtml
       +'<div class="quick-platform-selector"><button type="button" class="quick-platform-btn '+(_quickPlatform==='android'?'active':'')+'" onclick="setQuickPlatform(\'android\')">🤖 Android</button><button type="button" class="quick-platform-btn '+(_quickPlatform==='ios'?'active':'')+'" onclick="setQuickPlatform(\'ios\')">🍎 iOS</button></div>'
       +'<div class="quick-select-card"><div class="quick-select-head"><span>'+(_quickPlatform==='android'?'Android':'iOS')+' 테스트 폴더</span><label><input type="checkbox" id="quick-select-all" checked onchange="quickToggleGenerated(this.checked)"> 전체 선택</label></div>'
       +'<div class="quick-group-list">'+(folderHtml||'<div class="tc-folder-empty">생성된 테스트 폴더가 없습니다.</div>')+'</div>'
@@ -2494,7 +2673,919 @@ async function refreshTcFolders(){
   setInterval(refreshReports, 15000);
   setInterval(refreshTcFolders, 15000);
   setInterval(refreshImportFiles, 15000);
+  pollEnvStatus();
+  setInterval(pollEnvStatus, 3000);
 })();
+
+// ── ENV 상태 카드 (Appium + Android + iOS) ────────────────────────
+var _envAppiumStatus = 'stopped'; // 상태값 직접 참조용 모듈 변수
+var _envAppiumRenderToken = 0;
+var _envAppiumActionBusy = false;
+var _envAppiumLogState = null;
+
+function pollEnvStatus() {
+  fetch('/api/env/status')
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      updateEnvAppiumCard(d.appium || {});
+      updateAndroidCard(d.android || {});
+      updateIosCard(d.ios || {});
+    })
+    .catch(function(){ /* 서버 미응답 시 무시 */ });
+}
+
+function updateEnvAppiumCard(appium) {
+  var status = appium.status || 'stopped';
+  var renderToken = ++_envAppiumRenderToken;
+  var topDot = document.getElementById('dot-appium');
+  var topText = document.getElementById('txt-appium');
+  var appiumReady = status === 'managed' || status === 'external';
+  if (topDot) topDot.className = 'dot ' + (appiumReady ? 'on' : 'off');
+  if (topText) {
+    topText.textContent = appiumReady
+      ? 'Appium 연결됨'
+      : (status === 'starting' ? 'Appium 시작 중' : (status === 'error' ? 'Appium 오류' : 'Appium 미기동'));
+  }
+  var card = document.getElementById('env-appium-card');
+  if (card) card.setAttribute('data-state', status);
+
+  var badgeMap = {
+    stopped: '중지됨',
+    starting: '시작 중',
+    managed: '실행 중',
+    external: '외부 실행 중',
+    error: '오류',
+  };
+  var badge = document.getElementById('env-appium-badge');
+  if (badge) badge.textContent = badgeMap[status] || badgeMap.stopped;
+
+  var port = appium.port || 4723;
+  var endpoint = document.getElementById('env-appium-endpoint');
+  if (endpoint) endpoint.textContent = 'localhost:' + port;
+
+  var owner = document.getElementById('env-appium-owner');
+  var ownerText = 'stopped';
+  if (status === 'managed') ownerText = 'managed' + (appium.pid ? ' (PID ' + appium.pid + ')' : '');
+  else if (status === 'external') ownerText = 'external';
+  else if (status === 'starting') ownerText = 'starting' + (appium.pid ? ' (PID ' + appium.pid + ')' : '');
+  else if (status === 'error') ownerText = 'error';
+  if (owner) owner.textContent = ownerText;
+
+  var version = document.getElementById('env-appium-version');
+  if (version) version.textContent = appium.version ? 'Appium ' + appium.version : '확인 전';
+  var sessions = document.getElementById('env-appium-sessions');
+  if (sessions) sessions.textContent = Number(appium.active_sessions || 0) + '개';
+  var uptime = document.getElementById('env-appium-uptime');
+  if (uptime) uptime.textContent = formatEnvDuration(appium.uptime_seconds);
+
+  var noteMap = {
+    stopped: '아래 시작 버튼을 누르면 필요한 옵션을 포함해 Appium 서버를 자동으로 실행합니다.',
+    starting: 'Appium 응답을 기다리는 중입니다. 3초마다 확인하며 최대 30초까지 기다립니다.',
+    managed: '이 대시보드가 시작한 Appium입니다. 여기에서 안전하게 중지하거나 재시작할 수 있습니다.',
+    external: '터미널 등 외부에서 실행 중인 Appium입니다. 중지 버튼으로 종료할 수 있습니다.',
+    error: 'Appium을 시작하지 못했습니다. 아래 오류와 로그를 확인한 뒤 다시 시도해 주세요.',
+  };
+  var note = document.getElementById('env-appium-state-note');
+  if (note) note.textContent = noteMap[status] || noteMap.stopped;
+
+  renderEnvAppiumDriver('uiautomator2', 'UiAutomator2', appium.drivers || {});
+  renderEnvAppiumDriver('xcuitest', 'XCUITest', appium.drivers || {});
+  renderEnvAppiumDriverHelp(appium.drivers || {});
+
+  var errDiv = document.getElementById('env-appium-error');
+  if (errDiv) {
+    if (status === 'error' && appium.error_msg) {
+      errDiv.textContent = appium.error_msg;
+      errDiv.style.display = 'block';
+    } else {
+      errDiv.style.display = 'none';
+    }
+  }
+
+  var mjpegPanel = document.getElementById('env-appium-mjpeg-panel');
+  if (mjpegPanel) {
+    mjpegPanel.classList.remove('warning');
+    if (status === 'managed' && appium.mjpeg_enabled !== false) {
+      mjpegPanel.textContent = '✓ Android MJPEG 스트리밍 필수 플래그가 설정됨';
+      mjpegPanel.style.display = 'block';
+    } else if (status === 'external') {
+      mjpegPanel.textContent = 'MJPEG 플래그를 확인하고 있습니다...';
+      mjpegPanel.style.display = 'block';
+      fetch('/api/check/mjpeg?port=8093')
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if (renderToken !== _envAppiumRenderToken) return;
+          mjpegPanel.classList.toggle('warning', !d.ok);
+          mjpegPanel.textContent = d.ok
+            ? '✓ 외부 Appium의 MJPEG 스트림을 확인했습니다.'
+            : '⚠ MJPEG 플래그를 확인해 주세요. Android 화면 미러링이 동작하지 않을 수 있습니다.';
+        })
+        .catch(function(){
+          if (renderToken !== _envAppiumRenderToken) return;
+          mjpegPanel.classList.add('warning');
+          mjpegPanel.textContent = '⚠ MJPEG 플래그 상태를 확인하지 못했습니다.';
+        });
+    } else {
+      mjpegPanel.style.display = 'none';
+    }
+  }
+
+  var btnCfg = {
+    'env-btn-start':   status === 'stopped',
+    'env-btn-stop':    status === 'managed' || status === 'external',
+    'env-btn-restart': status === 'managed',
+    'env-btn-refresh': status === 'external',
+    'env-btn-retry':   status === 'error',
+  };
+  Object.keys(btnCfg).forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.style.display = btnCfg[id] ? '' : 'none';
+  });
+  var stopButton = document.getElementById('env-btn-stop');
+  if (stopButton) {
+    stopButton.textContent = '■ 중지';
+    stopButton.disabled = _envAppiumActionBusy;
+  }
+
+  var logSection = document.getElementById('env-appium-log-section');
+  if (logSection) {
+    var showLog = status === 'managed' || status === 'error';
+    logSection.style.display = showLog ? 'block' : 'none';
+    if (showLog && _envAppiumLogState !== status) {
+      _envAppiumLogState = status;
+      loadEnvAppiumLog(renderToken);
+    } else if (!showLog) {
+      _envAppiumLogState = null;
+    }
+  }
+
+  // 모듈 변수에 상태값 저장 (Android/iOS 카드 게이팅용)
+  _envAppiumStatus = status;
+
+  // Android/iOS 파이프라인 버튼 게이팅
+  var appiumReady = (status === 'managed' || status === 'external');
+  ['btn-run-all','btn-analyze','btn-generate','btn-lint','btn-execute','btn-heal'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el && !el.classList.contains('running')) {
+      el.disabled = !appiumReady;
+    }
+  });
+}
+
+function formatEnvDuration(seconds) {
+  if (seconds === null || seconds === undefined || isNaN(Number(seconds))) return '—';
+  var total = Math.max(0, Math.floor(Number(seconds)));
+  var hours = Math.floor(total / 3600);
+  var minutes = Math.floor((total % 3600) / 60);
+  var secs = total % 60;
+  return [hours, minutes, secs].map(function(value){ return String(value).padStart(2, '0'); }).join(':');
+}
+
+function renderEnvAppiumDriver(key, label, drivers) {
+  var el = document.querySelector('[data-driver="' + key + '"]');
+  if (!el) return;
+  var ready = drivers[key] === true;
+  el.classList.toggle('is-ready', ready);
+  el.classList.toggle('is-missing', !ready);
+  el.textContent = (ready ? '✓ ' : '✕ ') + label;
+}
+
+function renderEnvAppiumDriverHelp(drivers) {
+  var help = document.getElementById('env-appium-driver-help');
+  if (!help) return;
+  var commands = [];
+  if (drivers.uiautomator2 !== true) commands.push('appium driver install uiautomator2');
+  if (drivers.xcuitest !== true) commands.push('appium driver install xcuitest');
+  if (!commands.length) {
+    help.style.display = 'none';
+    help.textContent = '';
+    return;
+  }
+  help.textContent = '설치되지 않은 드라이버가 있습니다. 최초 환경 구축 시 아래 명령을 복사해 터미널에서 실행하세요.';
+  commands.forEach(function(command) {
+    var row = document.createElement('div');
+    row.className = 'env-appium-driver-command';
+    var code = document.createElement('code');
+    code.textContent = command;
+    var copyButton = document.createElement('button');
+    copyButton.type = 'button';
+    copyButton.className = 'env-appium-copy';
+    copyButton.textContent = '명령 복사';
+    copyButton.dataset.copyCommand = command;
+    copyButton.addEventListener('click', function(){ copyEnvCommand(copyButton); });
+    row.appendChild(code);
+    row.appendChild(copyButton);
+    help.appendChild(row);
+  });
+  help.style.display = 'block';
+}
+
+async function copyEnvCommand(button) {
+  var command = button.dataset.copyCommand || '';
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(command);
+    } else {
+      legacyCopyEnvCommand(command);
+    }
+    button.textContent = '복사됨';
+    setTimeout(function(){ button.textContent = '명령 복사'; }, 1600);
+  } catch (_error) {
+    try {
+      legacyCopyEnvCommand(command);
+      button.textContent = '복사됨';
+      setTimeout(function(){ button.textContent = '명령 복사'; }, 1600);
+    } catch (_fallbackError) {
+      button.textContent = '직접 선택';
+    }
+  }
+}
+
+function legacyCopyEnvCommand(command) {
+  var textarea = document.createElement('textarea');
+  textarea.value = command;
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand('copy');
+  textarea.remove();
+}
+
+function loadEnvAppiumLog(renderToken, lines, outputId) {
+  var output = document.getElementById(outputId || 'env-appium-log-output');
+  if (!output) return;
+  output.textContent = '로그를 불러오는 중...';
+  fetch('/api/env/appium/log?lines=' + (lines || 200))
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (renderToken !== _envAppiumRenderToken && !outputId) return;
+      output.textContent = d.ok && Array.isArray(d.lines) && d.lines.length
+        ? d.lines.join('\n')
+        : '아직 기록된 Appium 로그가 없습니다.';
+      output.scrollTop = output.scrollHeight;
+    })
+    .catch(function(){
+      if (renderToken === _envAppiumRenderToken || outputId) output.textContent = '로그를 불러오지 못했습니다.';
+    });
+}
+
+function refreshEnvAppiumLog() {
+  loadEnvAppiumLog(_envAppiumRenderToken, 200, 'env-appium-log-output');
+}
+
+function openEnvAppiumLogModal() {
+  var modal = document.getElementById('env-appium-log-modal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  loadEnvAppiumLog(_envAppiumRenderToken, 200, 'env-appium-log-modal-output');
+}
+
+function closeEnvAppiumLogModal() {
+  var modal = document.getElementById('env-appium-log-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function envAppiumAction(action) {
+  if (_envAppiumActionBusy) return;
+
+  var isStart = action === 'start';
+  var isManagedAction = action === 'restart';
+  if (isManagedAction && _envAppiumStatus !== 'managed') {
+    showEnvAppiumActionError('대시보드가 관리 중인 Appium에서만 재시작할 수 있습니다.');
+    return;
+  }
+  if (isStart && _envAppiumStatus !== 'stopped' && _envAppiumStatus !== 'error') return;
+
+  _envAppiumActionBusy = true;
+  setEnvAppiumActionBusy(true);
+  clearEnvAppiumActionError();
+  try {
+    if (action === 'restart') {
+      await requestEnvAppium('/api/env/appium/stop');
+      await requestEnvAppium('/api/env/appium/start');
+    } else {
+      await requestEnvAppium(
+        action === 'start' ? '/api/env/appium/start' : '/api/env/appium/stop'
+      );
+    }
+    setTimeout(pollEnvStatus, 250);
+  } catch (error) {
+    showEnvAppiumActionError(friendlyEnvAppiumError(error.code, error.message));
+  } finally {
+    _envAppiumActionBusy = false;
+    setEnvAppiumActionBusy(false);
+  }
+}
+
+async function requestEnvAppium(url) {
+  var response;
+  var payload = {};
+  try {
+    response = await fetch(url, { method: 'POST' });
+    payload = await response.json();
+  } catch (error) {
+    var networkError = new Error('서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.');
+    networkError.code = 'network_error';
+    throw networkError;
+  }
+  if (!response.ok || payload.ok === false) {
+    var requestError = new Error(payload.detail || payload.error || '요청을 처리하지 못했습니다.');
+    requestError.code = payload.error || 'request_failed';
+    throw requestError;
+  }
+  return payload;
+}
+
+function friendlyEnvAppiumError(code, fallback) {
+  var messages = {
+    capture_session_active: 'Capture 세션이 실행 중입니다. Capture Studio에서 세션을 먼저 종료해 주세요.',
+    pipeline_running: '파이프라인이 실행 중입니다. 실행을 마치거나 중단한 뒤 다시 시도해 주세요.',
+    external_process: '외부에서 실행한 Appium은 대시보드에서 종료할 수 없습니다.',
+    already_running: 'Appium이 이미 실행 중입니다. 상태 새로고침으로 현재 상태를 확인해 주세요.',
+    not_running: '종료할 Appium 프로세스를 찾지 못했습니다. 상태를 새로고침해 주세요.',
+  };
+  return messages[code] || fallback || 'Appium 요청을 처리하지 못했습니다.';
+}
+
+function showEnvAppiumActionError(message) {
+  var error = document.getElementById('env-appium-error');
+  if (!error) return;
+  error.textContent = message;
+  error.style.display = 'block';
+}
+
+function clearEnvAppiumActionError() {
+  var error = document.getElementById('env-appium-error');
+  if (!error) return;
+  error.textContent = '';
+  error.style.display = 'none';
+}
+
+function setEnvAppiumActionBusy(busy) {
+  var card = document.getElementById('env-appium-card');
+  if (card) card.setAttribute('aria-busy', busy ? 'true' : 'false');
+  ['env-btn-start','env-btn-stop','env-btn-restart','env-btn-refresh','env-btn-retry'].forEach(function(id) {
+    var button = document.getElementById(id);
+    if (button) button.disabled = busy;
+  });
+}
+
+// ── Android / iOS 디바이스 카드 ──────────────────────────────────
+// US-3: 에뮬레이터/시뮬레이터 목록 렌더링 (삭제 버튼 포함)
+function envAttr(value) {
+  return esc(value).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function renderDeviceList(containerId, devices, platform, mode, runtime) {
+  var el = document.getElementById(containerId);
+  if (!el) return;
+  if (!devices || devices.length === 0) {
+    el.innerHTML = '<div class="env-device-empty">등록된 ' + (platform === 'android' ? '에뮬레이터' : '시뮬레이터') + '가 없습니다.</div>';
+    return;
+  }
+  runtime = runtime || {};
+  var platformBusy = _envDeviceActionBusy[platform];
+  var runtimeBusy = runtime.status === 'starting';
+  var runtimeRunning = runtime.status === 'running';
+  el.innerHTML = devices.map(function(dev) {
+    var name = dev.deviceName || '이름 없음';
+    var sub = dev.avd || dev.udid || '';
+    var isDefault = dev['default'];
+    var isActive = platform === 'android'
+      ? !!dev.avd && dev.avd === runtime.avd
+      : (!!dev.udid && dev.udid === runtime.udid) || (!runtime.udid && dev.deviceName === runtime.simulator);
+    var rowState = isActive && runtimeBusy ? ' is-starting' : (isActive && runtimeRunning ? ' is-active' : '');
+    var version = (platform === 'android' ? 'Android ' : 'iOS ') + (dev.platformVersion || '버전 확인 필요');
+    var action = isActive && runtimeRunning ? 'stop' : 'start';
+    var actionText = action === 'stop' ? (platform === 'android' ? '■ 중지' : '■ 종료') : (platform === 'android' ? '▶ 시작' : '▶ 부팅');
+    var actionLabel = name + ' ' + (action === 'stop' ? (platform === 'android' ? '중지' : '종료') : (platform === 'android' ? '시작' : '부팅'));
+    var actionDisabled = platformBusy || runtimeBusy || (runtimeRunning && !isActive);
+    var isLastVirtual = (mode !== 'real_device') && devices.length <= 1;
+    var rmTooltip = isLastVirtual ? '마지막 기기입니다. 다른 기기를 먼저 추가하면 삭제할 수 있습니다.' : (name + ' 삭제');
+    return '<div class="env-device-row' + rowState + '" data-device-key="' + encodeURIComponent(sub) + '">'
+      + '<div class="env-device-main"><span class="env-device-dot" aria-hidden="true"></span><div class="env-device-copy">'
+      + '<div class="env-device-name"><strong>' + esc(name) + '</strong><span class="env-device-version">' + esc(version) + '</span>'
+      + (isDefault ? '<span class="env-default-badge">기본</span>' : '') + '</div>'
+      + '<div class="env-device-key">' + esc(sub) + '</div></div></div>'
+      + '<div class="env-device-actions">'
+      + '<button class="env-row-action' + (action === 'stop' ? ' stop' : '') + '" type="button" aria-label="' + envAttr(actionLabel) + '" data-env-platform="' + platform + '" data-env-action="' + action + '" data-env-target="' + encodeURIComponent(sub) + '" onclick="envVirtualActionFromButton(this)"' + (actionDisabled ? ' disabled' : '') + '>' + actionText + '</button>'
+      + '<button class="env-row-remove" type="button" aria-label="' + envAttr(rmTooltip) + '" title="' + envAttr(rmTooltip) + '" data-platform="' + encodeURIComponent(platform) + '" data-mode="' + encodeURIComponent(mode) + '" data-device-name="' + encodeURIComponent(name) + '" onclick="envRemoveDeviceFromButton(this)"' + (isLastVirtual ? ' disabled' : '') + '>×</button>'
+      + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+function renderRealDevices(containerId, realDevices, platform) {
+  var el = document.getElementById(containerId);
+  if (!el) return;
+  if (!realDevices || realDevices.length === 0) {
+    el.innerHTML = '<span style="font-size:11px;color:var(--text3)">등록된 실기기 없음</span>';
+    return;
+  }
+  el.innerHTML = realDevices.map(function(dev) {
+    var dot = dev.connected
+      ? '<span style="color:var(--pass)">&#9679;</span>'
+      : '<span style="color:var(--text3)">&#9679;</span>';
+    var label = dev.deviceName || dev.serial || dev.udid || '알 수 없음';
+    var sub = dev.serial || dev.udid || '';
+    var wifiBtns = '';
+    if (dev.wifi_ip) {
+      var btnStyle = 'padding:3px 10px;font-size:11px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text1);cursor:pointer;';
+      if (dev.connected) {
+        wifiBtns = '<button onclick="envAndroidRealDisconnect()" style="' + btnStyle + '">&#9986; 해제</button>';
+      } else {
+        wifiBtns = '<button onclick="envAndroidRealConnect()" style="' + btnStyle + '">&#128279; WiFi</button>';
+      }
+    }
+    var isLastReal = realDevices.length <= 1;
+    var delBtn = platform
+      ? '<button data-platform="' + encodeURIComponent(platform) + '" data-mode="real_device" data-device-name="' + encodeURIComponent(label) + '" data-is-last="' + isLastReal + '" onclick="envRemoveDeviceFromButton(this)" '
+        + 'style="font-size:10px;color:var(--fail);background:none;border:none;cursor:pointer;padding:0 4px" title="삭제">&#10005;</button>'
+      : '';
+    return '<div style="display:flex;align-items:center;gap:7px;margin-bottom:4px;font-size:12px;flex-wrap:wrap">'
+      + dot + ' <span>' + esc(label) + '</span>'
+      + (sub ? '<span style="color:var(--text3);font-size:10px;font-family:monospace">' + esc(sub) + '</span>' : '')
+      + (wifiBtns ? '<span style="margin-left:4px">' + wifiBtns + '</span>' : '')
+      + delBtn
+      + '</div>';
+  }).join('');
+}
+
+// ── US-3: 디바이스 추가/삭제 ─────────────────────────────────────
+
+var _envAddCtx = {platform: '', mode: '', devices: [], trigger: null};
+var _envConfiguredVirtual = {android: {}, ios: {}};
+
+function showEnvAddError(message) {
+  var error = document.getElementById('env-add-error');
+  error.textContent = message || '';
+  error.style.display = message ? 'block' : 'none';
+}
+
+function envUserErrorMessage(data, fallback) {
+  var messages = {
+    duplicate_avd: '이미 등록된 Android 에뮬레이터입니다.',
+    duplicate_udid: '이미 등록된 iOS 시뮬레이터입니다.',
+    duplicate_deviceName: '같은 이름의 시뮬레이터가 이미 등록되어 있습니다.',
+    invalid_avd: '이 컴퓨터에서 찾을 수 없는 Android 에뮬레이터입니다. 목록을 새로고침해 주세요.',
+    invalid_udid: '이 컴퓨터에서 찾을 수 없는 iOS 시뮬레이터입니다. 목록을 새로고침해 주세요.',
+    capture_session_active: 'Capture Studio가 이 기기를 사용 중입니다. 먼저 Capture 세션을 종료해 주세요.',
+    pipeline_running: '파이프라인이 실행 중입니다. 끝난 뒤 다시 시도해 주세요.'
+  };
+  return (data && (data.message || messages[data.error] || data.detail || data.error)) || fallback;
+}
+
+function envSelectDiscoveredDevice() {
+  var select = document.getElementById('env-add-device-select');
+  var selected = _envAddCtx.devices.find(function(device) {
+    return (_envAddCtx.platform === 'android' ? device.avd : device.udid) === select.value;
+  });
+  document.getElementById('env-add-deviceName').value = selected ? (selected.deviceName || '') : '';
+  document.getElementById('env-add-platformVersion').value = selected ? (selected.platformVersion || '') : '';
+  document.getElementById('env-add-avd').value = selected && selected.avd ? selected.avd : '';
+  document.getElementById('env-add-udid').value = selected && selected.udid ? selected.udid : '';
+  document.getElementById('env-add-register').disabled = !selected || !selected.platformVersion;
+}
+
+function loadEnvVirtualDevices(platform) {
+  var select = document.getElementById('env-add-device-select');
+  var register = document.getElementById('env-add-register');
+  select.innerHTML = '<option value="">불러오는 중...</option>';
+  select.disabled = true;
+  register.disabled = true;
+  var url = platform === 'android'
+    ? '/api/env/android/list_system_avds'
+    : '/api/env/ios/list_system_simulators';
+  fetch(url)
+    .then(function(response) { return response.json().then(function(data) { return {response:response, data:data}; }); })
+    .then(function(result) {
+      if (!result.response.ok || result.data.ok === false) throw new Error(result.data.message || result.data.error || '목록을 불러오지 못했습니다.');
+      _envAddCtx.devices = platform === 'android' ? (result.data.avds || []) : (result.data.simulators || []);
+      if (!_envAddCtx.devices.length) {
+        select.innerHTML = '<option value="">설치된 기기가 없습니다</option>';
+        showEnvAddError(platform === 'android' ? 'Android Studio에서 AVD를 먼저 만들어 주세요.' : 'Xcode에서 시뮬레이터를 먼저 만들어 주세요.');
+        return;
+      }
+      var configured = _envConfiguredVirtual[platform] || {};
+      var firstUnregistered = '';
+      select.innerHTML = _envAddCtx.devices.map(function(device) {
+        var value = platform === 'android' ? device.avd : device.udid;
+        var label = device.deviceName + ' (' + (platform === 'android' ? 'Android ' : 'iOS ') + (device.platformVersion || '?') + ')';
+        if (configured[value]) label += ' · 등록됨';
+        else if (!firstUnregistered) firstUnregistered = value;
+        return '<option value="' + encodeURIComponent(value) + '">' + esc(label) + '</option>';
+      }).join('');
+      Array.prototype.forEach.call(select.options, function(option) {
+        option.value = decodeURIComponent(option.value);
+      });
+      select.disabled = false;
+      if (firstUnregistered) select.value = firstUnregistered;
+      envSelectDiscoveredDevice();
+      select.focus();
+    })
+    .catch(function(error) {
+      _envAddCtx.devices = [];
+      select.innerHTML = '<option value="">목록 불러오기 실패</option>';
+      showEnvAddError(error.message || '목록을 불러오지 못했습니다.');
+    });
+}
+
+function envShowAddModal(platform, mode) {
+  _envAddCtx = {platform: platform, mode: mode, devices: [], trigger: document.activeElement};
+  var modeLabel = {emulator:'에뮬레이터', real_device:'실기기', simulator:'시뮬레이터'}[mode] || mode;
+  var platformLabel = platform === 'android' ? 'Android' : 'iOS';
+  var virtualDevice = mode === 'emulator' || mode === 'simulator';
+  document.getElementById('env-add-modal-title').textContent = (platform === 'android' ? '🤖 ' : '🍎 ') + platformLabel + ' ' + modeLabel + ' 추가';
+  document.getElementById('env-add-discovery-row').style.display = virtualDevice ? '' : 'none';
+  document.getElementById('env-add-version-row').style.display = virtualDevice ? '' : 'none';
+  document.getElementById('env-add-udid-row').style.display = (mode === 'simulator' || mode === 'real_device') ? '' : 'none';
+  document.getElementById('env-add-default-row').style.display = virtualDevice ? 'none' : '';
+  document.getElementById('env-add-select-label').textContent = platform === 'android' ? '시스템에 설치된 AVD (emulator -list-avds)' : '시뮬레이터 선택 (xcrun simctl list)';
+  document.getElementById('env-add-name-label').textContent = platform === 'android' ? '이름 (자동 입력)' : (mode === 'simulator' ? '기기명 (자동 입력)' : '기기명');
+  document.getElementById('env-add-version-label').textContent = platform === 'android' ? 'Android 버전 (자동 입력)' : 'iOS 버전 (자동 입력)';
+  document.getElementById('env-add-udid-label').textContent = mode === 'simulator' ? 'UDID (자동 입력)' : 'Serial / UDID';
+  document.getElementById('env-add-deviceName').value = '';
+  document.getElementById('env-add-deviceName').readOnly = virtualDevice;
+  document.getElementById('env-add-platformVersion').value = '';
+  document.getElementById('env-add-platformVersion').readOnly = virtualDevice;
+  document.getElementById('env-add-avd').value = '';
+  document.getElementById('env-add-udid').value = '';
+  document.getElementById('env-add-udid').readOnly = mode === 'simulator';
+  document.getElementById('env-add-default').checked = false;
+  showEnvAddError('');
+  document.getElementById('env-add-modal').style.display = 'flex';
+  if (virtualDevice) {
+    loadEnvVirtualDevices(platform);
+  } else {
+    document.getElementById('env-add-register').disabled = false;
+    document.getElementById('env-add-deviceName').focus();
+  }
+}
+
+function envCloseAddModal() {
+  document.getElementById('env-add-modal').style.display = 'none';
+  var trigger = _envAddCtx.trigger;
+  if (trigger && typeof trigger.focus === 'function') trigger.focus();
+}
+
+async function envSubmitAddDevice() {
+  var platform = _envAddCtx.platform;
+  var mode = _envAddCtx.mode;
+  var body = {
+    mode: mode,
+    deviceName: document.getElementById('env-add-deviceName').value.trim(),
+  };
+  if (mode === 'emulator') {
+    body.avd = document.getElementById('env-add-avd').value.trim();
+    body.platformVersion = document.getElementById('env-add-platformVersion').value.trim();
+  } else if (mode === 'simulator') {
+    body.platformVersion = document.getElementById('env-add-platformVersion').value.trim();
+    body.udid = document.getElementById('env-add-udid').value.trim();
+  } else if (mode === 'real_device') {
+    body.udid = document.getElementById('env-add-udid').value.trim();
+    body['default'] = document.getElementById('env-add-default').checked;
+  }
+  var register = document.getElementById('env-add-register');
+  register.disabled = true;
+  showEnvAddError('');
+  try {
+    var response = await fetch('/api/env/' + platform + '/add', {
+      method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body),
+    });
+    var data = await response.json();
+    if (!response.ok || data.ok === false) throw new Error(envUserErrorMessage(data, '등록하지 못했습니다.'));
+    envCloseAddModal();
+    setTimeout(pollEnvStatus, 200);
+  } catch (error) {
+    showEnvAddError(error.message || '대시보드 서버에 연결할 수 없습니다.');
+    register.disabled = false;
+  }
+}
+
+document.addEventListener('keydown', function(event) {
+  var modal = document.getElementById('env-add-modal');
+  if (event.key === 'Escape' && modal && modal.style.display !== 'none') envCloseAddModal();
+});
+
+var _ENV_REMOVE_ERROR_MAP = {
+  last_device: '마지막 기기는 삭제할 수 없습니다. 다른 기기를 먼저 추가하세요.',
+  capture_session_active: 'Capture Studio 세션이 활성 상태입니다. 먼저 세션을 종료하세요.',
+  pipeline_running: '파이프라인 실행 중에는 디바이스를 변경할 수 없습니다.',
+  'device not found': '이미 삭제된 기기입니다. 목록을 새로고침합니다.',
+};
+function envRemoveErrorMsg(error) {
+  return _ENV_REMOVE_ERROR_MAP[error] || ('삭제 실패: ' + (error || '알 수 없는 오류'));
+}
+function envConfirmRemoveDevice(platform, mode, deviceName, isLastReal) {
+  return new Promise(function(resolve) {
+    var dialog = document.createElement('dialog');
+    dialog.className = 'report-delete-dialog';
+    var title = isLastReal ? '마지막 실기기 삭제' : '기기 삭제';
+    var warning = isLastReal
+      ? '<br><span style="color:var(--fail);font-size:12px">이 기기를 삭제하면 '
+        + (platform === 'android' ? 'Android' : 'iOS')
+        + ' 실기기 실행이 불가해집니다.</span>'
+      : '';
+    var typeNote = mode !== 'real_device'
+      ? '<br><span style="font-size:11px;color:var(--text3)">에뮬레이터/시뮬레이터 자체는 삭제되지 않습니다.</span>'
+      : '';
+    dialog.innerHTML = '<form method="dialog"><h2>' + esc(title) + '</h2><p>'
+      + esc(deviceName) + '을(를) 목록에서 삭제하시겠습니까?' + warning + typeNote
+      + '</p><div class="report-dialog-actions"><button value="cancel" autofocus>취소</button>'
+      + '<button value="delete" class="report-danger">삭제</button></div></form>';
+    dialog.addEventListener('close', function() {
+      var ok = dialog.returnValue === 'delete';
+      dialog.remove();
+      resolve(ok);
+    }, {once: true});
+    document.body.appendChild(dialog);
+    dialog.showModal();
+  });
+}
+function envRemoveDevice(platform, mode, deviceName, isLastReal) {
+  envConfirmRemoveDevice(platform, mode, deviceName, !!isLastReal).then(function(ok) {
+    if (!ok) return;
+    fetch('/api/env/' + platform + '/remove', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({mode: mode, deviceName: deviceName}),
+    })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (!d.ok) {
+          var errMsg = envRemoveErrorMsg(d.error);
+          var errDlg = document.createElement('dialog');
+          errDlg.className = 'report-delete-dialog';
+          errDlg.innerHTML = '<form method="dialog"><h2>삭제 실패</h2><p>' + esc(errMsg) + '</p>'
+            + '<div class="report-dialog-actions"><button value="ok" autofocus>확인</button></div></form>';
+          errDlg.addEventListener('close', function() { errDlg.remove(); }, {once: true});
+          document.body.appendChild(errDlg);
+          errDlg.showModal();
+          if (d.error === 'device not found') setTimeout(pollEnvStatus, 300);
+          return;
+        }
+        setTimeout(pollEnvStatus, 300);
+      })
+      .catch(function() {});
+  });
+}
+
+function envRemoveDeviceFromButton(button) {
+  return envRemoveDevice(
+    decodeURIComponent(button.dataset.platform || ''),
+    decodeURIComponent(button.dataset.mode || ''),
+    decodeURIComponent(button.dataset.deviceName || ''),
+    button.dataset.isLast === 'true'
+  );
+}
+
+function envAndroidRealConnect() {
+  fetch('/api/env/android/real/connect', { method: 'POST',
+    headers: {'Content-Type': 'application/json'}, body: '{}' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (!d.ok) { alert('연결 실패: ' + (d.error || '알 수 없는 오류')); }
+      setTimeout(pollEnvStatus, 1000);
+    })
+    .catch(function() {});
+}
+
+function envAndroidRealDisconnect() {
+  fetch('/api/env/android/real/disconnect', { method: 'POST',
+    headers: {'Content-Type': 'application/json'}, body: '{}' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (!d.ok) { alert('해제 실패: ' + (d.error || '알 수 없는 오류')); }
+      setTimeout(pollEnvStatus, 1000);
+    })
+    .catch(function() {});
+}
+
+// ── Phase 3: WiFi 페어링 ─────────────────────────────────────────
+function envShowWifiPairModal() {
+  document.getElementById('env-pair-ip').value = '';
+  document.getElementById('env-pair-port').value = '';
+  document.getElementById('env-pair-code').value = '';
+  var r = document.getElementById('env-pair-result');
+  r.style.display = 'none'; r.textContent = '';
+  document.getElementById('env-wifi-pair-modal').style.display = 'flex';
+}
+function envCloseWifiPairModal() {
+  document.getElementById('env-wifi-pair-modal').style.display = 'none';
+}
+function envSubmitWifiPair() {
+  var ip = document.getElementById('env-pair-ip').value.trim();
+  var port = document.getElementById('env-pair-port').value.trim();
+  var code = document.getElementById('env-pair-code').value.trim();
+  if (!ip || !port || !code) { alert('IP, 포트, 코드를 모두 입력하세요.'); return; }
+  var r = document.getElementById('env-pair-result');
+  r.style.display = 'block';
+  r.style.background = 'rgba(245,158,11,.1)'; r.style.border = '1px solid rgba(245,158,11,.3)';
+  r.textContent = '페어링 중...';
+  fetch('/api/env/android/real/pair', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ip: ip, port: port, code: code})
+  }).then(function(resp) { return resp.json(); })
+    .then(function(d) {
+      if (d.ok) {
+        r.style.background = 'rgba(34,197,94,.1)'; r.style.border = '1px solid rgba(34,197,94,.3)';
+        r.textContent = '✅ 페어링 성공: ' + (d.detail || '');
+        setTimeout(function() { envCloseWifiPairModal(); setTimeout(pollEnvStatus, 500); }, 2000);
+      } else {
+        r.style.background = 'rgba(251,113,133,.1)'; r.style.border = '1px solid rgba(251,113,133,.3)';
+        r.textContent = '❌ 페어링 실패: ' + (d.detail || d.error || '알 수 없는 오류');
+      }
+    })
+    .catch(function() { r.textContent = '❌ 네트워크 오류'; });
+}
+
+// ── Phase 3: iOS WDA 빌드 ────────────────────────────────────────
+function envShowWdaBuildModal() {
+  document.getElementById('env-wda-udid').value = '';
+  document.getElementById('env-wda-teamid').value = '';
+  var r = document.getElementById('env-wda-result');
+  r.style.display = 'none'; r.textContent = '';
+  document.getElementById('env-wda-build-modal').style.display = 'flex';
+}
+function envCloseWdaBuildModal() {
+  document.getElementById('env-wda-build-modal').style.display = 'none';
+}
+function envSubmitWdaBuild() {
+  var udid = document.getElementById('env-wda-udid').value.trim();
+  var teamId = document.getElementById('env-wda-teamid').value.trim();
+  if (!udid || !teamId) { alert('UDID와 Team ID를 모두 입력하세요.'); return; }
+  var r = document.getElementById('env-wda-result');
+  r.style.display = 'block';
+  r.style.background = 'rgba(245,158,11,.1)'; r.style.border = '1px solid rgba(245,158,11,.3)';
+  r.textContent = 'WDA 빌드 요청 중...';
+  fetch('/api/env/ios/real/wda_build', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({udid: udid, team_id: teamId})
+  }).then(function(resp) { return resp.json(); })
+    .then(function(d) {
+      if (d.ok) {
+        r.style.background = 'rgba(34,197,94,.1)'; r.style.border = '1px solid rgba(34,197,94,.3)';
+        r.textContent = '✅ ' + (d.detail || 'WDA 빌드 시작됨 (PID: ' + d.pid + ')');
+      } else {
+        r.style.background = 'rgba(251,113,133,.1)'; r.style.border = '1px solid rgba(251,113,133,.3)';
+        r.textContent = '❌ ' + (d.detail || d.error || '빌드 실패');
+      }
+    })
+    .catch(function() { r.textContent = '❌ 네트워크 오류'; });
+}
+
+function updateAndroidCard(android) {
+  var status = android.status || 'stopped';
+  var badgeMap = {
+    stopped:  { text: '● 중지됨',    color: 'var(--text3)' },
+    starting: { text: '● 부팅 중...', color: 'var(--warn)' },
+    running:  { text: '● 실행 중',   color: 'var(--pass)' },
+    error:    { text: '● 오류',      color: 'var(--fail)' },
+  };
+  var info = badgeMap[status] || badgeMap['stopped'];
+  var badge = document.getElementById('env-android-badge');
+  if (badge) { badge.textContent = info.text.replace('● ', ''); badge.style.color = info.color; }
+  if (status === 'error' && android.error_msg) {
+    showEnvDeviceError('android', android.error_msg);
+  }
+
+  _envConfiguredVirtual.android = {};
+  (android.emulators || []).forEach(function(device) {
+    if (device.avd) _envConfiguredVirtual.android[device.avd] = true;
+  });
+  renderDeviceList('env-android-emulator-list', android.emulators || [], 'android', 'emulator', android);
+
+  // 실기기 목록 렌더링 (M3.0 + US-3)
+  renderRealDevices('env-android-real-list', android.real_devices || [], 'android');
+}
+
+function updateIosCard(ios) {
+  var status = ios.status || 'stopped';
+  var badgeMap = {
+    stopped:  { text: '● 중지됨',    color: 'var(--text3)' },
+    starting: { text: '● 부팅 중...', color: 'var(--warn)' },
+    running:  { text: '● 실행 중',   color: 'var(--pass)' },
+    error:    { text: '● 오류',      color: 'var(--fail)' },
+  };
+  var info = badgeMap[status] || badgeMap['stopped'];
+  var badge = document.getElementById('env-ios-badge');
+  if (badge) { badge.textContent = info.text.replace('● ', ''); badge.style.color = info.color; }
+  if (status === 'error' && ios.error_msg) {
+    showEnvDeviceError('ios', ios.error_msg);
+  }
+
+  _envConfiguredVirtual.ios = {};
+  (ios.simulators || []).forEach(function(device) {
+    if (device.udid) _envConfiguredVirtual.ios[device.udid] = true;
+  });
+  renderDeviceList('env-ios-simulator-list', ios.simulators || [], 'ios', 'simulator', ios);
+
+  // 실기기 목록 렌더링 (M3.0 + US-3)
+  renderRealDevices('env-ios-real-list', ios.real_devices || [], 'ios');
+}
+
+var _envDeviceActionBusy = { android: false, ios: false };
+
+async function requestEnvDevice(url, body) {
+  var response;
+  var payload = {};
+  try {
+    var options = { method: 'POST' };
+    if (body) {
+      options.headers = {'Content-Type':'application/json'};
+      options.body = JSON.stringify(body);
+    }
+    response = await fetch(url, options);
+    payload = await response.json();
+  } catch (_error) {
+    var networkError = new Error('서버에 연결할 수 없습니다. 대시보드 서버를 확인해 주세요.');
+    networkError.code = 'network_error';
+    throw networkError;
+  }
+  if (!response.ok || payload.ok === false) {
+    var requestError = new Error(payload.detail || payload.error || '요청을 처리하지 못했습니다.');
+    requestError.code = payload.error || 'request_failed';
+    throw requestError;
+  }
+  return payload;
+}
+
+function friendlyEnvDeviceError(code, fallback) {
+  var messages = {
+    capture_session_active: 'Capture 세션이 실행 중입니다. Capture Studio에서 먼저 종료해 주세요.',
+    already_running: '이미 실행 중이거나 시작 중입니다. 상태를 새로고침해 주세요.',
+    no_avd_configured: '시작할 Android 에뮬레이터가 없습니다. 먼저 에뮬레이터를 추가해 주세요.',
+    no_simulator_configured: '시작할 iOS 시뮬레이터가 없습니다. 먼저 시뮬레이터를 추가해 주세요.',
+    emulator_not_found: 'Android Emulator 실행 파일을 찾지 못했습니다. Android SDK 설치를 확인해 주세요.',
+    adb_not_found: 'ADB 실행 파일을 찾지 못했습니다. Android SDK 설치를 확인해 주세요.',
+  };
+  return messages[code] || fallback || '기기 요청을 처리하지 못했습니다.';
+}
+
+function showEnvDeviceError(platform, message) {
+  var error = document.getElementById('env-' + platform + '-error');
+  if (!error) return;
+  error.textContent = message;
+  error.style.display = 'block';
+}
+
+function clearEnvDeviceError(platform) {
+  var error = document.getElementById('env-' + platform + '-error');
+  if (!error) return;
+  error.textContent = '';
+  error.style.display = 'none';
+}
+
+function setEnvDeviceActionBusy(platform, busy) {
+  var card = document.getElementById('env-' + platform + '-card');
+  if (card) card.setAttribute('aria-busy', busy ? 'true' : 'false');
+  document.querySelectorAll('[data-env-platform="' + platform + '"]').forEach(function(button) {
+    button.disabled = busy;
+  });
+}
+
+async function envDeviceAction(platform, action, target) {
+  if (_envDeviceActionBusy[platform]) return;
+  _envDeviceActionBusy[platform] = true;
+  setEnvDeviceActionBusy(platform, true);
+  clearEnvDeviceError(platform);
+  var badge = document.getElementById('env-' + platform + '-badge');
+  if (badge) {
+    badge.textContent = action === 'start' ? '● 시작 요청 중...' : '● 종료 요청 중...';
+    badge.style.color = 'var(--warn)';
+  }
+  var isAndroid = platform === 'android';
+  var url = isAndroid
+    ? '/api/env/android/avd/' + action
+    : '/api/env/ios/simulator/' + action;
+  var body = isAndroid ? {avd: target} : {udid: target};
+  try {
+    await requestEnvDevice(url, target ? body : null);
+    if (badge) badge.textContent = '● 요청 완료 · 상태 확인 중...';
+    setTimeout(pollEnvStatus, 250);
+  } catch (error) {
+    showEnvDeviceError(platform, friendlyEnvDeviceError(error.code, error.message));
+    pollEnvStatus();
+  } finally {
+    _envDeviceActionBusy[platform] = false;
+    setEnvDeviceActionBusy(platform, false);
+  }
+}
+
+function envVirtualActionFromButton(button) {
+  return envDeviceAction(
+    button.dataset.envPlatform,
+    button.dataset.envAction,
+    decodeURIComponent(button.dataset.envTarget || '')
+  );
+}
+function envAndroidStart(avd) { return envDeviceAction('android', 'start', avd); }
+function envAndroidStop(avd) { return envDeviceAction('android', 'stop', avd); }
+function envIosStart(udid) { return envDeviceAction('ios', 'start', udid); }
+function envIosStop(udid) { return envDeviceAction('ios', 'stop', udid); }
 
 // ── Capture Studio ────────────────────────────────────────────
 var _cs = {
@@ -2507,6 +3598,7 @@ var _cs = {
   mirrorConnected: false,
   wsTimeline: null,
   screenshotMode: 'mjpeg',   // 'mjpeg' | 'poll'
+  launching: false,          // Appium/WDA 중복 실행 요청 방지
   pollTimer: null,            // iOS polling setInterval handle
   screenWatcher: null,        // 화면 전환 감지 타이머
   screenHash: null,           // 마지막으로 확인한 page_source 해시
@@ -2627,6 +3719,11 @@ function csInit() {
 
 function csReLaunch() {
   var saveStatus = document.getElementById('cs-save-status');
+  if(_cs.launching){
+    if(saveStatus){ saveStatus.textContent = '📱 앱 실행이 이미 진행 중입니다. 잠시 기다려 주세요.'; saveStatus.style.color='#a78bfa'; }
+    return;
+  }
+  _cs.launching = true;
   var _reIsIos = (_cs.screenshotMode === 'poll');
   var _reTimeoutMs = _reIsIos ? 180000 : 45000;
   var _reStartTs = Date.now();
@@ -2642,6 +3739,7 @@ function csReLaunch() {
     body: JSON.stringify({session_id: _cs.sessionId}),
     signal: _launchCtrl.signal
   }).then(function(r){ clearTimeout(_launchTimer); clearInterval(_reProgressTimer); return r.json(); }).then(function(d){
+    _cs.launching = false;
     if(d.ok){
       // 세션 만료 배너 제거
       var _eb = document.getElementById('cs-expired-banner');
@@ -2655,6 +3753,7 @@ function csReLaunch() {
       saveStatus.style.color='var(--fail)';
     }
   }).catch(function(err){
+    _cs.launching = false;
     clearTimeout(_launchTimer); clearInterval(_reProgressTimer);
     var s2 = Math.round((Date.now() - _reStartTs) / 1000);
     saveStatus.textContent = err && err.name==='AbortError'
@@ -2664,6 +3763,16 @@ function csReLaunch() {
   });
 }
 
+function csHandleTimelineEvent(evt) {
+  // 현재 Capture Studio는 수동 STEP 추가 방식이다. 미러 클릭은 기기만 조작하며,
+  // 명시적으로 녹화 중일 때만 서버 action을 타임라인에 반영한다.
+  if(!_cs.recording) return;
+  if(evt.type === 'action_added' && evt.action){
+    _cs.actions.push(evt.action);
+    csRenderTimeline();
+  }
+}
+
 function csConnectWsTimeline() {
   if(_cs.wsTimeline) return;
   try {
@@ -2671,10 +3780,7 @@ function csConnectWsTimeline() {
     ws.onmessage = function(e) {
       try {
         var evt = JSON.parse(e.data);
-        if(evt.type === 'action_added' && evt.action){
-          _cs.actions.push(evt.action);
-          csRenderTimeline();
-        }
+        csHandleTimelineEvent(evt);
       } catch(err){}
     };
     ws.onclose = function(){ _cs.wsTimeline = null; };
@@ -2743,6 +3849,12 @@ function csStartSession() {
   }
 
   var statusEl = document.getElementById('cs-setup-status');
+  if(_cs.launching){
+    statusEl.textContent = '📱 앱 실행이 이미 진행 중입니다. 잠시 기다려 주세요.';
+    statusEl.style.color = '#a78bfa';
+    return;
+  }
+  _cs.launching = true;
   statusEl.textContent = '세션 시작 중...';
   document.getElementById('cs-start-btn').disabled = true;
 
@@ -2784,6 +3896,7 @@ function csStartSession() {
         body: JSON.stringify({session_id: d.session_id}),
         signal: _launchCtrl.signal
       }).then(function(r2){ clearTimeout(_launchTimer); clearInterval(_launchProgressTimer); return r2.json(); }).then(function(d2){
+        _cs.launching = false;
         if(d2.ok){
           var modeLabel = (_cs.screenshotMode === 'poll') ? 'screenshot polling' : 'MJPEG 스트리밍';
           var elapsed2 = Math.round((Date.now() - _launchStartTs) / 1000);
@@ -2816,6 +3929,7 @@ function csStartSession() {
           csMirrorConnect();
         }
       }).catch(function(err2){
+        _cs.launching = false;
         clearTimeout(_launchTimer);
         clearInterval(_launchProgressTimer);
         var elapsed3 = Math.round((Date.now() - _launchStartTs) / 1000);
@@ -2837,11 +3951,13 @@ function csStartSession() {
         csMirrorConnect();
       });
     } else {
+      _cs.launching = false;
       statusEl.textContent = '❌ ' + (d.error || '세션 시작 실패');
       statusEl.style.color = 'var(--fail)';
       document.getElementById('cs-start-btn').disabled = false;
     }
   }).catch(function(err){
+    _cs.launching = false;
     statusEl.textContent = '❌ 네트워크 오류: ' + err;
     statusEl.style.color = 'var(--fail)';
     document.getElementById('cs-start-btn').disabled = false;
@@ -3901,6 +5017,8 @@ function _csActionsForCodeGen() {
       assertion_value:  a.assertion_value || '',
       input_value:      a.input_text      || '',
       wait_seconds:     a.wait_seconds    || 1,
+      device_x:         a.device_x,
+      device_y:         a.device_y,
     };
   });
 }
@@ -3979,6 +5097,11 @@ function csRunGenerate(platform, btn) { csAutoGenerate(platform); }
 // 드라이버 죽음 상태에서 setup 화면에서 재실행
 function csReLaunchFromSetup() {
   var statusEl = document.getElementById('cs-setup-status');
+  if(_cs.launching){
+    if(statusEl){ statusEl.textContent = '📱 앱 실행이 이미 진행 중입니다. 잠시 기다려 주세요.'; statusEl.style.color='#a78bfa'; }
+    return;
+  }
+  _cs.launching = true;
   var _rfsIsIos = (_cs.screenshotMode === 'poll');
   var _rfsTimeout = _rfsIsIos ? 180000 : 45000;
   var _rfsStartTs = Date.now();
@@ -3994,6 +5117,7 @@ function csReLaunchFromSetup() {
     body: JSON.stringify({session_id: _cs.sessionId}),
     signal: _ctrl.signal
   }).then(function(r){ clearTimeout(_ctrlTimer); clearInterval(_rfsProgress); return r.json(); }).then(function(d){
+    _cs.launching = false;
     if(d.ok){
       document.getElementById('cs-setup').style.display='none';
       document.getElementById('cs-workspace').style.display='block'; setTimeout(function(){ csStartMirrorObserver(); csSyncPanelHeight(); }, 100);
@@ -4007,6 +5131,7 @@ function csReLaunchFromSetup() {
       if(statusEl){ statusEl.textContent = '❌ 재실행 실패: ' + (d.error||'알 수 없는 오류'); statusEl.style.color='var(--fail)'; }
     }
   }).catch(function(err){
+    _cs.launching = false;
     clearTimeout(_ctrlTimer); clearInterval(_rfsProgress);
     var s2 = Math.round((Date.now() - _rfsStartTs) / 1000);
     var msg = err && err.name==='AbortError'
@@ -4137,6 +5262,94 @@ document.addEventListener('DOMContentLoaded', function(){
         <div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:8px">pytest 코드 (초안)</div>
         <pre id="cs-preview-py" style="margin:0;white-space:pre-wrap;font-size:10px;font-family:monospace;color:var(--text);background:rgba(8,7,27,.3);border:1px solid var(--border);border-radius:6px;padding:12px;overflow-x:auto"></pre>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── US-3: 디바이스 추가 모달 ───────────────────────────────── -->
+<div id="env-add-modal" class="env-add-overlay" role="dialog" aria-modal="true" aria-labelledby="env-add-modal-title" onclick="if(event.target===this)envCloseAddModal()">
+  <div class="env-add-dialog">
+    <div class="env-add-head">
+      <strong id="env-add-modal-title">디바이스 추가</strong>
+      <button class="env-add-close" type="button" aria-label="추가 창 닫기" onclick="envCloseAddModal()">×</button>
+    </div>
+    <div class="env-add-fields">
+      <div id="env-add-discovery-row" class="env-add-field">
+        <label id="env-add-select-label" for="env-add-device-select">설치된 기기 선택</label>
+        <select id="env-add-device-select" onchange="envSelectDiscoveredDevice()"><option value="">불러오는 중...</option></select>
+        <div id="env-add-discovery-hint" class="env-add-hint">시스템에 설치된 기기만 표시됩니다.</div>
+      </div>
+      <input id="env-add-avd" type="hidden">
+      <div class="env-add-field">
+        <label id="env-add-name-label" for="env-add-deviceName">기기명</label>
+        <input id="env-add-deviceName" autocomplete="off">
+      </div>
+      <div id="env-add-version-row" class="env-add-field">
+        <label id="env-add-version-label" for="env-add-platformVersion">운영체제 버전</label>
+        <input id="env-add-platformVersion" autocomplete="off">
+      </div>
+      <div id="env-add-udid-row" class="env-add-field">
+        <label id="env-add-udid-label" for="env-add-udid">UDID</label>
+        <input id="env-add-udid" autocomplete="off">
+      </div>
+      <div id="env-add-default-row" class="env-add-field">
+        <label><input type="checkbox" id="env-add-default"> 기본 디바이스로 설정</label>
+      </div>
+      <div id="env-add-error" class="env-add-error" role="alert"></div>
+    </div>
+    <div class="env-add-footer">
+      <button class="btn" type="button" onclick="envCloseAddModal()">취소</button>
+      <button id="env-add-register" class="btn env-add-register" type="button" onclick="envSubmitAddDevice()">등록</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── WiFi 페어링 모달 (Phase 3) ────────────────────────── -->
+<div id="env-wifi-pair-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border-radius:var(--radius);padding:24px;min-width:340px;max-width:440px;box-shadow:0 8px 32px rgba(0,0,0,.4)">
+    <div style="font-weight:700;margin-bottom:6px;font-size:14px">📡 Android WiFi ADB 페어링</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:14px;line-height:1.5">
+      Android 11+ 기기: 설정 → 개발자 옵션 → 무선 디버깅 → "페어링 코드로 기기 페어링"을 탭하면 IP·포트·코드가 표시됩니다.
+    </div>
+    <div style="margin-bottom:10px">
+      <label style="font-size:12px;display:block;margin-bottom:4px;color:var(--text3)">IP 주소 *</label>
+      <input id="env-pair-ip" style="width:100%;box-sizing:border-box;padding:6px 10px;border:1px solid var(--border);border-radius:4px;background:var(--surface2);color:var(--text);font-size:12px" placeholder="예: 192.168.1.42">
+    </div>
+    <div style="margin-bottom:10px">
+      <label style="font-size:12px;display:block;margin-bottom:4px;color:var(--text3)">페어링 포트 *</label>
+      <input id="env-pair-port" style="width:100%;box-sizing:border-box;padding:6px 10px;border:1px solid var(--border);border-radius:4px;background:var(--surface2);color:var(--text);font-size:12px" placeholder="예: 37177" type="number">
+    </div>
+    <div style="margin-bottom:14px">
+      <label style="font-size:12px;display:block;margin-bottom:4px;color:var(--text3)">6자리 페어링 코드 *</label>
+      <input id="env-pair-code" style="width:100%;box-sizing:border-box;padding:6px 10px;border:1px solid var(--border);border-radius:4px;background:var(--surface2);color:var(--text);font-size:12px" placeholder="예: 123456" maxlength="6">
+    </div>
+    <div id="env-pair-result" style="display:none;font-size:11px;padding:6px 10px;border-radius:4px;margin-bottom:10px"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn" style="padding:6px 14px;font-size:12px" onclick="envCloseWifiPairModal()">취소</button>
+      <button class="btn" style="padding:6px 14px;font-size:12px" onclick="envSubmitWifiPair()">페어링</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── WDA 빌드 모달 (Phase 3) ─────────────────────────────── -->
+<div id="env-wda-build-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border-radius:var(--radius);padding:24px;min-width:340px;max-width:440px;box-shadow:0 8px 32px rgba(0,0,0,.4)">
+    <div style="font-weight:700;margin-bottom:6px;font-size:14px">🔨 WebDriverAgent 빌드</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:14px;line-height:1.5">
+      iOS 실기기 Appium 세션에 필요한 WDA를 빌드하고 설치합니다. Xcode와 Apple Developer 계정이 필요합니다.
+    </div>
+    <div style="margin-bottom:10px">
+      <label style="font-size:12px;display:block;margin-bottom:4px;color:var(--text3)">기기 UDID *</label>
+      <input id="env-wda-udid" style="width:100%;box-sizing:border-box;padding:6px 10px;border:1px solid var(--border);border-radius:4px;background:var(--surface2);color:var(--text);font-size:12px" placeholder="예: 00008120-001A44981688001C">
+    </div>
+    <div style="margin-bottom:14px">
+      <label style="font-size:12px;display:block;margin-bottom:4px;color:var(--text3)">Team ID * <span style="color:var(--text3);font-weight:400">(Apple Developer 10자리)</span></label>
+      <input id="env-wda-teamid" style="width:100%;box-sizing:border-box;padding:6px 10px;border:1px solid var(--border);border-radius:4px;background:var(--surface2);color:var(--text);font-size:12px" placeholder="예: ABCD123456" maxlength="10">
+    </div>
+    <div id="env-wda-result" style="display:none;font-size:11px;padding:6px 10px;border-radius:4px;margin-bottom:10px"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn" style="padding:6px 14px;font-size:12px" onclick="envCloseWdaBuildModal()">취소</button>
+      <button class="btn" style="padding:6px 14px;font-size:12px" onclick="envSubmitWdaBuild()">빌드 시작</button>
     </div>
   </div>
 </div>

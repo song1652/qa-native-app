@@ -1,36 +1,49 @@
 {
   "android": {
-    "emulator": {
-      "deviceName": "Android Emulator",
-      "platformVersion": "15.0",
-      "automationName": "UiAutomator2",
-      "avd": "Pixel_7_Android15",
-      "noReset": true,
-      "forceAppLaunch": true,
-      "shouldTerminateApp": true,
-      "mjpegServerPort": 8093,
-      "mjpegScalingFactor": 75,
-      "mjpegServerScreenshotQuality": 70
-    },
-    "real_device": {
-      "deviceName": "Galaxy S24",
-      "platformVersion": "14.0",
-      "automationName": "UiAutomator2",
-      "udid": ""
-    }
+    "emulator": [
+      {
+        "deviceName": "Android Emulator",
+        "platformVersion": "15.0",
+        "automationName": "UiAutomator2",
+        "avd": "Pixel_7_Android15",
+        "noReset": true,
+        "forceAppLaunch": true,
+        "shouldTerminateApp": true,
+        "mjpegServerPort": 8093,
+        "mjpegScalingFactor": 75,
+        "mjpegServerScreenshotQuality": 70,
+        "default": true
+      }
+    ],
+    "real_device": [
+      {
+        "deviceName": "Galaxy S24",
+        "platformVersion": "14.0",
+        "automationName": "UiAutomator2",
+        "udid": "",
+        "wifi_ip": "",
+        "default": true
+      }
+    ]
   },
   "ios": {
-    "simulator": {
-      "deviceName": "iPhone 18 Pro",
-      "platformVersion": "27.0",
-      "automationName": "XCUITest",
-      "udid": "E73939EF-741D-4A72-BEA7-97D31B15719A"
-    },
-    "real_device": {
-      "deviceName": "iPhone 16",
-      "platformVersion": "26.5",
-      "automationName": "XCUITest",
-      "udid": ""
-    }
+    "simulator": [
+      {
+        "deviceName": "iPhone 18 Pro",
+        "platformVersion": "27.0",
+        "automationName": "XCUITest",
+        "udid": "E73939EF-741D-4A72-BEA7-97D31B15719A",
+        "default": true
+      }
+    ],
+    "real_device": [
+      {
+        "deviceName": "iPhone 16",
+        "platformVersion": "26.5",
+        "automationName": "XCUITest",
+        "udid": "",
+        "default": true
+      }
+    ]
   }
 }

@@ -1,0 +1,1262 @@
+<title>QA Dashboard 사용 가이드</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+
+<style>
+  /* ── Tokens ─────────────────────────────────────────── */
+  :root {
+    --bg: #F8F9FB;
+    --surface: #FFFFFF;
+    --surface-2: #F3F4F8;
+    --border: #E4E6ED;
+    --text: #111827;
+    --text-2: #6B7280;
+    --text-3: #9CA3AF;
+    --accent: #5B5EF4;
+    --accent-bg: #EEEFFD;
+    --accent-dark: #4345D0;
+    --green: #10B981;
+    --green-bg: #ECFDF5;
+    --amber: #F59E0B;
+    --amber-bg: #FFFBEB;
+    --red: #EF4444;
+    --red-bg: #FEF2F2;
+    --purple: #A78BFA;
+    --purple-bg: #F5F3FF;
+    --sidebar-w: 232px;
+    --header-h: 56px;
+    --radius: 10px;
+    --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0C1117;
+      --surface: #151B25;
+      --surface-2: #1C2333;
+      --border: #2A3240;
+      --text: #F0F6FC;
+      --text-2: #8B949E;
+      --text-3: #6E7681;
+      --accent: #818CF8;
+      --accent-bg: #1E2248;
+      --accent-dark: #A5B4FC;
+      --green: #34D399;
+      --green-bg: #0A2E22;
+      --amber: #FBD24A;
+      --amber-bg: #2D2210;
+      --red: #F87171;
+      --red-bg: #2D1010;
+      --purple: #C4B5FD;
+      --purple-bg: #1F1A35;
+      --shadow: 0 1px 3px rgba(0,0,0,.3);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0C1117; --surface: #151B25; --surface-2: #1C2333;
+    --border: #2A3240; --text: #F0F6FC; --text-2: #8B949E; --text-3: #6E7681;
+    --accent: #818CF8; --accent-bg: #1E2248; --accent-dark: #A5B4FC;
+    --green: #34D399; --green-bg: #0A2E22; --amber: #FBD24A; --amber-bg: #2D2210;
+    --red: #F87171; --red-bg: #2D1010; --purple: #C4B5FD; --purple-bg: #1F1A35;
+    --shadow: 0 1px 3px rgba(0,0,0,.3);
+  }
+
+  /* ── Reset / Base ────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans KR', 'Inter', system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ── Layout ──────────────────────────────────────────── */
+  .layout {
+    display: grid;
+    grid-template-columns: var(--sidebar-w) 1fr;
+    grid-template-rows: var(--header-h) 1fr;
+    min-height: 100vh;
+  }
+
+  /* ── Top bar ─────────────────────────────────────────── */
+  .topbar {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 24px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .topbar-logo {
+    width: 28px; height: 28px;
+    background: var(--accent);
+    border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 14px; font-weight: 700; font-family: 'Inter', sans-serif;
+    flex-shrink: 0;
+  }
+  .topbar-title {
+    font-size: 15px; font-weight: 700; letter-spacing: -.3px;
+  }
+  .topbar-sub {
+    font-size: 12px; color: var(--text-2);
+    margin-left: 4px;
+  }
+  .topbar-badge {
+    margin-left: auto;
+    font-size: 11px; font-family: 'Inter', monospace;
+    color: var(--text-3);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 2px 10px;
+    letter-spacing: .3px;
+  }
+
+  /* ── Sidebar ─────────────────────────────────────────── */
+  .sidebar {
+    grid-column: 1;
+    grid-row: 2;
+    position: sticky;
+    top: var(--header-h);
+    height: calc(100vh - var(--header-h));
+    overflow-y: auto;
+    padding: 20px 12px;
+    border-right: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .sidebar-section + .sidebar-section { margin-top: 20px; }
+  .sidebar-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--text-3);
+    padding: 0 8px; margin-bottom: 4px;
+    font-family: 'Inter', sans-serif;
+  }
+  .sidebar-link {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 8px; border-radius: 7px;
+    font-size: 13.5px; color: var(--text-2);
+    cursor: pointer; transition: background .15s, color .15s;
+    text-decoration: none;
+  }
+  .sidebar-link:hover { background: var(--surface-2); color: var(--text); text-decoration: none; }
+  .sidebar-link.active { background: var(--accent-bg); color: var(--accent); font-weight: 600; }
+  .sidebar-dot {
+    width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+    background: var(--border);
+  }
+  .sidebar-link.active .sidebar-dot { background: var(--accent); }
+  /* page-specific dot colors */
+  [data-page="dashboard"] .sidebar-dot { background: var(--green); }
+  [data-page="config"] .sidebar-dot { background: var(--amber); }
+  [data-page="import"] .sidebar-dot { background: #60A5FA; }
+  [data-page="capture"] .sidebar-dot { background: var(--purple); }
+  [data-page="pipeline"] .sidebar-dot { background: var(--accent); }
+  [data-page="quickrun"] .sidebar-dot { background: #34D399; }
+  [data-page="reports"] .sidebar-dot { background: #FB923C; }
+  [data-page="history"] .sidebar-dot { background: var(--text-3); }
+
+  /* ── Main content ────────────────────────────────────── */
+  .main {
+    grid-column: 2;
+    grid-row: 2;
+    padding: 40px 48px 80px;
+    max-width: 860px;
+  }
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .main { grid-column: 1; width: 100%; min-width: 0; max-width: 100%; padding: 24px 20px 60px; }
+    .main code { white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
+    .step-body, .tip-body { min-width: 0; }
+  }
+
+  /* ── Hero ────────────────────────────────────────────── */
+  .hero {
+    margin-bottom: 48px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--border);
+  }
+  .hero-tag {
+    display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: .8px;
+    text-transform: uppercase; font-family: 'Inter', sans-serif;
+    color: var(--accent); background: var(--accent-bg);
+    border-radius: 4px; padding: 2px 8px; margin-bottom: 14px;
+  }
+  .hero h1 {
+    font-size: 30px; font-weight: 700; letter-spacing: -.5px; line-height: 1.25;
+    margin-bottom: 12px; text-wrap: balance;
+  }
+  .hero p {
+    font-size: 15.5px; color: var(--text-2); max-width: 560px; line-height: 1.7;
+  }
+
+  /* ── Page sections ───────────────────────────────────── */
+  .page-section {
+    margin-bottom: 60px;
+    scroll-margin-top: calc(var(--header-h) + 20px);
+  }
+  .page-header {
+    display: flex; align-items: flex-start; gap: 14px;
+    padding: 22px 24px; border-radius: var(--radius);
+    margin-bottom: 24px; position: relative;
+  }
+  .page-header.green { background: var(--green-bg); }
+  .page-header.amber { background: var(--amber-bg); }
+  .page-header.blue { background: #EFF6FF; }
+  .page-header.purple { background: var(--purple-bg); }
+  .page-header.indigo { background: var(--accent-bg); }
+  .page-header.teal { background: #F0FDFA; }
+  .page-header.orange { background: #FFF7ED; }
+  .page-header.slate { background: var(--surface-2); }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .page-header.blue { background: #0C1D35; }
+    :root:not([data-theme="light"]) .page-header.teal { background: #0A2825; }
+    :root:not([data-theme="light"]) .page-header.orange { background: #2D1A07; }
+  }
+  :root[data-theme="dark"] .page-header.blue { background: #0C1D35; }
+  :root[data-theme="dark"] .page-header.teal { background: #0A2825; }
+  :root[data-theme="dark"] .page-header.orange { background: #2D1A07; }
+  .page-icon {
+    font-size: 28px; line-height: 1; flex-shrink: 0; margin-top: 2px;
+  }
+  .page-header-text { flex: 1; }
+  .page-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--text-3); font-family: 'Inter', sans-serif;
+    margin-bottom: 4px;
+  }
+  .page-header h2 {
+    font-size: 20px; font-weight: 700; letter-spacing: -.3px; margin-bottom: 6px;
+  }
+  .page-header p {
+    font-size: 14px; color: var(--text-2); line-height: 1.6; max-width: 520px;
+  }
+
+  /* ── Cards / blocks ──────────────────────────────────── */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px 22px;
+    box-shadow: var(--shadow); margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 13px; font-weight: 700; letter-spacing: .2px;
+    margin-bottom: 12px; color: var(--text);
+    display: flex; align-items: center; gap: 7px;
+  }
+  .card-title-icon { font-size: 15px; }
+
+  /* Steps */
+  .steps { display: flex; flex-direction: column; gap: 12px; }
+  .step {
+    display: flex; gap: 14px; align-items: flex-start;
+  }
+  .step-num {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--accent); color: #fff;
+    font-size: 11px; font-weight: 700; font-family: 'Inter', sans-serif;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 2px;
+  }
+  .step-body { flex: 1; }
+  .step-title { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+  .step-desc { font-size: 13.5px; color: var(--text-2); line-height: 1.6; }
+
+  /* Status pills */
+  .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+  .pill {
+    font-size: 11.5px; font-family: 'Inter', sans-serif; font-weight: 600;
+    padding: 3px 10px; border-radius: 20px; letter-spacing: .2px;
+  }
+  .pill-green { background: var(--green-bg); color: var(--green); }
+  .pill-amber { background: var(--amber-bg); color: var(--amber); }
+  .pill-red { background: var(--red-bg); color: var(--red); }
+  .pill-blue { background: #EFF6FF; color: #3B82F6; }
+  .pill-purple { background: var(--purple-bg); color: var(--purple); }
+  .pill-slate { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pill-blue { background: #0C1D35; color: #60A5FA; } }
+  :root[data-theme="dark"] .pill-blue { background: #0C1D35; color: #60A5FA; }
+
+  /* Tip / warning / info blocks */
+  .tip {
+    border-radius: 8px; padding: 14px 16px;
+    font-size: 13.5px; line-height: 1.65; margin-top: 16px;
+    display: flex; gap: 10px; align-items: flex-start;
+  }
+  .tip-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  .tip-body { flex: 1; }
+  .tip-title { font-weight: 700; font-size: 13px; margin-bottom: 3px; }
+  .tip.info { background: var(--accent-bg); color: var(--accent-dark); }
+  .tip.warn { background: var(--amber-bg); color: #92400E; }
+  .tip.danger { background: var(--red-bg); color: #991B1B; }
+  .tip.success { background: var(--green-bg); color: #065F46; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .tip.info { color: var(--accent-dark); }
+    :root:not([data-theme="light"]) .tip.warn { color: var(--amber); }
+    :root:not([data-theme="light"]) .tip.danger { color: var(--red); }
+    :root:not([data-theme="light"]) .tip.success { color: var(--green); }
+  }
+  :root[data-theme="dark"] .tip.info { color: var(--accent-dark); }
+  :root[data-theme="dark"] .tip.warn { color: var(--amber); }
+  :root[data-theme="dark"] .tip.danger { color: var(--red); }
+  :root[data-theme="dark"] .tip.success { color: var(--green); }
+
+  /* Inline code */
+  code {
+    font-family: 'Noto Sans KR', 'Menlo', 'Consolas', monospace;
+    font-size: .88em; background: var(--surface-2);
+    border: 1px solid var(--border); border-radius: 4px;
+    padding: 1px 6px; color: var(--accent);
+  }
+
+  /* KPI grid */
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+  .kpi-tile {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 16px;
+    box-shadow: var(--shadow);
+  }
+  .kpi-label { font-size: 11px; color: var(--text-3); letter-spacing: .3px; font-family: 'Inter', sans-serif; margin-bottom: 4px; }
+  .kpi-value { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.5px; }
+  .kpi-value.green { color: var(--green); }
+  .kpi-value.amber { color: var(--amber); }
+  .kpi-value.accent { color: var(--accent); }
+
+  /* State table */
+  .state-table-wrap { overflow-x: auto; border-radius: 8px; border: 1px solid var(--border); }
+  .state-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .state-table th {
+    background: var(--surface-2); text-align: left; padding: 10px 14px;
+    font-size: 11px; font-weight: 700; letter-spacing: .5px;
+    text-transform: uppercase; color: var(--text-3); font-family: 'Inter', sans-serif;
+    border-bottom: 1px solid var(--border);
+  }
+  .state-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .state-table tr:last-child td { border-bottom: none; }
+  .state-table tr:hover td { background: var(--surface-2); }
+
+  /* Pipeline flow */
+  .pipeline-flow {
+    display: flex; align-items: center; gap: 0; flex-wrap: wrap;
+    margin: 16px 0;
+  }
+  .pipeline-step {
+    display: flex; flex-direction: column; align-items: center;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 16px; text-align: center; min-width: 90px;
+    box-shadow: var(--shadow);
+  }
+  .pipeline-step-num { font-size: 10px; color: var(--text-3); font-family: 'Inter', sans-serif; margin-bottom: 2px; }
+  .pipeline-step-name { font-size: 13px; font-weight: 700; }
+  .pipeline-arrow {
+    color: var(--text-3); font-size: 16px; padding: 0 6px; flex-shrink: 0;
+  }
+
+  /* Capture Studio hands-on example */
+  .practice-card {
+    border: 1px solid color-mix(in srgb, var(--purple) 45%, var(--border));
+    background: linear-gradient(145deg, var(--surface), var(--purple-bg));
+    min-width: 0;
+  }
+  .practice-card code { white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
+  .practice-head {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 16px; margin-bottom: 18px;
+  }
+  .practice-head h3 { font-size: 17px; line-height: 1.4; margin-bottom: 5px; }
+  .practice-head p { font-size: 13.5px; color: var(--text-2); }
+  .practice-badge {
+    flex-shrink: 0; border-radius: 20px; padding: 4px 10px;
+    background: var(--purple-bg); color: var(--purple); border: 1px solid var(--border);
+    font-size: 11px; font-weight: 700;
+  }
+  .practice-goal {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+    margin-bottom: 18px;
+  }
+  .practice-goal-item {
+    border: 1px solid var(--border); background: var(--surface);
+    border-radius: 8px; padding: 10px 12px;
+  }
+  .practice-goal-item small {
+    display: block; color: var(--text-3); font-size: 10px;
+    font-weight: 700; letter-spacing: .5px; margin-bottom: 2px;
+  }
+  .practice-goal-item strong { font-size: 12.5px; }
+  .practice-settings {
+    display: grid; grid-template-columns: 150px 1fr; overflow: hidden;
+    border: 1px solid var(--border); border-radius: 8px; margin: 10px 0 18px;
+    background: var(--surface);
+  }
+  .practice-settings dt,
+  .practice-settings dd { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+  .practice-settings dt { background: var(--surface-2); color: var(--text-2); font-size: 12px; font-weight: 600; }
+  .practice-settings dd { min-width: 0; font-size: 13px; overflow-wrap: anywhere; }
+  .practice-settings dt:last-of-type,
+  .practice-settings dd:last-of-type { border-bottom: 0; }
+  .practice-flow { display: flex; flex-direction: column; gap: 10px; }
+  .practice-step {
+    display: grid; grid-template-columns: 34px 1fr; gap: 12px;
+    padding: 13px 14px; border: 1px solid var(--border);
+    border-radius: 9px; background: var(--surface);
+  }
+  .practice-step > div:last-child { min-width: 0; }
+  .practice-step-num {
+    width: 30px; height: 30px; border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--accent-bg); color: var(--accent); font: 700 12px/1 'Inter', sans-serif;
+  }
+  .practice-step-title { font-size: 13.5px; font-weight: 700; margin-bottom: 4px; }
+  .practice-step-desc { color: var(--text-2); font-size: 13px; line-height: 1.65; }
+  .practice-ui {
+    display: inline-block; margin: 4px 3px 0 0; padding: 2px 8px;
+    border: 1px solid var(--border); border-radius: 5px;
+    background: var(--surface-2); color: var(--text); font-size: 11.5px; font-weight: 600;
+  }
+  .practice-timeline {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+    margin-top: 10px; padding: 10px; border-radius: 7px;
+    background: var(--surface-2); border: 1px dashed var(--border);
+  }
+  .practice-timeline span { font-size: 11px; font-weight: 600; }
+  .practice-timeline i { color: var(--text-3); font-style: normal; }
+  .practice-result {
+    margin-top: 16px; padding: 14px 16px; border-radius: 8px;
+    background: var(--green-bg); color: var(--green); border: 1px solid color-mix(in srgb, var(--green) 35%, transparent);
+    font-size: 13px;
+  }
+  @media (max-width: 700px) {
+    .practice-goal { grid-template-columns: 1fr; }
+    .practice-settings { grid-template-columns: 110px 1fr; }
+    .practice-head { flex-direction: column; }
+  }
+
+  /* Divider */
+  .divider { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+
+  /* Scrollbar */
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+
+<div class="layout">
+
+  <!-- Top bar -->
+  <header class="topbar">
+    <div class="topbar-logo">QA</div>
+    <span class="topbar-title">QA Automation Dashboard</span>
+    <span class="topbar-sub">사용 가이드</span>
+    <span class="topbar-badge">port 8767</span>
+  </header>
+
+  <!-- Sidebar -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">개요</div>
+      <a class="sidebar-link active" data-page="dashboard" href="#dashboard">
+        <span class="sidebar-dot"></span>Dashboard
+      </a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">환경</div>
+      <a class="sidebar-link" data-page="config" href="#config">
+        <span class="sidebar-dot"></span>환경 설정
+      </a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">TC 작성</div>
+      <a class="sidebar-link" data-page="import" href="#import">
+        <span class="sidebar-dot"></span>Import Studio
+      </a>
+      <a class="sidebar-link" data-page="capture" href="#capture">
+        <span class="sidebar-dot"></span>Capture Studio
+      </a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">파이프라인</div>
+      <a class="sidebar-link" data-page="pipeline" href="#pipeline">
+        <span class="sidebar-dot"></span>파이프라인 실행
+      </a>
+      <a class="sidebar-link" data-page="quickrun" href="#quickrun">
+        <span class="sidebar-dot"></span>빠른 실행
+      </a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">테스트 결과</div>
+      <a class="sidebar-link" data-page="reports" href="#reports">
+        <span class="sidebar-dot"></span>리포트 목록
+      </a>
+      <a class="sidebar-link" data-page="history" href="#history">
+        <span class="sidebar-dot"></span>실행 히스토리
+      </a>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- Hero -->
+    <div class="hero">
+      <div class="hero-tag">사용자 가이드 · v1.0</div>
+      <h1>QA Dashboard 페이지별 사용법</h1>
+      <p>Appium 기반 Android·iOS 자동화 테스트를 대시보드에서 관리하는 방법을 페이지 순서대로 설명합니다. 각 섹션은 화면에서 무엇을 하는지, 어떤 순서로 사용하는지에 집중합니다.</p>
+    </div>
+
+    <!-- ──────────────────────────────── DASHBOARD ─── -->
+    <section class="page-section" id="dashboard">
+      <div class="page-header green">
+        <div class="page-icon">📊</div>
+        <div class="page-header-text">
+          <div class="page-label">개요</div>
+          <h2>Dashboard</h2>
+          <p>프로젝트 전체 현황을 한눈에 볼 수 있는 홈 화면입니다. 최근 실행 결과와 Appium 연결 상태를 확인하고, 다른 탭으로 이동하는 출발점으로 사용합니다.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="card-title-icon">📈</span> KPI 타일</div>
+        <div class="kpi-grid">
+          <div class="kpi-tile">
+            <div class="kpi-label">TOTAL TC</div>
+            <div class="kpi-value accent">42</div>
+          </div>
+          <div class="kpi-tile">
+            <div class="kpi-label">마지막 실행</div>
+            <div class="kpi-value" style="font-size:16px;">09-15 14:30</div>
+          </div>
+          <div class="kpi-tile">
+            <div class="kpi-label">성공률</div>
+            <div class="kpi-value green">94%</div>
+          </div>
+          <div class="kpi-tile">
+            <div class="kpi-label">Appium</div>
+            <div class="kpi-value green" style="font-size:16px;">managed</div>
+          </div>
+        </div>
+        <p style="font-size:13px;color:var(--text-2);margin-top:12px;">타일은 자동으로 갱신됩니다. Appium 상태 타일을 클릭하면 <strong>환경 설정</strong> 탭으로 이동합니다.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="card-title-icon">🔄</span> 파이프라인 상태</div>
+        <p style="font-size:14px;color:var(--text-2);">가장 최근에 실행된 파이프라인의 단계별 진행 상황 (분석 → 생성 → 린트 → 실행 → 힐링)이 색상 뱃지로 표시됩니다. 실행 중이면 실시간으로 업데이트됩니다.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="card-title-icon">📋</span> 최근 실행 히스토리</div>
+        <p style="font-size:14px;color:var(--text-2);">최근 5건의 실행 기록이 목록으로 표시됩니다. 날짜·플랫폼·결과를 확인하고, 상세 리포트로 이동할 수 있습니다.</p>
+      </div>
+
+      <div class="tip info">
+        <span class="tip-icon">💡</span>
+        <div class="tip-body">
+          <div class="tip-title">빠른 실행 완료 후 KPI 갱신</div>
+          빠른 실행이 완료되면 Dashboard의 KPI와 히스토리가 자동으로 갱신됩니다. 탭을 전환하지 않아도 됩니다.
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider">
+
+    <!-- ──────────────────────────────── ENV SETUP ─── -->
+    <section class="page-section" id="config">
+      <div class="page-header amber">
+        <div class="page-icon">⚙️</div>
+        <div class="page-header-text">
+          <div class="page-label">환경</div>
+          <h2>환경 설정</h2>
+          <p>Appium 서버와 테스트 디바이스(에뮬레이터·시뮬레이터·실기기)를 관리합니다. 파이프라인 실행과 Capture Studio를 사용하기 전에 여기서 환경을 먼저 준비해야 합니다.</p>
+        </div>
+      </div>
+
+      <!-- Appium -->
+      <div class="card">
+        <div class="card-title"><span class="card-title-icon">🔌</span> Appium 서버</div>
+        <p style="font-size:14px;color:var(--text-2);margin-bottom:14px;">대시보드에서 Appium을 시작·중지하거나, 터미널에서 별도로 실행 중인 Appium 상태를 확인합니다.</p>
+        <div class="state-table-wrap">
+          <table class="state-table">
+            <thead>
+              <tr><th>상태</th><th>의미</th><th>가능한 액션</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="pill pill-slate">stopped</span></td>
+                <td>Appium이 실행되지 않음</td>
+                <td>▶ 시작</td>
+              </tr>
+              <tr>
+                <td><span class="pill pill-amber">starting</span></td>
+                <td>기동 중 (잠시 대기)</td>
+                <td>대기</td>
+              </tr>
+              <tr>
+                <td><span class="pill pill-green">managed</span></td>
+                <td>대시보드가 직접 관리 중</td>
+                <td>■ 중지, 🔄 재시작</td>
+              </tr>
+              <tr>
+                <td><span class="pill pill-blue">external</span></td>
+                <td>터미널에서 별도 실행 중</td>
+                <td>■ 중지 (lsof로 PID 탐색 후 종료)</td>
+              </tr>
+              <tr>
+                <td><span class="pill pill-red">error</span></td>
+                <td>시작 실패 또는 예기치 않은 종료</td>
+                <td>"다시 시도" 클릭</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tip warn" style="margin-top:14px;">
+          <span class="tip-icon">⚠️</span>
+          <div class="tip-body">
+            <div class="tip-title">Appium 필수 환경변수</div>
+            터미널에서 Appium을 직접 실행할 때는 반드시 <code>ANDROID_HOME</code>을 먼저 설정하세요.<br>
+            <code>export ANDROID_HOME=/Users/junghoyoung/Library/Android/sdk</code>
+          </div>
+        </div>
+      </div>
+
+      <!-- Android -->
+      <div class="card">
+        <div class="card-title"><span class="card-title-icon">🤖</span> Android 에뮬레이터</div>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <div class="step-title">에뮬레이터 목록 확인</div>
+              <div class="step-desc"><code>config/devices.json</code>에 등록된 AVD 목록이 표시됩니다. 각 항목의 <strong>기본(default)</strong> 뱃지를 확인합니다.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <div class="step-title">▶ 시작 클릭</div>
+              <div class="step-desc">기본 에뮬레이터가 <strong>비동기로 기동</strong>됩니다. 상태가 <span class="pill pill-amber" style="display:inline-block;padding:1px 7px;font-size:11px;">부팅 중...</span> → <span class="pill pill-green" style="display:inline-block;padding:1px 7px;font-size:11px;">실행 중</span>으로 전환됩니다.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <div class="step-title">Appium 연결 확인</div>
+              <div class="step-desc">에뮬레이터가 <span class="pill pill-green" style="display:inline-block;padding:1px 7px;font-size:11px;">실행 중</span>이고 Appium이 <span class="pill pill-green" style="display:inline-block;padding:1px 7px;font-size:11px;">managed</span> 또는 <span class="pill pill-blue" style="display:inline-block;padding:1px 7px;font-size:11px;">external</span>이면 파이프라인 실행 또는 Capture Studio 진입이 가능합니다.</div>
+            </div>
+          </div>
+        </div>
+        <div class="tip info" style="margin-top:14px;">
+          <span class="tip-icon">💡</span>
+          <div class="tip-body">에뮬레이터는 Appium 상태와 무관하게 시작할 수 있습니다. Appium이 <code>stopped</code> 상태여도 에뮬레이터를 먼저 켜두고 이후 Appium을 시작해도 됩니다.</div>
+        </div>
+      </div>
+
+      <!-- iOS -->
+      <div class="card">
+        <div class="card-title"><span class="card-title-icon">🍎</span> iOS 시뮬레이터</div>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <div class="step-title">시뮬레이터 목록 확인</div>
+              <div class="step-desc"><code>config/devices.json</code>의 <code>ios.simulator[]</code> 목록이 표시됩니다. <code>default: true</code>인 항목이 자동으로 선택됩니다.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <div class="step-title">▶ 시작 클릭</div>
+              <div class="step-desc">API가 즉시 202를 반환하고 시뮬레이터가 백그라운드에서 기동됩니다. <span class="pill pill-amber" style="display:inline-block;padding:1px 7px;font-size:11px;">부팅 중...</span> 상태가 30–60초 표시된 뒤 <span class="pill pill-green" style="display:inline-block;padding:1px 7px;font-size:11px;">실행 중</span>으로 자동 전환됩니다.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <div class="step-title">bundle_id 설정 확인</div>
+              <div class="step-desc">Capture Studio에서 iOS 세션을 열려면 <code>config/test_data.json</code>에 <code>bundle_id</code>가 정확히 등록되어 있어야 합니다.</div>
+            </div>
+          </div>
+        </div>
+        <div class="tip warn" style="margin-top:14px;">
+          <span class="tip-icon">⚠️</span>
+          <div class="tip-body">
+            <div class="tip-title">iOS 세션 충돌 주의</div>
+            시뮬레이터당 Appium 세션은 1개만 허용됩니다. <strong>Capture Studio iOS 세션이 열려 있으면 iOS 파이프라인을 동시에 실행할 수 없습니다</strong> (반대도 동일). 충돌 시 "🔄 세션 재연결" 버튼으로 복구합니다.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider">
+
+    <!-- ──────────────────────────────── IMPORT STUDIO ─── -->
+    <section class="page-section" id="import">
+      <div class="page-header blue">
+        <div class="page-icon">📥</div>
+        <div class="page-header-text">
+          <div class="page-label">TC 작성</div>
+          <h2>Import Studio</h2>
+          <p>Excel로 작성된 테스트케이스를 대시보드에서 바로 임포트합니다. 열 매핑부터 미리보기·충돌 확인·반영까지 5단계로 안전하게 TC를 등록합니다.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="card-title-icon">📂</span> 사전 준비</div>
+        <p style="font-size:14px;color:var(--text-2);">임포트할 <code>.xlsx</code> 파일을 프로젝트 루트의 <code>import/</code> 폴더에 미리 넣어 두세요. 원본 파일은 수정되지 않습니다.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="card-title-icon">🗂️</span> 5단계 임포트 흐름</div>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <div class="step-title">파일 선택</div>
+              <div class="step-desc"><code>import/</code> 폴더의 파일 목록에서 원하는 <code>.xlsx</code>를 클릭합니다.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <div class="step-title">시트 선택</div>
+              <div class="step-desc">파일 내 시트 목록이 표시됩니다. 하나 이상의 시트를 체크하고, 플랫폼(Android·iOS·양쪽)을 선택합니다.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <div class="step-title">열 매핑</div>
+              <div class="step-desc">Excel의 어느 열이 <code>tc_id</code>·<code>title</code>·<code>precondition</code>·<code>steps</code>·<code>expected</code>에 해당하는지 드롭다운으로 지정합니다. 매핑이 바뀔 때마다 미리보기가 자동 갱신됩니다.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">4</div>
+            <div class="step-body">
+              <div class="step-title">미리보기 확인</div>
+              <div class="step-desc"><strong>전체·추가·업데이트·충돌·오류·동일</strong> 필터로 TC 상태를 확인합니다. 충돌 TC는 기존 파일이 남아 있는 항목입니다.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">5</div>
+            <div class="step-body">
+              <div class="step-title">반영 (안전한 적용)</div>
+              <div class="step-desc">기본 정책은 <strong>skip-conflict</strong> — 충돌 TC는 기존 Markdown을 유지합니다. 덮어쓰려면 "overwrite" 모드를 선택한 뒤 반영합니다.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="card-title-icon">📁</span> 생성 경로 규칙</div>
+        <p style="font-size:14px;color:var(--text-2);margin-bottom:10px;">시트명이 폴더가 됩니다. 시트명 자체가 <code>android</code>나 <code>ios</code>이면 플랫폼 루트 바로 아래에 생성됩니다 (중첩 폴더 없음).</p>
+        <div style="background:var(--surface-2);border-radius:8px;padding:14px;font-size:13px;font-family:monospace;line-height:1.8;border:1px solid var(--border);">
+          시트: <code>login</code> / 플랫폼: Android+iOS<br>
+          → <code>testcases/android/login/TC-001.md</code><br>
+          → <code>testcases/ios/login/TC-001.md</code>
+        </div>
+      </div>
+
+      <div class="tip success">
+        <span class="tip-icon">✅</span>
+        <div class="tip-body">임포트 완료 후 <strong>파이프라인 실행</strong> 탭에서 바로 분석·생성을 진행할 수 있습니다.</div>
+      </div>
+    </section>
+
+    <hr class="divider">
+
+    <!-- ──────────────────────────────── CAPTURE STUDIO ─── -->
+    <section class="page-section" id="capture">
+      <div class="page-header purple">
+        <div class="page-icon">🎬</div>
+        <div class="page-header-text">
+          <div class="page-label">TC 작성</div>
+          <h2>Capture Studio</h2>
+          <p>실제 앱 화면을 보면서 탭·스크롤 등 동작을 기록하고, Locator를 승인한 뒤 자동으로 pytest TC 파일을 생성합니다. Excel 없이 TC를 직접 만드는 방법입니다.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="card-title-icon">🔌</span> 사전 준비</div>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">①</div>
+            <div class="step-body">
+              <div class="step-title">Appium 실행 확인</div>
+              <div class="step-desc">환경 설정 탭에서 Appium이 <span class="pill pill-green" style="display:inline-block;padding:1px 7px;font-size:11px;">managed</span> 또는 <span class="pill pill-blue" style="display:inline-block;padding:1px 7px;font-size:11px;">external</span> 상태인지 확인합니다.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">②</div>
+            <div class="step-body">
+              <div class="step-title">디바이스 준비</div>
+              <div class="step-desc">Android: 에뮬레이터가 <span class="pill pill-green" style="display:inline-block;padding:1px 7px;font-size:11px;">실행 중</span>이어야 합니다. iOS: 시뮬레이터가 <span class="pill pill-green" style="display:inline-block;padding:1px 7px;font-size:11px;">실행 중</span>이어야 합니다.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="card-title-icon">🎯</span> TC 생성 흐름</div>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <div class="step-title">세션 설정 — TC 정보 입력</div>
+              <div class="step-desc">플랫폼, <code>tc_group</code>(폴더명), <code>tc_id</code>(파일명)를 입력합니다. 예: group=<code>login</code>, id=<code>tc_login_v1</code> → <code>tests/generated/android/login/tc_login_v1.py</code></div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <div class="step-title">세션 시작 — 앱 화면 미러링</div>
+              <div class="step-desc">Android는 MJPEG 스트리밍(포트 8093), iOS는 XCUITest polling(1.2초 간격)으로 화면이 표시됩니다. 연결에 실패하면 "🔄 세션 재연결" 버튼을 클릭합니다.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <div class="step-title">요소 선택 — Hierarchy 트리</div>
+              <div class="step-desc">우측 패널에 앱 UI hierarchy가 트리 형태로 표시됩니다. 클릭하면 해당 요소가 선택되고, Locator 후보가 자동 생성됩니다. <strong>화면이 바뀌면 4초 이내에 hierarchy가 자동 새로고침</strong>됩니다.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">4</div>
+            <div class="step-body">
+              <div class="step-title">동작 기록 — 액션 추가</div>
+              <div class="step-desc">Tap · Scroll · Back · Wait 액션을 순서대로 추가합니다. 목록에서 드래그로 순서를 바꾸거나 삭제할 수 있습니다. Back 액션 실행 후 1.2초 뒤에 hierarchy가 자동 새로고침됩니다.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">5</div>
+            <div class="step-body">
+              <div class="step-title">Locator 승인</div>
+              <div class="step-desc">각 Tap 동작에 대한 Locator 후보(resource-id / content-desc / text 등)가 표시됩니다. 가장 안정적인 후보를 선택해 승인합니다.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">6</div>
+            <div class="step-body">
+              <div class="step-title">저장 및 생성</div>
+              <div class="step-desc">"저장 및 생성" 버튼을 클릭하면 <code>tests/generated/{platform}/{tc_group}/{tc_id}.py</code>에 자체 완결형 pytest 파일이 생성됩니다. 드라이버 초기화·헬퍼 함수·테스트 클래스가 한 파일에 포함됩니다.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card practice-card" id="capture-bluetooth-example">
+        <div class="practice-head">
+          <div>
+            <h3>직접 해보기 — 설정에서 Bluetooth 검색하기</h3>
+            <p>검색창을 누르고 <code>Bluetooth</code>를 입력한 다음, 같은 글자가 입력되었는지 확인하는 테스트를 만듭니다.</p>
+          </div>
+          <span class="practice-badge">Android · 약 5분</span>
+        </div>
+
+        <div class="practice-goal">
+          <div class="practice-goal-item"><small>시작 화면</small><strong>Android 설정 첫 화면</strong></div>
+          <div class="practice-goal-item"><small>입력할 글자</small><strong>Bluetooth</strong></div>
+          <div class="practice-goal-item"><small>성공 표시</small><strong>ALL PASS · 1/1</strong></div>
+        </div>
+
+        <div class="tip info" style="margin:0 0 18px;">
+          <span class="tip-icon">👶</span>
+          <div class="tip-body">
+            <div class="tip-title">이 실습은 이렇게 생각하면 쉬워요</div>
+            컴퓨터에게 “검색창을 찾아서 누르고, Bluetooth라고 쓰고, 정말 써졌는지 확인해 줘”라고 순서대로 알려주는 과정입니다.
+          </div>
+        </div>
+
+        <div class="card-title"><span class="card-title-icon">①</span> 세션 만들기</div>
+        <dl class="practice-settings">
+          <dt>OS</dt><dd>Android</dd>
+          <dt>실행 대상</dt><dd>Emulator / Simulator</dd>
+          <dt>App Package</dt><dd><code>com.android.settings</code></dd>
+          <dt>App Activity</dt><dd><code>.Settings</code></dd>
+          <dt>TC 그룹명</dt><dd><code>capture_studio_e2e</code></dd>
+          <dt>MJPEG 포트</dt><dd><code>8093</code></dd>
+        </dl>
+        <p style="font-size:13px;color:var(--text-2);margin-bottom:18px;">
+          위 값을 입력한 뒤 <span class="practice-ui">환경 확인</span>을 누릅니다. Appium 연결이 확인되면 <span class="practice-ui">세션 시작</span>을 누르고, 미러링 화면과 Hierarchy가 나타날 때까지 기다립니다.
+        </p>
+
+        <div class="card-title"><span class="card-title-icon">②</span> 동작을 하나씩 알려주기</div>
+        <div class="practice-flow">
+          <div class="practice-step">
+            <div class="practice-step-num">1</div>
+            <div>
+              <div class="practice-step-title">검색창을 선택하고 탭 기록</div>
+              <div class="practice-step-desc">
+                Hierarchy에서 <code>search_action_bar</code>를 클릭합니다. Locator 후보의 <span class="practice-ui">검증</span>을 눌러 <strong>유일 (1개 매칭)</strong>인지 확인하고 <span class="practice-ui">👆 탭</span>을 누릅니다. 그다음 에뮬레이터의 검색창을 직접 눌러 실제 검색 화면으로 이동합니다.
+              </div>
+            </div>
+          </div>
+
+          <div class="practice-step">
+            <div class="practice-step-num">2</div>
+            <div>
+              <div class="practice-step-title">화면이 열릴 시간을 주기</div>
+              <div class="practice-step-desc">
+                오른쪽의 <strong>요소 없이 추가</strong>에서 <span class="practice-ui">⏱ 대기</span>를 누르고 <code>2</code>를 입력합니다. 검색 화면이 완전히 열린 뒤 다음 동작을 하도록 만드는 안전장치입니다.
+              </div>
+            </div>
+          </div>
+
+          <div class="practice-step">
+            <div class="practice-step-num">3</div>
+            <div>
+              <div class="practice-step-title">입력 필드 선택</div>
+              <div class="practice-step-desc">
+                화면이 바뀌었으므로 <span class="practice-ui">Hierarchy 새로고침</span>을 누릅니다. Hierarchy에서 <code>open_search_view_edit_text</code>를 선택하고 Locator가 <strong>유일 (1개 매칭)</strong>인지 검증합니다.
+              </div>
+            </div>
+          </div>
+
+          <div class="practice-step">
+            <div class="practice-step-num">4</div>
+            <div>
+              <div class="practice-step-title">Bluetooth 입력 기록</div>
+              <div class="practice-step-desc">
+                에뮬레이터 검색창에 실제로 <code>Bluetooth</code>를 입력합니다. Capture Studio에서 <span class="practice-ui">⌨ 입력</span>을 누르고 똑같이 <code>Bluetooth</code>를 적은 뒤 <span class="practice-ui">기록</span>을 누릅니다.
+              </div>
+            </div>
+          </div>
+
+          <div class="practice-step">
+            <div class="practice-step-num">5</div>
+            <div>
+              <div class="practice-step-title">입력 결과를 기다리기</div>
+              <div class="practice-step-desc">
+                다시 <span class="practice-ui">⏱ 대기</span>를 누르고 <code>2</code>를 입력합니다. 입력 직후 결과가 바뀌는 동안 테스트가 너무 빨리 넘어가지 않게 합니다.
+              </div>
+            </div>
+          </div>
+
+          <div class="practice-step">
+            <div class="practice-step-num">6</div>
+            <div>
+              <div class="practice-step-title">Bluetooth 글자 검증</div>
+              <div class="practice-step-desc">
+                입력 필드가 선택된 상태에서 <span class="practice-ui">✓ 검증</span> → <span class="practice-ui">📝 텍스트 확인</span>을 누릅니다. 확인할 텍스트에 <code>Bluetooth</code>를 입력하고 <span class="practice-ui">확인</span>을 누릅니다.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="practice-timeline" aria-label="완성된 Action Timeline">
+          <span>👆 검색창 탭</span><i>→</i>
+          <span>⏱ 2초</span><i>→</i>
+          <span>⌨ Bluetooth 입력</span><i>→</i>
+          <span>⏱ 2초</span><i>→</i>
+          <span>✓ Bluetooth 확인</span>
+        </div>
+
+        <div class="card-title" style="margin-top:22px;"><span class="card-title-icon">③</span> 저장하고 실행하기</div>
+        <div class="practice-flow">
+          <div class="practice-step">
+            <div class="practice-step-num">7</div>
+            <div>
+              <div class="practice-step-title">TC 이름 입력 후 저장·생성</div>
+              <div class="practice-step-desc">
+                TC ID에 <code>tc_capture_settings_search_input</code>, 제목에 <strong>설정 검색창 텍스트 입력과 검증</strong>을 입력합니다. <span class="practice-ui">미리보기</span>에서 다섯 단계가 맞는지 확인한 뒤 <span class="practice-ui">저장 및 생성</span>을 누릅니다. <strong>테스트 코드 생성 완료</strong>가 표시되면 성공입니다.
+              </div>
+            </div>
+          </div>
+
+          <div class="practice-step">
+            <div class="practice-step-num">8</div>
+            <div>
+              <div class="practice-step-title">Capture 세션 종료</div>
+              <div class="practice-step-desc">
+                <span class="practice-ui">세션 종료</span>를 누릅니다. Capture 세션이 열린 상태에서는 빠른 실행과 같은 플랫폼의 Appium 세션이 충돌할 수 있습니다.
+              </div>
+            </div>
+          </div>
+
+          <div class="practice-step">
+            <div class="practice-step-num">9</div>
+            <div>
+              <div class="practice-step-title">빠른 실행에서 확인</div>
+              <div class="practice-step-desc">
+                <strong>빠른 실행</strong>으로 이동해 Android를 선택합니다. 다른 항목의 체크를 풀고 <code>capture_studio_e2e</code>만 선택한 뒤 <span class="practice-ui">테스트 실행</span>을 누릅니다. 실행 중 에뮬레이터에서 검색창이 열리고 Bluetooth가 자동 입력됩니다.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="practice-result">
+          <strong>완료 기준:</strong> Chrome에 <strong>ALL PASS</strong>, <strong>1 PASSED / 0 FAILED</strong>, <strong>실행 완료 (1/1)</strong>이 표시됩니다.<br>
+          생성 파일: <code>tests/generated/android/capture_studio_e2e/tc_capture_settings_search_input.py</code>
+        </div>
+
+        <div class="tip warn">
+          <span class="tip-icon">🔁</span>
+          <div class="tip-body">
+            <div class="tip-title">같은 테스트를 다시 실행해도 자동으로 시작 화면을 맞춥니다</div>
+            에뮬레이터·시뮬레이터 전체를 초기화할 필요는 없습니다. 빠른 실행은 테스트를 시작할 때마다 이전 앱 화면을 닫고 대상 앱을 다시 열어 <strong>정해진 시작 화면</strong>으로 돌려놓습니다. 자동 복구 자체가 실패했다는 안내가 나타날 때만 기기가 켜져 있는지 확인하고 앱을 직접 한 번 연 뒤 다시 실행하세요.
+          </div>
+        </div>
+
+        <div class="tip danger">
+          <span class="tip-icon">⚠️</span>
+          <div class="tip-body">
+            <div class="tip-title">미러 화면은 눌러도 단계가 두 번 생기지 않습니다</div>
+            Hierarchy에서 <span class="practice-ui">👆 탭</span>을 추가한 뒤 미러 화면을 눌러 실제 기기를 움직여도, 수동 STEP 모드에서는 같은 탭이 Action Timeline에 자동 추가되지 않습니다. 저장 전에는 위에 표시된 <strong>다섯 단계</strong>가 맞는지만 확인하세요.
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="card-title-icon">🩹</span> Healing 연계</div>
+        <p style="font-size:14px;color:var(--text-2);">파이프라인 실행에서 TC가 실패한 경우, 실패 TC를 클릭하면 Capture Studio로 재진입해 Locator를 4단계부터 재검토할 수 있습니다. hierarchy는 실패 직전 스냅샷이 자동으로 로드됩니다.</p>
+      </div>
+
+      <div class="tip warn">
+        <span class="tip-icon">⚠️</span>
+        <div class="tip-body">
+          <div class="tip-title">Android MJPEG 스트리밍 요구사항</div>
+          Android 미러링을 위해 Appium 서버 기동 시 반드시 <code>--allow-insecure=uiautomator2:adb_screen_streaming</code> 플래그가 필요합니다.
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider">
+
+    <!-- ──────────────────────────────── PIPELINE ─── -->
+    <section class="page-section" id="pipeline">
+      <div class="page-header indigo">
+        <div class="page-icon">🚀</div>
+        <div class="page-header-text">
+          <div class="page-label">파이프라인</div>
+          <h2>파이프라인 실행</h2>
+          <p>분석 → 생성 → 린트 → 실행 → 힐링 5단계를 순서대로 실행하는 전체 파이프라인입니다. TC Markdown을 입력으로 받아 실행 리포트까지 자동으로 생성합니다.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="card-title-icon">🔁</span> 파이프라인 단계</div>
+        <div class="pipeline-flow">
+          <div class="pipeline-step"><div class="pipeline-step-num">01</div><div class="pipeline-step-name">분석</div></div>
+          <div class="pipeline-arrow">→</div>
+          <div class="pipeline-step"><div class="pipeline-step-num">02</div><div class="pipeline-step-name">생성</div></div>
+          <div class="pipeline-arrow">→</div>
+          <div class="pipeline-step"><div class="pipeline-step-num">03</div><div class="pipeline-step-name">린트</div></div>
+          <div class="pipeline-arrow">→</div>
+          <div class="pipeline-step"><div class="pipeline-step-num">05</div><div class="pipeline-step-name">실행</div></div>
+          <div class="pipeline-arrow">→</div>
+          <div class="pipeline-step"><div class="pipeline-step-num">06</div><div class="pipeline-step-name">힐링</div></div>
+        </div>
+        <div class="state-table-wrap" style="margin-top:16px;">
+          <table class="state-table">
+            <thead><tr><th>단계</th><th>하는 일</th></tr></thead>
+            <tbody>
+              <tr><td><strong>01 분석</strong></td><td>Appium으로 앱에 연결해 native UI hierarchy와 WebView DOM을 수집합니다. 결과는 <code>state/pipeline.json</code>에 저장됩니다.</td></tr>
+              <tr><td><strong>02 생성</strong></td><td>TC Markdown과 Locator registry를 기반으로 pytest 파일을 생성합니다. <code>--strict-locators</code> 모드에서 locator 누락 시 실패합니다.</td></tr>
+              <tr><td><strong>03 린트</strong></td><td>생성된 코드를 flake8로 검사합니다. 오류가 있으면 이 단계에서 멈춥니다.</td></tr>
+              <tr><td><strong>05 실행</strong></td><td>pytest로 생성된 TC를 실행합니다. <code>pytest-rerunfailures</code>가 설치된 경우 실패 TC를 2회 자동 재시도합니다.</td></tr>
+              <tr><td><strong>06 힐링</strong></td><td>실패 TC에 대해 hierarchy를 재수집하고 유일한 후보 locator만 자동으로 갱신합니다. 3회 재시도 후에도 실패하면 Jira 버그가 생성됩니다.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="card-title-icon">▶️</span> 실행 방법</div>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <div class="step-title">플랫폼 선택</div>
+              <div class="step-desc">Android 또는 iOS를 선택합니다. 각각 독립적으로 실행됩니다.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <div class="step-title">실행 시작</div>
+              <div class="step-desc">"전체 파이프라인 실행" 버튼을 클릭합니다. 단계별 진행 상황이 실시간으로 업데이트됩니다.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <div class="step-title">결과 확인</div>
+              <div class="step-desc">완료 후 리포트 링크가 제공됩니다. 실패 TC가 있으면 힐링 결과와 함께 표시됩니다.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tip warn">
+        <span class="tip-icon">⚠️</span>
+        <div class="tip-body">
+          <div class="tip-title">세션 충돌 방지</div>
+          파이프라인 실행 중에는 같은 플랫폼의 Capture Studio 세션을 열 수 없습니다. 대시보드 상단에 충돌 상태가 표시됩니다.
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider">
+
+    <!-- ──────────────────────────────── QUICK RUN ─── -->
+    <section class="page-section" id="quickrun">
+      <div class="page-header teal">
+        <div class="page-icon">⚡</div>
+        <div class="page-header-text">
+          <div class="page-label">파이프라인</div>
+          <h2>빠른 실행</h2>
+          <p>전체 파이프라인 없이 이미 생성된 TC 파일을 바로 pytest로 실행합니다. 특정 그룹이나 개별 파일만 선택해서 빠르게 검증할 때 사용합니다.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="card-title-icon">☑️</span> 사용 방법</div>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <div class="step-title">플랫폼 탭 선택</div>
+              <div class="step-desc">Android 또는 iOS 탭을 클릭합니다. 각 탭에는 해당 플랫폼의 생성된 TC 그룹과 파일이 표시됩니다.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <div class="step-title">TC 선택</div>
+              <div class="step-desc">그룹 단위로 전체 선택하거나 개별 파일을 체크합니다. 선택한 탭 내 체크박스만 실행에 포함됩니다.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <div class="step-title">실행</div>
+              <div class="step-desc">"선택 항목 실행" 버튼을 클릭합니다. pytest 출력이 실시간으로 표시되고, 완료 후 Dashboard KPI와 히스토리가 자동 갱신됩니다.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tip info">
+        <span class="tip-icon">💡</span>
+        <div class="tip-body">빠른 실행은 분석·생성·린트 단계를 건너뛰고 <strong>pytest 실행만</strong> 합니다. TC 파일이 최신 상태인지 먼저 확인하세요. 파일이 없으면 파이프라인 실행에서 02 생성까지 먼저 진행합니다.</div>
+      </div>
+    </section>
+
+    <hr class="divider">
+
+    <!-- ──────────────────────────────── REPORTS ─── -->
+    <section class="page-section" id="reports">
+      <div class="page-header orange">
+        <div class="page-icon">📄</div>
+        <div class="page-header-text">
+          <div class="page-label">테스트 결과</div>
+          <h2>리포트 목록</h2>
+          <p>파이프라인 실행이나 빠른 실행에서 생성된 HTML 리포트를 확인하고 다운로드합니다. 각 리포트에는 TC별 성공/실패 여부, 실행 시간, 에러 로그가 포함됩니다.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="card-title-icon">📂</span> 리포트 저장 위치</div>
+        <p style="font-size:14px;color:var(--text-2);margin-bottom:10px;">리포트는 <code>tests/reports/</code> 폴더에 날짜·플랫폼별로 저장됩니다.</p>
+        <div style="background:var(--surface-2);border-radius:8px;padding:14px;font-size:13px;font-family:monospace;line-height:2;border:1px solid var(--border);">
+          tests/reports/<br>
+          &nbsp;&nbsp;android_2026-09-15_143012.html<br>
+          &nbsp;&nbsp;ios_2026-09-14_091530.html
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="card-title-icon">🔍</span> 리포트 보기</div>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <div class="step-title">리포트 목록에서 항목 클릭</div>
+              <div class="step-desc">날짜·플랫폼으로 정렬된 목록에서 원하는 리포트를 클릭하면 대시보드 내 뷰어에서 열립니다.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <div class="step-title">실패 TC 확인</div>
+              <div class="step-desc">실패한 TC는 빨간색으로 표시되며, 에러 메시지와 스택 트레이스를 확인할 수 있습니다.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <div class="step-title">Capture Studio로 Healing</div>
+              <div class="step-desc">실패 TC 옆의 "Locator 검토" 버튼을 클릭하면 Capture Studio Locator 승인 단계로 바로 이동합니다.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider">
+
+    <!-- ──────────────────────────────── HISTORY ─── -->
+    <section class="page-section" id="history">
+      <div class="page-header slate">
+        <div class="page-icon">🕐</div>
+        <div class="page-header-text">
+          <div class="page-label">테스트 결과</div>
+          <h2>실행 히스토리</h2>
+          <p>모든 파이프라인·빠른 실행의 기록을 날짜순으로 확인합니다. 성공률 추이와 반복 실패 TC를 파악하는 데 사용합니다.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="card-title-icon">📊</span> 히스토리 테이블</div>
+        <div class="state-table-wrap">
+          <table class="state-table">
+            <thead><tr><th>컬럼</th><th>설명</th></tr></thead>
+            <tbody>
+              <tr><td><strong>실행 일시</strong></td><td>파이프라인 또는 빠른 실행이 시작된 시각</td></tr>
+              <tr><td><strong>플랫폼</strong></td><td>Android / iOS</td></tr>
+              <tr><td><strong>실행 유형</strong></td><td>전체 파이프라인 / 빠른 실행</td></tr>
+              <tr><td><strong>TC 수</strong></td><td>총 TC 수 / 성공 / 실패</td></tr>
+              <tr><td><strong>결과</strong></td><td><span class="pill pill-green">통과</span> <span class="pill pill-red">실패</span> <span class="pill pill-amber">일부 실패</span></td></tr>
+              <tr><td><strong>리포트</strong></td><td>해당 실행의 상세 리포트 링크</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="tip info">
+        <span class="tip-icon">💡</span>
+        <div class="tip-body">히스토리는 <code>state/pipeline.json</code>에 누적 기록됩니다. 파일을 직접 편집하거나 삭제하면 히스토리가 손실될 수 있으니 주의하세요.</div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <div style="margin-top:60px;padding-top:24px;border-top:1px solid var(--border);font-size:12.5px;color:var(--text-3);">
+      QA Automation Dashboard · Native App · 포트 8767 · Appium 3.5.2
+    </div>
+
+  </main>
+</div>
+
+<script>
+  // Scroll-spy
+  const sections = document.querySelectorAll('.page-section');
+  const links = document.querySelectorAll('.sidebar-link');
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const id = entry.target.id;
+        links.forEach(l => {
+          const active = l.getAttribute('href') === '#' + id;
+          l.classList.toggle('active', active);
+        });
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+
+  sections.forEach(s => observer.observe(s));
+</script>

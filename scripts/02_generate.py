@@ -381,11 +381,23 @@ def _check_device_connected() -> None:
         )
 
 
+def _get_device(platform: str, mode: str) -> dict:
+    _s = _load_json(CONFIG_DIR / "devices.json").get(platform, {{}}).get(mode)
+    if isinstance(_s, dict):
+        return _s
+    if isinstance(_s, list):
+        return next((d for d in _s if d.get("default")), _s[0] if _s else {{}})
+    return {{}}
+
+
+_NON_APPIUM_KEYS = frozenset({{"default", "wifi_ip", "team_id", "label", "note"}})
+
+
 def _build_driver() -> webdriver.Remote:
-    devices = _load_json(CONFIG_DIR / "devices.json")
+    _raw = _get_device("android", PLATFORM_MODE)
     test_data = _load_json(CONFIG_DIR / "test_data.json")
 
-    caps = devices["android"][PLATFORM_MODE].copy()
+    caps = {{k: v for k, v in _raw.items() if k not in _NON_APPIUM_KEYS}}
     caps["platformName"] = "Android"
     caps["appPackage"] = test_data["app"]["android"]["package"]
     caps["appActivity"] = test_data["app"]["android"]["activity"]
@@ -422,11 +434,23 @@ def _check_device_connected() -> None:
         )
 
 
+def _get_device(platform: str, mode: str) -> dict:
+    _s = _load_json(CONFIG_DIR / "devices.json").get(platform, {{}}).get(mode)
+    if isinstance(_s, dict):
+        return _s
+    if isinstance(_s, list):
+        return next((d for d in _s if d.get("default")), _s[0] if _s else {{}})
+    return {{}}
+
+
+_NON_APPIUM_KEYS = frozenset({{"default", "wifi_ip", "team_id", "label", "note"}})
+
+
 def _build_driver() -> webdriver.Remote:
-    devices = _load_json(CONFIG_DIR / "devices.json")
+    _raw = _get_device("ios", PLATFORM_MODE)
     test_data = _load_json(CONFIG_DIR / "test_data.json")
 
-    caps = devices["ios"][PLATFORM_MODE].copy()
+    caps = {{k: v for k, v in _raw.items() if k not in _NON_APPIUM_KEYS}}
     caps["platformName"] = "iOS"
     caps["bundleId"] = test_data["app"]["ios"]["bundle_id"]
     app_path = test_data["app"]["ios"]["app_path"]

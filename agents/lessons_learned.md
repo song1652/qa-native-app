@@ -5,6 +5,59 @@
 
 ## Appium / Android
 
+### [Locator Heal Failed] settings_search_input — UNKNOWN
+**문제**: `SEL_* 상수를 찾을 수 없음` — XML에서 유사 요소를 찾지 못함
+**원인**: dom_info XML이 오래됐거나 화면 구조 변경 가능성
+**해결**: `01_analyze.py` 재실행 후 dom_info 갱신 필요
+**적용 범위**: settings_search_input 화면 heal 재시도 시 참고
+
+---
+
+### [Locator Heal Failed] v2 — UNKNOWN
+**문제**: `SEL_* 상수를 찾을 수 없음` — XML에서 유사 요소를 찾지 못함
+**원인**: dom_info XML이 오래됐거나 화면 구조 변경 가능성
+**해결**: `01_analyze.py` 재실행 후 dom_info 갱신 필요
+**적용 범위**: v2 화면 heal 재시도 시 참고
+
+---
+
+### [Locator Heal Failed] v1 — UNKNOWN
+**문제**: `SEL_* 상수를 찾을 수 없음` — XML에서 유사 요소를 찾지 못함
+**원인**: dom_info XML이 오래됐거나 화면 구조 변경 가능성
+**해결**: `01_analyze.py` 재실행 후 dom_info 갱신 필요
+**적용 범위**: v1 화면 heal 재시도 시 참고
+
+---
+
+### [Locator Heal Failed] ui_v3 — UNKNOWN
+**문제**: `SEL_* 상수를 찾을 수 없음` — XML에서 유사 요소를 찾지 못함
+**원인**: dom_info XML이 오래됐거나 화면 구조 변경 가능성
+**해결**: `01_analyze.py` 재실행 후 dom_info 갱신 필요
+**적용 범위**: ui_v3 화면 heal 재시도 시 참고
+
+---
+
+### [환경변수] ANDROID_HOME 미설정 시 UiAutomator2 세션 실패
+**문제**: `Neither ANDROID_HOME nor ANDROID_SDK_ROOT environment variable was exported` 오류와 함께 Android Appium 세션 생성 실패
+**원인**: Appium 프로세스를 시작한 쉘에 `ANDROID_HOME`이 설정되어 있지 않으면 UiAutomator2 드라이버가 adb를 찾지 못함
+**해결**: Appium 기동 전 `export ANDROID_HOME=/Users/junghoyoung/Library/Android/sdk` 설정 필수. `~/.zshrc`에 영구 등록 권장
+```bash
+export ANDROID_HOME=/Users/junghoyoung/Library/Android/sdk
+export PATH=$PATH:$ANDROID_HOME/platform-tools
+appium --address 127.0.0.1 --port 4723 --allow-insecure=uiautomator2:adb_screen_streaming
+```
+**적용 범위**: Appium 서버 기동 스크립트 또는 쉘 프로파일 설정 시 참고
+
+---
+
+### [Appium 세션 caps] 에뮬레이터 이미 실행 중일 때 avd 캡 사용 금지
+**문제**: `appium:avd` 캡을 설정하면 에뮬레이터가 이미 실행 중이어도 새 에뮬레이터를 띄우려 시도 → 30초 타임아웃 후 UiAutomator2 초기화 실패
+**원인**: `avd` 캡은 에뮬레이터를 신규 기동할 때만 유효. 이미 실행 중인 에뮬레이터에 연결할 때는 serial로 지정해야 함
+**해결**: 에뮬레이터가 이미 실행 중이면 `appium:udid: "emulator-5554"` 또는 `appium:deviceName: "emulator-5554"`로 연결. `avd` 캡 제거
+**적용 범위**: Capture Studio `_do_start_android_session()`은 `avd` 캡 미사용, `deviceName: "Android Emulator"` 제네릭 값 사용 — 정상 동작 확인됨
+
+---
+
 ### [Locator Heal Failed] settings_multi — UNKNOWN
 **문제**: `SEL_* 상수를 찾을 수 없음` — XML에서 유사 요소를 찾지 못함
 **원인**: dom_info XML이 오래됐거나 화면 구조 변경 가능성
@@ -55,6 +108,14 @@
 
 ## iOS
 
+### [iOS 시뮬레이터 부팅] subprocess.run(블로킹) 대신 Popen(비동기) 사용
+**문제**: `xcrun simctl boot`를 `subprocess.run(timeout=60)`으로 실행하면 API가 60초 블로킹 → "부팅 중..." 상태가 대시보드에 표시되지 않음
+**원인**: 블로킹 호출이 완료될 때 시뮬레이터는 이미 Booted 상태 → 폴링이 즉시 `running`을 감지해 `starting` 상태를 건너뜀
+**해결**: `subprocess.Popen(["xcrun", "simctl", "boot", udid], stdout=DEVNULL, stderr=DEVNULL)` 비동기 실행. API가 즉시 202 + `status: "starting"` 반환. 3초 폴링(`detect_ios_runtime`)이 `simctl list` Booted 감지 시 `running`으로 전환
+**적용 범위**: `agents/dashboard/routes/env.py` `post_simulator_start()`. Android `post_avd_start()`와 동일한 Popen 패턴 사용
+
+---
+
 ### [Locator Heal Failed] settings_v6 — UNKNOWN
 **문제**: `SEL_* 상수를 찾을 수 없음` — XML에서 유사 요소를 찾지 못함
 **원인**: dom_info XML이 오래됐거나 화면 구조 변경 가능성
@@ -90,6 +151,33 @@
 <!-- iOS 관련 패턴은 여기에 추가 -->
 
 ## 공통
+
+### [스키마 설계] emulator 키 단수 확정 — 배열 전환 시 소비 코드 3곳 일괄 수정 필요
+**문제**: `android.emulator`를 단수 객체 → 배열로 전환할 때 소비 코드를 놓쳐 KeyError/AttributeError 발생
+**원인**: `devices["android"]["emulator"]`를 직접 `.copy()`하는 코드가 3곳의 실제 소스 파일과 해당 파일에서 생성되는 pytest 템플릿에 분산되어 있음
+**해결**: 배열 전환 시 아래 3곳을 일괄 수정. `devices["android"]["emulator"]` → `next(d for d in devices["android"]["emulator"] if d.get("default")).copy()` 패턴 적용
+- `scripts/drivers/android_driver.py` L35
+- `scripts/02_generate.py` L388 (생성 코드 템플릿 내부)
+- `agents/dashboard/routes/capture.py` L645 (생성 코드 템플릿 내부)
+**적용 범위**: M2.0 배열 전환 작업 시 반드시 세 파일을 동시에 수정. 각 배열 항목에 `"default": true` 필드가 있어야 함
+
+---
+
+### [스키마 설계] MJPEG caps 이중 분산 버그 — devices.json과 capture.py 하드코딩 동시 존재
+**문제**: MJPEG 관련 caps(`mjpegServerPort`, `mjpegScalingFactor`, `mjpegServerScreenshotQuality`)가 `config/devices.json`과 `agents/dashboard/routes/capture.py` 양쪽에 분산되어 있음
+**원인**: `_do_start_android_session()`은 devices.json을 읽지 않고 직접 `opts.set_capability()`로 MJPEG caps를 설정(L128-130). devices.json의 MJPEG 값은 Capture Studio 경로에서 무시됨
+**해결**: M2.0에서 `capture.py` L128-130 하드코딩 제거. devices.json의 emulator 항목에서 MJPEG caps를 읽어 적용하도록 통합. 이중 관리 상태 해소
+**적용 범위**: `agents/dashboard/routes/capture.py` `_do_start_android_session()` 함수 리팩터링 시 참고
+
+---
+
+### [케이스 규칙] camelCase/snake_case 역할 분리 — 의도된 설계
+**문제**: `config/devices.json`의 키(camelCase)와 내부 state 키(snake_case)가 달라 혼란 발생 가능
+**원인**: 설계 의도: devices.json은 Appium caps를 그대로 담는 파일로 Appium 스펙을 따라 camelCase 사용. 내부 state(capture_session.json 등)는 Python 관례를 따라 snake_case 사용
+**해결**: 변경 없음. camelCase(Appium) / snake_case(Python 내부) 분리는 유지해야 함
+**적용 범위**: devices.json 편집 시 `deviceName`, `platformVersion`, `automationName` 등 Appium 공식 caps 키 이름 그대로 유지. state 파일(capture_session.json 등)은 `app_package`, `mjpeg_port` 등 snake_case 유지
+
+---
 
 ### [세션 초기화 실패] 연속 Appium 세션 실행 시 3번째 세션 UiAutomator2 초기화 오류
 **문제**: 3개 이상의 테스트를 순차 실행할 때 3번째 세션에서 UiAutomator2 서버 초기화 실패

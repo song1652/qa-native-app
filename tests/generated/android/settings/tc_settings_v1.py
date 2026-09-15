@@ -8,20 +8,25 @@ from pathlib import Path
 from appium import webdriver
 from appium.options.android.uiautomator2.base import UiAutomator2Options
 from appium.webdriver.common.appiumby import AppiumBy
+from scripts.generated_runtime import (
+    CAPTURE_TEMPLATE_VERSION, appium_capabilities, find_with_wait,
+    reset_to_start, select_device,
+)
 
 CONFIG_DIR = (Path(__file__).resolve().parent / "../../../.." / "config").resolve()
 APPIUM_URL  = "http://localhost:4723"
 PLATFORM_MODE = "emulator"
+APP_ID = "com.android.settings"
+APP_ACTIVITY = ".Settings"
 
 def _load_json(p): return json.loads(Path(p).read_text(encoding='utf-8'))
 
 def _build_driver():
-    devs = _load_json(CONFIG_DIR / 'devices.json')
-    caps = devs['android'][PLATFORM_MODE].copy()
+    caps = appium_capabilities(select_device(CONFIG_DIR / 'devices.json', 'android', PLATFORM_MODE))
     caps['platformName'] = 'Android'
     caps.pop('app', None)  # 설치된 앱 사용
-    caps['appPackage'] = 'com.android.settings'
-    caps['appActivity'] = '.Settings'
+    caps['appPackage'] = APP_ID
+    caps['appActivity'] = APP_ACTIVITY
     opts = UiAutomator2Options().load_capabilities(caps)
     return webdriver.Remote(APPIUM_URL, options=opts)
 
@@ -31,6 +36,7 @@ class TestTcAndroidSettingsV1:
 
     def setup_method(self):
         self.driver = _build_driver()
+        reset_to_start(self.driver, 'android', APP_ID, APP_ACTIVITY)
 
     def teardown_method(self):
         if hasattr(self, 'driver') and self.driver:
@@ -45,7 +51,7 @@ class TestTcAndroidSettingsV1:
             'AppiumBy.ACCESSIBILITY_ID': AppiumBy.ACCESSIBILITY_ID,
             'AppiumBy.CLASS_NAME': AppiumBy.CLASS_NAME,
         }
-        return self.driver.find_element(by_map.get(strategy, AppiumBy.XPATH), value)
+        return find_with_wait(self.driver, by_map.get(strategy, AppiumBy.XPATH), value)
 
     def test_tc_android_settings_v1(self):
         """단계별 동작 및 검증"""
