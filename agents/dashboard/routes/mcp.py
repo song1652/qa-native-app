@@ -442,6 +442,10 @@ async def _handle_rpc(body: dict) -> dict | None:
         return _jsonrpc_ok({"tools": TOOLS}, req_id)
 
     # ── tools/call ──────────────────────────────────────────────
+    if method in ("tools/call", "tools/list"):
+        # 클라이언트가 실제로 툴을 사용 중 → connected 확정
+        _mcp_connected = True
+
     if method == "tools/call":
         tool_name = params.get("name", "")
         tool_args = params.get("arguments") or {}

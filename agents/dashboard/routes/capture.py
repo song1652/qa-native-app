@@ -239,10 +239,14 @@ def _do_start_ios_session(session: dict) -> dict:
         # 스크린샷 미준비 상태라도 세션은 유지 (hierarchy는 동작 가능)
         _time.sleep(1)
 
-    try:
-        snap_id = _take_hierarchy_snapshot(session["session_id"], driver, "native")
-    except Exception:
-        snap_id = None
+    snap_id = None
+    for _snap_attempt in range(3):
+        try:
+            snap_id = _take_hierarchy_snapshot(session["session_id"], driver, "native")
+            break
+        except Exception:
+            if _snap_attempt < 2:
+                _time.sleep(2)
 
     return {
         "ok":                True,
