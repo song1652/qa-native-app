@@ -3957,7 +3957,9 @@ function csInit() {
 function csReLaunch() {
   var saveStatus = document.getElementById('cs-save-status');
   if(_cs.launching){
-    if(saveStatus){ saveStatus.textContent = '📱 앱 실행이 이미 진행 중입니다. 잠시 기다려 주세요.'; saveStatus.style.color='#a78bfa'; }
+    // 절전 복귀 후 stuck될 수 있으므로 3초 안내 후 강제 해제
+    if(saveStatus){ saveStatus.textContent = '⏳ 진행 중... 계속 안 되면 다시 클릭하세요.'; saveStatus.style.color='#a78bfa'; }
+    setTimeout(function(){ _cs.launching = false; }, 3000);
     return;
   }
   _cs.launching = true;
@@ -4304,8 +4306,9 @@ function csMirrorConnect() {
       errDiv.className = 'cs-mirror-error';
       errDiv.style.cssText = 'color:var(--fail);text-align:center;padding:12px';
       errDiv.innerHTML = '❌ MJPEG 연결 실패 (포트 ' + port + ')<br>'
-        + '<span style="font-size:10px;color:var(--text3)">Appium 세션이 시작된 후 아래 버튼으로 재시도</span><br><br>'
-        + '<button class="cs-btn" onclick="csMirrorConnect()" style="padding:4px 12px;font-size:11px">🔄 재연결</button>';
+        + '<span style="font-size:10px;color:var(--text3)">Appium 세션이 끊겼습니다</span><br><br>'
+        + '<button class="cs-btn primary" onclick="csReLaunch()" style="padding:4px 12px;font-size:11px;margin-bottom:4px">🔄 세션 재연결</button><br>'
+        + '<button class="cs-btn" onclick="csMirrorConnect()" style="padding:4px 12px;font-size:11px">📷 미러링만 재시도</button>';
       placeholder.appendChild(errDiv);
     };
     img.onload = function() {
