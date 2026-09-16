@@ -72,6 +72,7 @@ async def get_status(platform: str | None = None):
     cap_session = load_capture_session()
     cap_active = cap_session.get("active", False)
     cap_platform = cap_session.get("platform", "") if cap_active else ""
+    cap_group = cap_session.get("tc_group", "") if cap_active else ""
     # device_name 필드는 iOS 세션 잔재일 수 있으므로 platform 일치 시에만 사용
     raw_device = cap_session.get("device_name", "")
     cap_device = raw_device if cap_active else ""
@@ -87,6 +88,7 @@ async def get_status(platform: str | None = None):
         "capture_active": cap_active,
         "capture_platform": cap_platform,
         "capture_device": cap_device,
+        "capture_group": cap_group,
     })
 
 

@@ -2307,7 +2307,7 @@ async function refreshStatus(){
     var captureActive = st.capture_active || false;
     // 페이지 로드 시 CS info-strip 동기화 (세션 복원 전 첫 폴링)
     if(captureActive && st.capture_platform && !_cs.sessionId){
-      csInfoStripShow(st.capture_platform, st.capture_device || '', '');
+      csInfoStripShow(st.capture_platform, st.capture_device || '', st.capture_group || '');
     } else if(!captureActive){
       csInfoStripHide();
     }
