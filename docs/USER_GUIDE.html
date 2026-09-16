@@ -1082,12 +1082,16 @@
           <span class="tip-icon">ℹ️</span>
           <div class="tip-body">MCP 경로로 기록된 액션은 <code>source: mcp</code>로 표시되어 사람 액션(<code>source: user</code>)과 구분됩니다. Livetail 🤖 필터로 MCP 행만 볼 수 있습니다.</div>
         </div>
+        <div class="tip info" style="margin-top:10px;">
+          <span class="tip-icon">📝</span>
+          <div class="tip-body"><strong>TC 생성 소스 필터</strong> — <code>generate_test_case</code> 툴(또는 저장 및 생성 버튼)은 <code>source_filter</code> 파라미터로 TC에 포함할 액션 출처를 지정할 수 있습니다 (<code>all</code> | <code>user</code> | <code>mcp</code>). <code>screenshot</code>·<code>hierarchy</code> 등 비실행 타입은 자동 제거되며, 생성된 TC 파일 상단에 출처(user/mcp/mixed)와 액션 수가 표기됩니다.</div>
+        </div>
       </div>
 
       <div class="card">
         <div class="card-title"><span class="card-title-icon">📡</span> Livetail — 실시간 액션 로그</div>
         <p style="font-size:14px;color:var(--text-2);margin-bottom:14px;">
-          세션 스트립의 <strong>Livetail</strong> 버튼을 클릭하면 오른쪽 슬라이드 패널이 열립니다. 사람·MCP·파이프라인의 모든 액션이 실시간으로 기록됩니다.
+          화면 상단의 <strong>Livetail</strong> 버튼을 클릭하면 오른쪽 슬라이드 패널이 열립니다. Capture Studio 세션 없이도 항상 접근 가능합니다. 사람·MCP·파이프라인의 모든 이벤트가 실시간으로 기록되며, 파이프라인 단계 시작·완료도 여기서 확인할 수 있습니다.
         </p>
         <div class="state-table-wrap">
           <table class="state-table">
@@ -1095,7 +1099,7 @@
             <tbody>
               <tr><td>👤</td><td><code>user</code></td><td>대시보드에서 직접 수행한 탭·스크롤·입력</td></tr>
               <tr><td>🤖</td><td><code>mcp</code></td><td>Claude Code MCP 툴 호출</td></tr>
-              <tr><td>⚙</td><td><code>pipe</code></td><td>파이프라인 단계 이벤트</td></tr>
+              <tr><td>⚙</td><td><code>pipe</code></td><td>파이프라인 단계 시작·완료 이벤트</td></tr>
             </tbody>
           </table>
         </div>

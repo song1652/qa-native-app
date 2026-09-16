@@ -619,7 +619,8 @@ Claude Code에서 디바이스를 직접 제어하려면 MCP 서버를 1회 등�
 3. **환경 설정** 탭 → Appium 시작 → 에뮬레이터/시뮬레이터 시작
 4. **Import Studio** 탭 → `import/` 폴더에 Excel 파일 → TC 등록
 5. **Capture Studio** 탭 → 앱 화면 보면서 TC 직접 생성 (또는 Nova MCP로 Claude에게 위임)
-6. **파이프라인 실행** 탭 → 전체 실행
+   - 상단 **Livetail** 버튼(항상 표시)을 클릭하면 user·mcp·pipeline 이벤트 실시간 확인 가능
+6. **파이프라인 실행** 탭 → 전체 실행 (단계 시작·완료가 Livetail에 실시간 표시됩니다)
    - TC 파일이 없으면 `collected 0 items` 로 종료됩니다 — 오류가 아니라 TC 등록 전 정상 상태입니다.
    - TC 등록 후 실행 시 `tests/reports/` 에 HTML 리포트가 생성되면 성공입니다.
 7. **리포트 목록** 탭 → 결과 확인

@@ -53,7 +53,7 @@ testcases/ios/{group}/     → tests/generated/ios/{group}/
 
 대시보드의 Capture Studio 탭에서 실제 앱 화면을 보며 요소를 선택하고 TC를 직접 생성합니다.
 
-**현재 구현 상태 (2026-09-12):**
+**현재 구현 상태 (2026-09-16):**
 - Phase 0–1 완료: FastAPI 전환, 세션 충돌 방지, MJPEG/iOS poll 환경 확인, 세션 설정 화면
 - Phase 2–4 완료: hierarchy 트리 렌더링·노드 선택, 동작 기록(tap/scroll/back/wait), Locator 후보·승인
 - Phase 7 완료: `저장 및 생성` 버튼 → `/capture/generate_from_actions` → 자체 완결형 pytest 파일 생성
@@ -63,6 +63,10 @@ testcases/ios/{group}/     → tests/generated/ios/{group}/
 - **화면 전환 자동 감지**: `GET /capture/page_source_hash` 4초 폴링 → hash 변경 시 hierarchy 자동 새로고침 (쿨다운 3초)
 - **back 액션**: 실행 후 1.2초 뒤 hierarchy 자동 새로고침
 - **세션 복구**: mirror 에러 시 "🔄 세션 재연결" 버튼 → `csReLaunch()` → Back 없이 드라이버 재시작
+- **Nova MCP** (`routes/mcp.py`): HTTP+SSE MCP 서버, JSON-RPC 2.0, 툴 9종. Claude Code에서 MCP 툴 호출 시 자동 연결, 대시보드 MCP ON/OFF 칩으로 상태 확인·수동 해제
+- **TC 생성 소스 필터**: `/capture/generate_from_actions`에 `source_filter` 파라미터 추가 (`all`|`user`|`mcp`, 기본 `all`). `screenshot`·`hierarchy` 등 비실행 타입은 자동 제거. 생성 TC docstring에 출처(user/mcp/mixed)·액션 수 표기
+- **Livetail 전역화**: Livetail 버튼이 Capture Studio 세션 없이도 항상 표시. 페이지 로드 시 WebSocket 자동 연결
+- **파이프라인 Livetail 연동**: `pipeline.py`의 각 단계 시작·완료가 Livetail에 `source: pipeline` 이벤트로 실시간 표시 (단건 `/api/run` 포함)
 
 **TC 파일 명명 규칙:**
 - `tc_group` → 폴더명: `tests/generated/{platform}/{tc_group}/`
@@ -79,7 +83,7 @@ testcases/ios/{group}/     → tests/generated/ios/{group}/
 - Android: MJPEG 스트리밍은 포트 8093, Appium 서버에 `--allow-insecure=uiautomator2:adb_screen_streaming` 플래그 필요 (Appium 3.x)
 - iOS: XCUITest 세션에는 `bundle_id`와 `device_name`(Simulator 이름)이 필요합니다. `xcrun simctl list`로 정확한 이름 확인
 - **iOS XCUITest 세션 충돌**: 시뮬레이터당 세션 1개만 허용. Capture Studio iOS 세션이 열려 있으면 iOS pytest TC를 동시에 실행할 수 없음 (반대도 동일). 충돌 시 드라이버가 None이 되며 "🔄 세션 재연결" 버튼으로 복구
-- Capture Studio 세션과 파이프라인 실행 세션은 동시에 존재할 수 없습니다 (대시보드에 상태 표시)
+- **플랫폼별 독립 가드**: iOS Capture Studio 세션이 열려 있어도 Android 파이프라인 실행 가능 (반대도 동일). 같은 플랫폼에서만 세션이 충돌합니다
 - Android 세션 key는 `app_package` / `app_activity`, iOS는 `bundle_id`를 사용합니다
 
 ## Locator 작업 규칙

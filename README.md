@@ -155,12 +155,13 @@ iOS 카드     — 시뮬레이터 목록 · 부팅(비동기) · 종료 · 기�
 - Healing 연계: 실패 TC에서 Locator 검토 4단계 재진입
 - 세션 재연결 버튼 (`csReLaunch()`)
 - **Nova MCP**: `routes/mcp.py` — HTTP+SSE MCP 서버, 툴 9종 (`screenshot`, `hierarchy`, `device_tap`, `scroll`, `input_text`, `back`, `screen_info`, `generate_test_case`, `clear_actions`). Claude Code에서 MCP 툴 호출 시 자동 연결, 대시보드 MCP ON/OFF 칩으로 상태 확인·수동 해제.
-- **Livetail**: Action Timeline 확장 — user·mcp·pipeline 소스 필터, 200행 버퍼, 신규 접속 시 replay
+- **Livetail 전역**: Capture Studio 세션 없이도 항상 접근 가능. user·mcp·pipeline 소스 필터, 200행 버퍼. 파이프라인 단계 시작·완료 이벤트 실시간 표시
+- **TC 생성 소스 필터**: `source_filter` 파라미터(`all`|`user`|`mcp`)로 TC에 포함할 액션 출처 지정. 비실행 타입(`screenshot`·`hierarchy` 등) 자동 제거, 생성 TC docstring에 출처·액션 수 표기
 
 **제약사항:**
 - Android MJPEG: Appium `--allow-insecure=uiautomator2:adb_screen_streaming` 필수, 포트 8093 개방 필요
 - iOS: 시뮬레이터당 XCUITest 세션 1개 — Capture Studio iOS 세션과 파이프라인 iOS TC 동시 실행 불가
-- Capture Studio 세션과 파이프라인 실행 세션은 동시에 존재할 수 없습니다 (플랫폼별 독립)
+- 같은 플랫폼의 Capture Studio 세션과 파이프라인 실행은 동시에 불가. 다른 플랫폼(iOS Capture ↔ Android 파이프라인)은 독립 실행 가능
 
 생성된 pytest 파일은 자체 완결형(`_build_driver()` + `_el()` + class 구조 포함)으로, 수정 없이 `05_execute.py`로 바로 실행할 수 있습니다.
 
