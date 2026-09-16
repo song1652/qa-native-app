@@ -15,9 +15,17 @@ from shared import _ws_connections, _ws_lock  # noqa: E402
 
 router = APIRouter()
 
+# uvicorn 이벤트 루프를 async 컨텍스트에서 한 번 캡처해 스레드 브로드캐스트에 재사용.
+# asyncio.get_event_loop() 는 Python 3.10+ 비-메인 스레드에서 DeprecationWarning,
+# 3.12+ 에서는 RuntimeError 를 유발하므로 루프 참조를 직접 저장한다.
+_loop: asyncio.AbstractEventLoop | None = None
+
 
 @router.websocket("/ws/timeline")
 async def ws_timeline(websocket: WebSocket):
+    global _loop
+    if _loop is None:
+        _loop = asyncio.get_running_loop()
     await websocket.accept()
     async with _ws_lock:
         _ws_connections.append(websocket)
@@ -35,6 +43,9 @@ async def ws_timeline(websocket: WebSocket):
 
 async def _broadcast_timeline(event: dict) -> None:
     """연결된 모든 WebSocket 클라이언트에 Action Timeline 이벤트 전송."""
+    global _loop
+    if _loop is None:
+        _loop = asyncio.get_running_loop()
     message = json.dumps(event, ensure_ascii=False)
     async with _ws_lock:
         dead = []
@@ -48,10 +59,10 @@ async def _broadcast_timeline(event: dict) -> None:
 
 
 def broadcast_timeline_sync(event: dict) -> None:
-    """동기 코드에서 WebSocket 브로드캐스트 호출 (threading 환경)."""
+    """동기·스레드 컨텍스트에서 WebSocket 브로드캐스트 호출."""
     try:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
+        loop = _loop
+        if loop is not None and loop.is_running():
             asyncio.run_coroutine_threadsafe(_broadcast_timeline(event), loop)
     except Exception:
         pass

@@ -35,6 +35,7 @@ from utils.state import (  # noqa: E402
     read_state,
     save_state,
 )
+from ws import broadcast_timeline_sync  # noqa: E402
 
 router = APIRouter()
 
@@ -52,7 +53,7 @@ async def post_run(request: Request):
         return JSONResponse({"ok": False, "error": "invalid step"}, status_code=400)
     if tc_folder and (".." in tc_folder or "/" in tc_folder):
         return JSONResponse({"ok": False, "error": "invalid tc_folder"}, status_code=400)
-    if is_capture_active():
+    if is_capture_active(platform):
         return JSONResponse(
             {"ok": False, "error": "Capture Studio 세션이 실행 중입니다. 먼저 Capture Studio를 종료하세요."},
             status_code=409,
@@ -96,7 +97,20 @@ async def post_run(request: Request):
     with _process_lock:
         _running[step] = proc
 
-    threading.Thread(target=lambda p: p.wait(), args=(proc,), daemon=True).start()
+    broadcast_timeline_sync({
+        "type": "pipeline_stage_start", "source": "pipeline",
+        "platform": platform, "stage": step, "log": log_name,
+    })
+
+    def _wait_and_notify(p, s, plat, lname):
+        p.wait()
+        broadcast_timeline_sync({
+            "type": "pipeline_stage_complete", "source": "pipeline",
+            "platform": plat, "stage": s,
+            "ok": p.returncode == 0, "returncode": p.returncode,
+        })
+
+    threading.Thread(target=_wait_and_notify, args=(proc, step, platform, log_name), daemon=True).start()
     return JSONResponse({"ok": True, "pid": proc.pid, "log": log_name})
 
 
@@ -116,7 +130,7 @@ async def post_run_all(request: Request):
     for tc_folder in tc_folders:
         if tc_folder and (".." in tc_folder or "/" in tc_folder or tc_folder not in available_folders):
             return JSONResponse({"ok": False, "error": f"invalid tc_folder: {tc_folder}"}, status_code=400)
-    if is_capture_active():
+    if is_capture_active(platform):
         return JSONResponse(
             {"ok": False, "error": "Capture Studio 세션이 실행 중입니다. 먼저 Capture Studio를 종료하세요."},
             status_code=409,
@@ -157,7 +171,16 @@ async def post_run_all(request: Request):
             )
         with _process_lock:
             _running[step] = proc
+        broadcast_timeline_sync({
+            "type": "pipeline_stage_start", "source": "pipeline",
+            "platform": platform, "stage": step, "log": lname,
+        })
         proc.wait()
+        broadcast_timeline_sync({
+            "type": "pipeline_stage_complete", "source": "pipeline",
+            "platform": platform, "stage": step,
+            "ok": proc.returncode == 0, "returncode": proc.returncode,
+        })
         return proc.returncode, lname
 
     def _record_video(suffix: str):

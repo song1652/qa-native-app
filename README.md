@@ -145,7 +145,7 @@ iOS 카드     — 시뮬레이터 목록 · 부팅(비동기) · 종료 · 기�
 5. 저장 및 생성 — /capture/generate_from_actions → 자체 완결형 pytest 파일 생성
 ```
 
-**구현 완료 기능 (Phase 0–7):**
+**구현 완료 기능 (Phase 0–7 + Nova MCP):**
 - Android MJPEG 화면 미러링 (포트 8093)
 - iOS XCUITest 스크린샷 폴링 (1.2초), WDA 안정화 30초 여유
 - hierarchy 트리 렌더링·노드 선택, 화면 전환 자동 감지 (4초 폴링, 쿨다운 3초)
@@ -154,11 +154,14 @@ iOS 카드     — 시뮬레이터 목록 · 부팅(비동기) · 종료 · 기�
 - `저장 및 생성` → `_build_driver()` + `_el()` + `_ios_tap()` 포함 자체 완결형 pytest 생성
 - Healing 연계: 실패 TC에서 Locator 검토 4단계 재진입
 - 세션 재연결 버튼 (`csReLaunch()`)
+- **Nova MCP**: `routes/mcp.py` — HTTP+SSE MCP 서버, 툴 9종 (`screenshot`, `hierarchy`, `device_tap`, `scroll`, `input_text`, `back`, `screen_info`, `generate_test_case`, `clear_actions`). Claude Code에서 MCP 툴 호출 시 자동 연결, 대시보드 MCP ON/OFF 칩으로 상태 확인·수동 해제.
+- **Livetail 전역**: Capture Studio 세션 없이도 항상 접근 가능. user·mcp·pipeline 소스 필터, 200행 버퍼. 파이프라인 단계 시작·완료 이벤트 실시간 표시
+- **TC 생성 소스 필터**: `source_filter` 파라미터(`all`|`user`|`mcp`)로 TC에 포함할 액션 출처 지정. 비실행 타입(`screenshot`·`hierarchy` 등) 자동 제거, 생성 TC docstring에 출처·액션 수 표기
 
 **제약사항:**
 - Android MJPEG: Appium `--allow-insecure=uiautomator2:adb_screen_streaming` 필수, 포트 8093 개방 필요
 - iOS: 시뮬레이터당 XCUITest 세션 1개 — Capture Studio iOS 세션과 파이프라인 iOS TC 동시 실행 불가
-- Capture Studio 세션과 파이프라인 실행 세션은 동시에 존재할 수 없습니다 (플랫폼별 독립)
+- 같은 플랫폼의 Capture Studio 세션과 파이프라인 실행은 동시에 불가. 다른 플랫폼(iOS Capture ↔ Android 파이프라인)은 독립 실행 가능
 
 생성된 pytest 파일은 자체 완결형(`_build_driver()` + `_el()` + class 구조 포함)으로, 수정 없이 `05_execute.py`로 바로 실행할 수 있습니다.
 
@@ -209,6 +212,7 @@ DOM을 모르는 상태에서 locator를 추측해 코드를 확정하지 않습
 |---|---|
 | `agents/dashboard/serve.py` | 대시보드 서버와 파이프라인 API |
 | `agents/dashboard/dashboard.html` | 대시보드 UI와 Import Studio 위저드 |
+| `agents/dashboard/routes/mcp.py` | Nova MCP HTTP+SSE 서버 (JSON-RPC 2.0, 툴 9종) |
 | `scripts/import_excel.py` | Excel 열 매핑과 OS별 TC Markdown 변환 |
 | `scripts/01_analyze.py` | Appium native UI hierarchy 수집 |
 | `scripts/02_generate.py` | TC Markdown → pytest 코드 생성 |
@@ -218,13 +222,10 @@ DOM을 모르는 상태에서 locator를 추측해 코드를 확정하지 않습
 | `scripts/locator_registry.py` | locator 정규화·registry·후보 탐색 공통 모듈 |
 | `config/locators.json` | 플랫폼별 locator source of truth |
 | `state/pipeline.json` | 단계별 상태와 UI hierarchy snapshot |
-| `docs/PRD.md` | 요소 중심 Capture Studio 제품 요구사항 |
 | `docs/ENV_SETUP_PRD.md` | ENV Setup UI 제품 요구사항 (v1.0) |
 | `docs/LOCATOR_HEALING.md` | locator healing 운영 정책 |
-| `docs/CAPTURE_STUDIO_PLAN.md` | 반수동 Capture Studio 기획·화면·상태 계약 |
-| `docs/mockups/capture_studio.html` | 브라우저에서 확인하는 Capture Studio 인터랙티브 목업 |
+| `docs/superpowers/specs/2026-09-15-nova-mcp-integration-design.md` | Nova MCP 통합 설계 문서 |
 | `agents/lessons_learned.md` | 운영 중 발견된 패턴과 교훈 (Appium 환경변수, iOS 부팅 방식 등) |
-| `DESIGN.md` | 대시보드와 Import Studio 디자인 계약 |
 
 ## 산출물 및 제한사항
 
