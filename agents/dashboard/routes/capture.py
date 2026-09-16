@@ -42,6 +42,19 @@ from ws import broadcast_timeline_sync  # noqa: E402
 
 router = APIRouter()
 
+
+def _resolve_ios_device_name(platform: str, device_name: str) -> str:
+    """iOS 세션 device_name 보정: 비어있거나 'iPhone Simulator'이면 devices.json 기본값 사용."""
+    if platform != "ios":
+        return device_name or ""
+    if device_name and device_name.lower() not in ("iphone simulator", ""):
+        return device_name
+    default = get_default_device("ios", "simulator")
+    if default:
+        return default.get("deviceName", "iPhone Simulator")
+    return "iPhone Simulator"
+
+
 # A WebDriverAgent instance is shared by every Capture request.  Starting two
 # sessions for the same simulator concurrently makes both Appium requests race
 # for WDA's port and can leave WDA running without a session.
@@ -319,7 +332,7 @@ async def capture_start_session(request: Request):
         "app_package":       body.get("app_package", ""),
         "app_activity":      body.get("app_activity", ""),
         "bundle_id":         body.get("bundle_id", ""),
-        "device_name":       body.get("device_name", "iPhone Simulator"),
+        "device_name":       _resolve_ios_device_name(platform, body.get("device_name", "")),
         "tc_group":          body.get("tc_group", ""),
         "mjpeg_port":        mjpeg_port,
         "screenshot_mode":   screenshot_mode,

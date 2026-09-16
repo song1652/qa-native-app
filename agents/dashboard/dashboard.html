@@ -1324,7 +1324,7 @@ button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(
           </div>
           <div id="cs-field-device-name" style="display:none">
             <label class="cs-label">Device Name</label>
-            <input type="text" id="cs-device-name" class="cs-input" placeholder="iPhone 15 (xcrun simctl list)">
+            <select id="cs-device-name" class="cs-select"></select>
           </div>
           <!-- 공통 필드 -->
           <div>
@@ -3893,6 +3893,30 @@ function csPlatformToggle() {
     var el = document.getElementById(id);
     if(el) el.style.display = isIos ? '' : 'none';
   });
+  // iOS 전환 시 등록된 시뮬레이터 목록을 select에 채우기
+  if(isIos) {
+    var devEl = document.getElementById('cs-device-name');
+    if(devEl) {
+      fetch('/api/env/status').then(function(r){ return r.json(); }).then(function(d){
+        var sims = (d.ios && d.ios.simulators) || [];
+        devEl.innerHTML = '';
+        if(sims.length === 0) {
+          var opt = document.createElement('option');
+          opt.value = 'iPhone Simulator';
+          opt.textContent = 'iPhone Simulator (기본값)';
+          devEl.appendChild(opt);
+        } else {
+          sims.forEach(function(s){
+            var opt = document.createElement('option');
+            opt.value = s.deviceName || s.name || '';
+            opt.textContent = (s.deviceName || s.name || '') + (s.default ? ' ★' : '');
+            if(s.default) opt.selected = true;
+            devEl.appendChild(opt);
+          });
+        }
+      }).catch(function(){});
+    }
+  }
 }
 
 function csInit() {
