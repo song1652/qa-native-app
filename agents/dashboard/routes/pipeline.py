@@ -97,7 +97,20 @@ async def post_run(request: Request):
     with _process_lock:
         _running[step] = proc
 
-    threading.Thread(target=lambda p: p.wait(), args=(proc,), daemon=True).start()
+    broadcast_timeline_sync({
+        "type": "pipeline_stage_start", "source": "pipeline",
+        "platform": platform, "stage": step, "log": log_name,
+    })
+
+    def _wait_and_notify(p, s, plat, lname):
+        p.wait()
+        broadcast_timeline_sync({
+            "type": "pipeline_stage_complete", "source": "pipeline",
+            "platform": plat, "stage": s,
+            "ok": p.returncode == 0, "returncode": p.returncode,
+        })
+
+    threading.Thread(target=_wait_and_notify, args=(proc, step, platform, log_name), daemon=True).start()
     return JSONResponse({"ok": True, "pid": proc.pid, "log": log_name})
 
 

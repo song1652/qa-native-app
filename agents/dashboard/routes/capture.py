@@ -1034,13 +1034,14 @@ async def capture_clear_actions(request: Request):
         return JSONResponse(
             {"ok": False, "error": "session_id가 일치하지 않습니다"}, status_code=400
         )
+    cleared_count = len(session.get("actions", []))
     session["actions"] = []
     save_capture_session(session)
     # actions.json 파일도 동기화
     actions_path = CAPTURES_DIR / session_id / "actions.json"
     if actions_path.parent.exists():
         actions_path.write_text(json.dumps([], ensure_ascii=False), encoding="utf-8")
-    return JSONResponse({"ok": True, "cleared": True})
+    return JSONResponse({"ok": True, "cleared": cleared_count})
 
 
 @router.get("/capture/page_source_hash")

@@ -5433,6 +5433,7 @@ function csForceNewSession() {
     _cs.recording = false;
     _cs.approvedLocators = [];
     _cs.screenshotMode = 'mjpeg';
+    if(_csLtOpen) csToggleLivetail();
     document.getElementById('cs-setup').style.display='block';
     document.getElementById('cs-workspace').style.display='none';
     document.getElementById('cs-session-badge').style.display='none';
@@ -5456,6 +5457,7 @@ function csEndSession() {
     _cs.actions = [];
     _cs.recording = false;
     _cs.screenshotMode = 'mjpeg';
+    if(_csLtOpen) csToggleLivetail();
     document.getElementById('cs-setup').style.display='block';
     document.getElementById('cs-workspace').style.display='none';
     document.getElementById('cs-session-badge').style.display='none';
