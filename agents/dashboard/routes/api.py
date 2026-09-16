@@ -69,13 +69,24 @@ async def get_status(platform: str | None = None):
         devices = check_android_devices()
     with _process_lock:
         running_steps = [s for s, p in _running.items() if p.poll() is None]
+    cap_session = load_capture_session()
+    cap_active = cap_session.get("active", False)
+    cap_platform = cap_session.get("platform", "") if cap_active else ""
+    # device_name 필드는 iOS 세션 잔재일 수 있으므로 platform 일치 시에만 사용
+    raw_device = cap_session.get("device_name", "")
+    cap_device = raw_device if cap_active else ""
+    # Android 세션에서 iOS device_name이 남아있는 경우 target으로 대체
+    if cap_active and cap_platform == "android" and ("simulator" in raw_device.lower() or "iphone" in raw_device.lower()):
+        cap_device = cap_session.get("target", "emulator")
     return JSONResponse({
         "appium": appium_ok,
         "devices": devices,
         "device_count": len(devices),
         "running_steps": running_steps,
         "platform": resolved_platform,
-        "capture_active": is_capture_active(),
+        "capture_active": cap_active,
+        "capture_platform": cap_platform,
+        "capture_device": cap_device,
     })
 
 

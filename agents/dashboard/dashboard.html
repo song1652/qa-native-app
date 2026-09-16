@@ -667,23 +667,6 @@ button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(
   <div class="si">파이프라인:&nbsp;<span class="step-badge" id="txt-step">-</span></div>
   <div class="sdiv"></div>
   <div class="si" id="heal-row" style="display:none">힐링: <span id="heal-cnt" style="color:var(--warn);font-weight:700;margin-left:3px"></span>회</div>
-  <div class="sdiv"></div>
-  <!-- Capture 세션 정보 + Livetail — 오른쪽 끝 그룹 -->
-  <div style="display:flex;align-items:center;gap:6px;margin-left:auto;flex-shrink:0">
-    <div id="capture-bar" style="display:none;align-items:center;gap:5px;
-         padding:3px 10px;border-radius:8px;font-size:11px;font-weight:600;
-         background:rgba(167,139,250,0.1);border:1px solid rgba(167,139,250,0.3);
-         color:#a78bfa;cursor:default">
-      <span class="dot" id="dot-capture" style="background:#a78bfa;width:6px;height:6px;flex-shrink:0"></span>
-      <span id="txt-capture-platform">iOS</span>
-      <span style="opacity:0.5">·</span>
-      <span id="txt-capture-device" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">디바이스</span>
-    </div>
-    <div class="lt-toggle-btn" id="csLivetailBtn" onclick="csToggleLivetail()" style="flex-shrink:0">
-      <div class="lt-toggle-pulse" id="csLtPulse"></div>
-      <span id="csLtBtnLabel">Livetail</span>
-    </div>
-  </div>
 </div>
 
 <!-- 메인 그리드 -->
@@ -1266,30 +1249,44 @@ button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(
 
     <!-- ─── Capture Studio ─────────────────────────── -->
     <div class="card view-hidden" id="view-capture">
-      <div class="card-title" style="display:flex;align-items:center;gap:10px;flex-wrap:nowrap;overflow:hidden">
+      <!-- card-title: 이름 + 세션 배지만 -->
+      <div class="card-title" style="display:flex;align-items:center;gap:10px;flex-wrap:nowrap;overflow:hidden;border-bottom:none;padding-bottom:0">
         <span style="color:#a78bfa;flex-shrink:0">⬡</span>
         <span style="flex-shrink:0">Capture Studio</span>
         <span id="cs-session-badge" style="display:none;padding:3px 9px;border-radius:12px;background:rgba(167,139,250,.15);color:#a78bfa;font-size:11px;font-weight:700;flex-shrink:0">● 세션 실행 중</span>
+      </div>
 
-        <!-- 세션 정보 인라인 칩 -->
-        <div class="cs-info-strip" id="cs-info-strip" style="margin:0;padding:0;background:none;border:none;flex:1;min-width:0;overflow:hidden">
-          <div class="cs-info-chip device" id="cs-info-device">
-            <div class="cs-info-dot green"></div>
-            <span id="cs-info-device-label">Android</span>
-          </div>
-          <span class="cs-info-sep">·</span>
-          <div class="cs-info-chip group" id="cs-info-group">
-            <div class="cs-info-dot purple"></div>
-            <span id="cs-info-group-label">—</span>
-          </div>
-          <span class="cs-info-sep">·</span>
-          <div class="cs-info-chip mcp-off" id="cs-info-mcp" onclick="csMcpChipClick()">
-            <div class="cs-info-dot gray" id="cs-info-mcp-dot"></div>
-            <span id="cs-info-mcp-label">MCP OFF</span>
-            <div class="cs-mcp-tooltip" id="cs-mcp-tooltip">Claude Code에서 MCP 도구 호출 시 자동 연결됩니다</div>
+      <!-- CS 세션 상태바: 세션 활성 시 표시, 모든 칩 + Livetail -->
+      <div class="cs-info-strip" id="cs-info-strip"
+           style="padding:7px 0;margin:4px 0 10px;border-bottom:1px solid rgba(140,120,220,0.13)">
+        <div class="cs-info-chip device" id="cs-info-device">
+          <div class="cs-info-dot green"></div>
+          <span id="cs-info-device-label">Android</span>
+        </div>
+        <span class="cs-info-sep">·</span>
+        <div class="cs-info-chip group" id="cs-info-group">
+          <div class="cs-info-dot purple"></div>
+          <span id="cs-info-group-label">—</span>
+        </div>
+        <span class="cs-info-sep">·</span>
+        <div class="cs-info-chip mcp-off" id="cs-info-mcp" onclick="csMcpChipClick()">
+          <div class="cs-info-dot gray" id="cs-info-mcp-dot"></div>
+          <span id="cs-info-mcp-label">MCP OFF</span>
+          <div class="cs-mcp-tooltip" id="cs-mcp-tooltip">Claude Code에서 MCP 도구 호출 시 자동 연결됩니다</div>
+        </div>
+        <!-- 미러링 연결 상태 -->
+        <span class="cs-info-sep">·</span>
+        <div class="cs-info-chip" id="cs-info-conn" style="background:rgba(255,255,255,0.03);border-color:rgba(255,255,255,0.08)">
+          <div class="cs-info-dot gray" id="cs-info-conn-dot"></div>
+          <span id="cs-info-conn-label" style="color:var(--text3)">미연결</span>
+        </div>
+        <!-- Livetail 버튼 — 오른쪽 끝 -->
+        <div style="margin-left:auto;flex-shrink:0">
+          <div class="lt-toggle-btn" id="csLivetailBtn" onclick="csToggleLivetail()">
+            <div class="lt-toggle-pulse" id="csLtPulse"></div>
+            <span id="csLtBtnLabel">Livetail</span>
           </div>
         </div>
-
       </div>
 
       <!-- 1단계: 세션 설정 -->
@@ -2308,9 +2305,11 @@ async function refreshStatus(){
 
     // Capture Studio 세션 상태 표시
     var captureActive = st.capture_active || false;
-    var captureBar = document.getElementById('capture-bar');
-    if(captureBar){
-      captureBar.style.display = captureActive ? 'flex' : 'none';
+    // 페이지 로드 시 CS info-strip 동기화 (세션 복원 전 첫 폴링)
+    if(captureActive && st.capture_platform && !_cs.sessionId){
+      csInfoStripShow(st.capture_platform, st.capture_device || '', '');
+    } else if(!captureActive){
+      csInfoStripHide();
     }
     // 파이프라인 실행 버튼 비활성화 (Capture 세션 중)
     var runBtns = document.querySelectorAll('.run-btn, [id^="btn-run"], [id^="btn-all"]');
@@ -4263,6 +4262,7 @@ function csMirrorConnect() {
             _firstFrame = false;
             var ld = placeholder.querySelector('.cs-mirror-loading');
             if(ld) ld.remove();
+            csSubStatusConn(true);
           }
           placeholder.style.display = 'none';
           img.style.display = 'block';
@@ -4322,6 +4322,7 @@ function csMirrorConnect() {
     img.onload = function() {
       placeholder.style.display = 'none';
       img.style.display = 'block';
+      csSubStatusConn(true);
     };
     img.src = 'http://localhost:' + port + '/?' + ts;
     img.style.display = 'block';
@@ -5552,25 +5553,38 @@ function csMcpStopPoll() {
   csInfoStripMcp(false);
 }
 
+// ── CS 미러링 연결 상태 칩 ──────────────────────────────────
+function csSubStatusConn(connected) {
+  var dot = document.getElementById('cs-info-conn-dot');
+  var txt = document.getElementById('cs-info-conn-label');
+  if(dot){ dot.style.background = connected ? 'var(--pass)' : 'var(--fail)'; dot.className = ''; }
+  if(txt){ txt.textContent = connected ? '연결됨' : '미러링 끊김'; txt.style.color = connected ? 'var(--pass)' : 'var(--fail)'; }
+}
+function csSubStatusUpdate(platform, deviceName) { /* no-op: csInfoStripShow handles this */ }
+function csSubStatusHide() { /* no-op: csInfoStripHide handles this */ }
+
 // ── CS 세션 정보 스트립 ───────────────────────────────────────
 function csInfoStripShow(platform, deviceName, group) {
   var strip = document.getElementById('cs-info-strip');
   if (!strip) return;
-  // 디바이스 칩
+  // 디바이스 칩 — Android 세션에 iOS device_name이 잔존하면 ADB 디바이스로 대체
   var isIos = (platform === 'ios');
   var platLabel = isIos ? 'iOS' : 'Android';
-  var devText = deviceName ? platLabel + ' \xb7 ' + deviceName : platLabel;
+  var resolvedDevice = deviceName || '';
+  if (!isIos && resolvedDevice && /iphone|simulator/i.test(resolvedDevice)) {
+    // stale iOS device_name → 현재 ADB 연결 디바이스로 대체
+    var adbEl = document.getElementById('txt-device');
+    resolvedDevice = (adbEl && adbEl.textContent && adbEl.textContent !== '없음') ? adbEl.textContent : 'emulator';
+  }
+  var devText = resolvedDevice ? platLabel + ' \xb7 ' + resolvedDevice : platLabel;
   document.getElementById('cs-info-device-label').textContent = devText;
   // 그룹 칩
   document.getElementById('cs-info-group-label').textContent = group || 'default';
-  // status-bar 캡처 정보 동기화
-  var sbPlatEl = document.getElementById('txt-capture-platform');
-  var sbDevEl  = document.getElementById('txt-capture-device');
-  if(sbPlatEl) sbPlatEl.textContent = platLabel;
-  if(sbDevEl)  sbDevEl.textContent  = deviceName || '—';
-  // MCP 칩 (Phase 2 전까진 OFF)
+  // MCP 칩
   csInfoStripMcp(false);
   strip.classList.add('visible');
+  // 연결 상태 초기화
+  csSubStatusConn(false);
 }
 
 function csInfoStripHide() {
