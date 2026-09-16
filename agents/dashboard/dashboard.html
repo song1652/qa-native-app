@@ -481,8 +481,8 @@ button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(
 .cs-detail-val{color:var(--text);font-family:monospace;word-break:break-all;flex:1}
 /* Livetail 슬라이드 오버레이 */
 .lt-slide-overlay {
-  position: absolute;
-  right: 0; top: 0; bottom: 0;
+  position: fixed;
+  right: 0; top: 100px; bottom: 0;
   width: 0;
   background: rgba(10,8,28,0.97);
   border-left: 1px solid rgba(140,120,220,0.28);
@@ -490,7 +490,7 @@ button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(
   flex-direction: column;
   overflow: hidden;
   transition: width 0.25s ease;
-  z-index: 20;
+  z-index: 200;
 }
 .lt-slide-overlay.open { width: 280px; }
 .lt-slide-hd {
@@ -669,6 +669,11 @@ button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(
   <div class="si" id="heal-row" style="display:none">힐링: <span id="heal-cnt" style="color:var(--warn);font-weight:700;margin-left:3px"></span>회</div>
   <div class="sdiv" id="capture-bar-divider" style="display:none"></div>
   <div class="si" id="capture-bar" style="display:none"><span class="dot" id="dot-capture" style="background:#a78bfa"></span><span id="txt-capture" style="color:#a78bfa;font-weight:600">Capture 세션 실행 중</span></div>
+  <div class="sdiv"></div>
+  <div class="lt-toggle-btn" id="csLivetailBtn" onclick="csToggleLivetail()" style="flex-shrink:0">
+    <div class="lt-toggle-pulse" id="csLtPulse"></div>
+    <span id="csLtBtnLabel">Livetail</span>
+  </div>
 </div>
 
 <!-- 메인 그리드 -->
@@ -1275,10 +1280,6 @@ button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(
           </div>
         </div>
 
-        <div class="lt-toggle-btn" id="csLivetailBtn" onclick="csToggleLivetail()" style="flex-shrink:0">
-          <div class="lt-toggle-pulse" id="csLtPulse"></div>
-          <span id="csLtBtnLabel">Livetail</span>
-        </div>
       </div>
 
       <!-- 1단계: 세션 설정 -->
@@ -1471,22 +1472,6 @@ button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(
 
           </div>
 
-          <!-- Livetail 슬라이드 오버레이 -->
-          <div class="lt-slide-overlay" id="csLtOverlay">
-            <div class="lt-slide-hd">
-              <div style="width:6px;height:6px;border-radius:50%;background:var(--pass);box-shadow:0 0 4px var(--pass)"></div>
-              Livetail
-              <div class="lt-slide-close" onclick="csToggleLivetail()">&#x2715;</div>
-            </div>
-            <div class="lt-ov-filter">
-              <div class="lt-ov-fb u" onclick="csLtFilter('user',this)">&#x1F464; user</div>
-              <div class="lt-ov-fb m" onclick="csLtFilter('mcp',this)">&#x1F916; mcp</div>
-              <div class="lt-ov-fb p" onclick="csLtFilter('pipe',this)">&#x2699; pipeline</div>
-              <div style="margin-left:auto;padding:1px 7px;border-radius:3px;font-size:10px;background:rgba(38,34,72,0.75);border:1px solid rgba(140,120,220,0.15);color:var(--text3);cursor:pointer" onclick="csLtExport()">Export</div>
-            </div>
-            <div class="lt-ov-rows" id="csLtRows"></div>
-            <div class="lt-ov-pin" id="csLtPin">&#x2B07; 하단 고정</div>
-          </div>
         </div>
 
         <!-- Action Timeline -->
@@ -5915,6 +5900,23 @@ function _csSendSwipe(container, x1, y1, x2, y2) {
       <button class="btn" style="padding:6px 14px;font-size:12px" onclick="envSubmitWdaBuild()">빌드 시작</button>
     </div>
   </div>
+</div>
+
+<!-- Livetail 글로벌 슬라이드 오버레이 — status-bar 버튼과 연결, 모든 탭에서 동작 -->
+<div class="lt-slide-overlay" id="csLtOverlay">
+  <div class="lt-slide-hd">
+    <div style="width:6px;height:6px;border-radius:50%;background:var(--pass);box-shadow:0 0 4px var(--pass)"></div>
+    Livetail
+    <div class="lt-slide-close" onclick="csToggleLivetail()">&#x2715;</div>
+  </div>
+  <div class="lt-ov-filter">
+    <div class="lt-ov-fb u" onclick="csLtFilter('user',this)">&#x1F464; user</div>
+    <div class="lt-ov-fb m" onclick="csLtFilter('mcp',this)">&#x1F916; mcp</div>
+    <div class="lt-ov-fb p" onclick="csLtFilter('pipe',this)">&#x2699; pipeline</div>
+    <div style="margin-left:auto;padding:1px 7px;border-radius:3px;font-size:10px;background:rgba(38,34,72,0.75);border:1px solid rgba(140,120,220,0.15);color:var(--text3);cursor:pointer" onclick="csLtExport()">Export</div>
+  </div>
+  <div class="lt-ov-rows" id="csLtRows"></div>
+  <div class="lt-ov-pin" id="csLtPin">&#x2B07; 하단 고정</div>
 </div>
 </body>
 </html>
