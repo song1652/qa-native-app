@@ -86,7 +86,7 @@ def _friendly_appium_error(exc: Exception) -> str:
     low = raw.lower()
     # 연결 거부 — Appium 서버 미기동
     if "connection refused" in low or "econnrefused" in low:
-        return "Appium 서버에 연결할 수 없습니다. 터미널에서 'appium --address 0.0.0.0 --port 4723'을 먼저 실행하세요."
+        return "Appium 서버에 연결할 수 없습니다. 터미널에서 'appium --address 127.0.0.1 --port 4723'을 먼저 실행하세요."
     # 에뮬레이터/시뮬레이터 없음
     if "no device" in low or "no emulator" in low or "device not found" in low:
         return "연결된 디바이스를 찾을 수 없습니다. 에뮬레이터/시뮬레이터가 실행 중인지 확인하세요."
@@ -408,7 +408,7 @@ async def capture_tap(request: Request):
         "summary": f"({device_x},{device_y})", "ok": True,
     })
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     tap_ok = await loop.run_in_executor(None, _do_appium_tap, device_x, device_y, session["session_id"])
     if not tap_ok:
         return JSONResponse({
@@ -1051,7 +1051,7 @@ async def capture_page_source_hash():
     driver = get_capture_driver()
     if driver is None:
         return JSONResponse({"ok": False, "hash": None})
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     try:
         src = await loop.run_in_executor(None, lambda: driver.page_source)
         h = hashlib.md5(src[:8192].encode("utf-8", errors="ignore")).hexdigest()[:8]
@@ -1069,7 +1069,7 @@ async def capture_screenshot():
     driver = get_capture_driver()
     if driver is None:
         return JSONResponse({"ok": False, "error": "Appium 세션 없음"}, status_code=409)
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     try:
         data = await loop.run_in_executor(None, driver.get_screenshot_as_base64)
         return JSONResponse({
@@ -1152,7 +1152,7 @@ async def capture_snapshot(request: Request):
     # hierarchy 조회도 활동으로 간주 → last_activity_at 갱신 (30분 만료 방지)
     save_capture_session({**session, "last_activity_at": datetime.now().isoformat()})
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     try:
         snap_id = await loop.run_in_executor(
             None, _take_hierarchy_snapshot, session_id, driver, context
@@ -1195,7 +1195,7 @@ async def capture_back(request: Request):
         "summary": "back", "ok": True,
     })
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     back_ok = await loop.run_in_executor(None, _do_appium_back, session_id)
     if not back_ok:
         return JSONResponse({
@@ -1275,7 +1275,7 @@ async def capture_scroll(request: Request):
         except Exception:
             return False
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     ok_scroll = await loop.run_in_executor(None, _do_scroll)
     return JSONResponse({"ok": ok_scroll, "action": action, "direction": direction})
 

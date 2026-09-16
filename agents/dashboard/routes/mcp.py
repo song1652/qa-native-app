@@ -35,7 +35,7 @@ _mcp_client_id: str | None = None
 _MCP_PROTOCOL_VERSION = "2024-11-05"
 _SERVER_INFO = {"name": "qa-capture-studio", "version": "1.0.0"}
 
-# ── 8개 도구 정의 ──────────────────────────────────────────────
+# ── 9개 도구 정의 ──────────────────────────────────────────────
 TOOLS: list[dict] = [
     {
         "name": "device_tap",
@@ -455,7 +455,7 @@ async def _handle_rpc(body: dict) -> dict | None:
             if not ok_s:
                 return _jsonrpc_err(-32001, err_s, req_id)
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         ok, result = await loop.run_in_executor(None, _run_tool, tool_name, tool_args)
         if not ok:
             return _jsonrpc_err(-32002, str(result), req_id)
