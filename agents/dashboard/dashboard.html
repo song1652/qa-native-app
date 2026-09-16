@@ -667,12 +667,22 @@ button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(
   <div class="si">파이프라인:&nbsp;<span class="step-badge" id="txt-step">-</span></div>
   <div class="sdiv"></div>
   <div class="si" id="heal-row" style="display:none">힐링: <span id="heal-cnt" style="color:var(--warn);font-weight:700;margin-left:3px"></span>회</div>
-  <div class="sdiv" id="capture-bar-divider" style="display:none"></div>
-  <div class="si" id="capture-bar" style="display:none"><span class="dot" id="dot-capture" style="background:#a78bfa"></span><span id="txt-capture" style="color:#a78bfa;font-weight:600">Capture 세션 실행 중</span></div>
   <div class="sdiv"></div>
-  <div class="lt-toggle-btn" id="csLivetailBtn" onclick="csToggleLivetail()" style="flex-shrink:0">
-    <div class="lt-toggle-pulse" id="csLtPulse"></div>
-    <span id="csLtBtnLabel">Livetail</span>
+  <!-- Capture 세션 정보 + Livetail — 오른쪽 끝 그룹 -->
+  <div style="display:flex;align-items:center;gap:6px;margin-left:auto;flex-shrink:0">
+    <div id="capture-bar" style="display:none;align-items:center;gap:5px;
+         padding:3px 10px;border-radius:8px;font-size:11px;font-weight:600;
+         background:rgba(167,139,250,0.1);border:1px solid rgba(167,139,250,0.3);
+         color:#a78bfa;cursor:default">
+      <span class="dot" id="dot-capture" style="background:#a78bfa;width:6px;height:6px;flex-shrink:0"></span>
+      <span id="txt-capture-platform">iOS</span>
+      <span style="opacity:0.5">·</span>
+      <span id="txt-capture-device" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">디바이스</span>
+    </div>
+    <div class="lt-toggle-btn" id="csLivetailBtn" onclick="csToggleLivetail()" style="flex-shrink:0">
+      <div class="lt-toggle-pulse" id="csLtPulse"></div>
+      <span id="csLtBtnLabel">Livetail</span>
+    </div>
   </div>
 </div>
 
@@ -2299,10 +2309,8 @@ async function refreshStatus(){
     // Capture Studio 세션 상태 표시
     var captureActive = st.capture_active || false;
     var captureBar = document.getElementById('capture-bar');
-    var captureDiv = document.getElementById('capture-bar-divider');
     if(captureBar){
       captureBar.style.display = captureActive ? 'flex' : 'none';
-      if(captureDiv) captureDiv.style.display = captureActive ? '' : 'none';
     }
     // 파이프라인 실행 버튼 비활성화 (Capture 세션 중)
     var runBtns = document.querySelectorAll('.run-btn, [id^="btn-run"], [id^="btn-all"]');
@@ -5555,6 +5563,11 @@ function csInfoStripShow(platform, deviceName, group) {
   document.getElementById('cs-info-device-label').textContent = devText;
   // 그룹 칩
   document.getElementById('cs-info-group-label').textContent = group || 'default';
+  // status-bar 캡처 정보 동기화
+  var sbPlatEl = document.getElementById('txt-capture-platform');
+  var sbDevEl  = document.getElementById('txt-capture-device');
+  if(sbPlatEl) sbPlatEl.textContent = platLabel;
+  if(sbDevEl)  sbDevEl.textContent  = deviceName || '—';
   // MCP 칩 (Phase 2 전까진 OFF)
   csInfoStripMcp(false);
   strip.classList.add('visible');
