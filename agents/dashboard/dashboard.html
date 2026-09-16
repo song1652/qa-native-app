@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>App QA Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
 <style>
 :root {
   color-scheme:dark;
@@ -101,12 +104,15 @@ body.dashboard-mode .app-layout{height:calc(100vh - 100px)}
   border:1px solid var(--border);border-radius:var(--radius);padding:20px 24px;box-shadow:0 4px 24px rgba(0,0,0,.22);position:relative;overflow:hidden}
 .overview-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(139,92,246,.24),transparent)}
 .overview-hero-main{display:flex;align-items:center;gap:24px;min-height:194px;padding:22px 28px}
-.overview-donut{width:150px;height:150px;flex-shrink:0;transform:rotate(-90deg);overflow:visible}
+.overview-donut-wrap{position:relative;width:150px;height:150px;flex-shrink:0}
+.overview-donut{width:150px;height:150px;transform:rotate(-90deg);overflow:visible}
 .overview-donut-bg,.overview-donut-fill{fill:none;stroke-width:5}
 .overview-donut-bg{stroke:rgba(140,120,220,.08)}
 .overview-donut-fill{stroke:var(--pass);stroke-linecap:butt;filter:drop-shadow(0 0 4px var(--pass));transition:stroke-dasharray .35s ease}
-.overview-donut-value{font-size:24px;font-weight:800;fill:var(--text);transform:rotate(90deg);transform-origin:60px 60px}
-.overview-donut-label{font-size:9px;font-weight:600;letter-spacing:.7px;fill:var(--text3);transform:rotate(90deg);transform-origin:60px 60px}
+.overview-donut-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;white-space:nowrap}
+.overview-donut-pct{font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:700;line-height:1;letter-spacing:-0.5px;color:var(--text)}
+.overview-donut-unit{font-size:13px;font-weight:600;opacity:0.5}
+.overview-donut-label-html{font-size:10px;font-weight:600;color:var(--text3);margin-top:4px;text-transform:uppercase;letter-spacing:0.8px}
 .overview-context{font-size:11px;color:var(--text3);font-weight:500;margin-bottom:12px;white-space:nowrap}
 .overview-hero-stats{display:flex;gap:16px}
 .overview-stat b{display:block;font-size:22px;font-weight:800;line-height:1}
@@ -118,7 +124,7 @@ body.dashboard-mode .app-layout{height:calc(100vh - 100px)}
 .overview-trend-empty,.overview-trend-chart{height:170px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;color:var(--text3);font-size:12px;opacity:.7}
 .overview-trend-empty-message{flex:1;display:flex;align-items:center}
 .overview-trend-chart{display:flex;opacity:1}
-.overview-trend-chart svg{width:100%;height:136px;flex:0 0 136px}
+.overview-trend-chart svg,.overview-trend-svg{width:100%;height:150px;flex:0 0 150px}
 .overview-trend-footer{display:flex;justify-content:space-between;align-items:center;gap:16px;width:100%;flex-shrink:0;margin-top:4px;padding-bottom:6px;color:var(--text3);font-size:10px}
 .overview-trend-footer .overview-trend-legend{justify-content:flex-end;gap:12px;margin-left:auto}
 .overview-kpi-row{display:flex;gap:12px;margin-bottom:20px}
@@ -473,6 +479,175 @@ button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(
 .cs-detail-attr{display:flex;gap:8px;margin-bottom:4px;font-size:11px;align-items:flex-start}
 .cs-detail-key{color:var(--text3);min-width:94px;flex-shrink:0;font-size:10px;padding-top:1px}
 .cs-detail-val{color:var(--text);font-family:monospace;word-break:break-all;flex:1}
+/* Livetail 슬라이드 오버레이 */
+.lt-slide-overlay {
+  position: absolute;
+  right: 0; top: 0; bottom: 0;
+  width: 0;
+  background: rgba(10,8,28,0.97);
+  border-left: 1px solid rgba(140,120,220,0.28);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: width 0.25s ease;
+  z-index: 20;
+}
+.lt-slide-overlay.open { width: 280px; }
+.lt-slide-hd {
+  height: 32px; padding: 0 10px;
+  background: rgba(12,10,32,0.7);
+  border-bottom: 1px solid rgba(140,120,220,0.15);
+  display: flex; align-items: center; gap: 8px;
+  font-size: 10px; font-weight: 600;
+  color: var(--pass); text-transform: uppercase; letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+.lt-slide-close {
+  margin-left: auto; width: 20px; height: 20px;
+  border-radius: 4px; border: 1px solid rgba(140,120,220,0.15);
+  background: rgba(255,255,255,0.04);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; cursor: pointer; color: var(--text3);
+}
+.lt-slide-close:hover { background: rgba(251,113,133,0.1); color: var(--fail); }
+
+/* ── CS Session Info Strip ── */
+.cs-info-strip {
+  display: none;
+  align-items: center; gap: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+.cs-info-strip.visible { display: flex; }
+.cs-info-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 10px; border-radius: 20px;
+  font-size: 11px; font-weight: 500;
+  flex-shrink: 0;
+}
+.cs-info-chip.device {
+  background: rgba(52,211,153,0.08);
+  border: 1px solid rgba(52,211,153,0.25);
+  color: #d1fae5;
+}
+.cs-info-chip.group {
+  background: rgba(167,139,250,0.1);
+  border: 1px solid rgba(167,139,250,0.28);
+  color: #c4b5fd;
+}
+.cs-info-chip.mcp-off {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text3);
+  cursor: default;
+}
+.cs-info-chip.mcp-on {
+  background: rgba(52,211,153,0.1);
+  border: 1px solid rgba(52,211,153,0.35);
+  color: var(--pass);
+  cursor: pointer;
+}
+.cs-info-chip.mcp-on:hover {
+  background: rgba(248,113,113,0.12);
+  border-color: rgba(248,113,113,0.35);
+  color: #fca5a5;
+}
+.cs-info-chip.mcp-on:hover #cs-info-mcp-label::after {
+  content: ' — 클릭하여 해제';
+  font-size: 0.8em;
+  opacity: 0.7;
+}
+/* MCP OFF 툴팁 */
+.cs-mcp-tooltip {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface2, #1e293b);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--text2, #94a3b8);
+  white-space: nowrap;
+  z-index: 200;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.cs-mcp-tooltip.visible { opacity: 1; }
+#cs-info-mcp { position: relative; }
+.cs-info-dot {
+  width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+}
+.cs-info-dot.green { background: var(--pass); box-shadow: 0 0 4px var(--pass); }
+.cs-info-dot.purple { background: #a78bfa; }
+.cs-info-dot.gray { background: rgba(255,255,255,0.2); }
+.cs-info-sep {
+  color: rgba(255,255,255,0.1); font-size: 13px; flex-shrink: 0;
+}
+
+.lt-toggle-btn {
+  display: flex; align-items: center; gap: 5px;
+  padding: 3px 10px; border-radius: 8px;
+  font-size: 11px; font-weight: 600; cursor: pointer;
+  background: rgba(251,191,36,0.1);
+  border: 1px solid rgba(251,191,36,0.3);
+  color: var(--warn);
+  transition: all 0.2s;
+  user-select: none;
+}
+.lt-toggle-btn.lt-active {
+  background: rgba(52,211,153,0.1);
+  border-color: rgba(52,211,153,0.35);
+  color: var(--pass);
+}
+.lt-toggle-pulse {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--warn);
+  animation: ltpulse 1.2s infinite;
+}
+.lt-toggle-btn.lt-active .lt-toggle-pulse { background: var(--pass); }
+@keyframes ltpulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+/* Livetail 행 스타일 (overlay 안) */
+.lt-ov-rows { flex: 1; overflow-y: auto; padding: 2px 0; }
+.lt-ov-row {
+  display: grid;
+  grid-template-columns: 52px 18px 1fr 42px;
+  gap: 5px; padding: 3px 10px;
+  font-size: 10px; font-family: 'JetBrains Mono', monospace;
+  align-items: center; line-height: 1.4;
+}
+.lt-ov-row:hover { background: rgba(255,255,255,0.02); }
+.lt-ov-row.lt-pipe { background: rgba(251,191,36,0.04); }
+.lt-ov-t { color: var(--text3); font-size: 9px; }
+.lt-ov-ic { text-align: center; }
+.lt-ov-b { color: var(--text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lt-ov-b .lt-ty { color: var(--text); font-weight: 600; margin-right: 3px; }
+.lt-ov-b .lt-co { color: #60a5fa; }
+.lt-ov-b .lt-pa { color: var(--text3); font-size: 9px; }
+.lt-ov-r { text-align: right; font-size: 10px; }
+.lt-ov-r.ok { color: var(--pass); }
+.lt-ov-r.wn { color: var(--warn); }
+.lt-ov-r.fl { color: var(--fail); }
+.lt-ov-filter {
+  padding: 5px 8px; border-bottom: 1px solid rgba(140,120,220,0.15);
+  display: flex; align-items: center; gap: 5px;
+  background: rgba(12,10,32,0.4); flex-shrink: 0;
+}
+.lt-ov-fb {
+  padding: 1px 7px; border-radius: 3px; font-size: 10px; cursor: pointer;
+}
+.lt-ov-fb.u { background: rgba(96,165,250,0.15); border: 1px solid rgba(96,165,250,0.3); color: #60a5fa; }
+.lt-ov-fb.m { background: rgba(139,92,246,0.15); border: 1px solid rgba(139,92,246,0.3); color: var(--accent); }
+.lt-ov-fb.p { background: rgba(251,191,36,0.12); border: 1px solid rgba(251,191,36,0.28); color: var(--warn); }
+.lt-ov-pin {
+  padding: 4px 8px; border-top: 1px solid rgba(140,120,220,0.15);
+  font-size: 9px; font-family: 'JetBrains Mono', monospace;
+  color: var(--text3); text-align: center; flex-shrink: 0;
+}
 </style>
 </head>
 <body class="dashboard-mode">
@@ -545,7 +720,10 @@ button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(
     <div class="overview-heading-row"><div class="overview-heading">Dashboard</div><button id="overview-reset-btn" class="overview-reset" type="button" onclick="resetOverviewDashboard()">↻ 대시보드 초기화</button></div>
     <div class="overview-hero">
       <div class="overview-card overview-hero-main">
-        <svg class="overview-donut" viewBox="0 0 120 120"><circle class="overview-donut-bg" cx="60" cy="60" r="48"></circle><circle id="overview-donut-fill" class="overview-donut-fill" cx="60" cy="60" r="48" stroke-dasharray="0 302"></circle><text id="overview-rate" class="overview-donut-value" x="60" y="61" text-anchor="middle">0%</text><text class="overview-donut-label" x="60" y="76" text-anchor="middle">PASS RATE</text></svg>
+        <div class="overview-donut-wrap">
+          <svg class="overview-donut" viewBox="0 0 120 120"><circle class="overview-donut-bg" cx="60" cy="60" r="48"></circle><circle id="overview-donut-fill" class="overview-donut-fill" cx="60" cy="60" r="48" stroke-dasharray="0 302"></circle></svg>
+          <div class="overview-donut-center"><div class="overview-donut-pct"><span id="overview-rate">0</span><span class="overview-donut-unit">%</span></div><div class="overview-donut-label-html">PASS RATE</div></div>
+        </div>
         <div><div class="overview-context" id="overview-context">최근 실행 없음</div><div class="overview-hero-stats"><div class="overview-stat"><b id="overview-total">0</b><small>Total</small></div><div class="overview-stat"><b id="overview-passed" style="color:var(--pass)">0</b><small>Passed</small></div><div class="overview-stat"><b id="overview-failed" style="color:var(--fail)">0</b><small>Failed</small></div></div><div class="overview-hero-legend"><span class="overview-legend-item"><i class="overview-legend-dot" style="background:var(--pass)"></i>통과</span><span class="overview-legend-item"><i class="overview-legend-dot" style="background:var(--fail)"></i>실패</span><span class="overview-legend-item"><i class="overview-legend-dot" style="background:var(--warn)"></i>경고 (80%↑)</span></div></div>
       </div>
       <div class="overview-card"><div class="overview-trend-title">Run History</div><div class="overview-trend-empty" id="overview-trend">실행 이력 없음</div></div>
@@ -1073,9 +1251,34 @@ button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(
 
     <!-- ─── Capture Studio ─────────────────────────── -->
     <div class="card view-hidden" id="view-capture">
-      <div class="card-title" style="display:flex;align-items:center;gap:10px">
-        <span style="color:#a78bfa">⬡</span> Capture Studio
-        <span id="cs-session-badge" style="display:none;padding:3px 9px;border-radius:12px;background:rgba(167,139,250,.15);color:#a78bfa;font-size:11px;font-weight:700">● 세션 실행 중</span>
+      <div class="card-title" style="display:flex;align-items:center;gap:10px;flex-wrap:nowrap;overflow:hidden">
+        <span style="color:#a78bfa;flex-shrink:0">⬡</span>
+        <span style="flex-shrink:0">Capture Studio</span>
+        <span id="cs-session-badge" style="display:none;padding:3px 9px;border-radius:12px;background:rgba(167,139,250,.15);color:#a78bfa;font-size:11px;font-weight:700;flex-shrink:0">● 세션 실행 중</span>
+
+        <!-- 세션 정보 인라인 칩 -->
+        <div class="cs-info-strip" id="cs-info-strip" style="margin:0;padding:0;background:none;border:none;flex:1;min-width:0;overflow:hidden">
+          <div class="cs-info-chip device" id="cs-info-device">
+            <div class="cs-info-dot green"></div>
+            <span id="cs-info-device-label">Android</span>
+          </div>
+          <span class="cs-info-sep">·</span>
+          <div class="cs-info-chip group" id="cs-info-group">
+            <div class="cs-info-dot purple"></div>
+            <span id="cs-info-group-label">—</span>
+          </div>
+          <span class="cs-info-sep">·</span>
+          <div class="cs-info-chip mcp-off" id="cs-info-mcp" onclick="csMcpChipClick()">
+            <div class="cs-info-dot gray" id="cs-info-mcp-dot"></div>
+            <span id="cs-info-mcp-label">MCP OFF</span>
+            <div class="cs-mcp-tooltip" id="cs-mcp-tooltip">Claude Code에서 MCP 도구 호출 시 자동 연결됩니다</div>
+          </div>
+        </div>
+
+        <div class="lt-toggle-btn" id="csLivetailBtn" onclick="csToggleLivetail()" style="flex-shrink:0">
+          <div class="lt-toggle-pulse" id="csLtPulse"></div>
+          <span id="csLtBtnLabel">Livetail</span>
+        </div>
       </div>
 
       <!-- 1단계: 세션 설정 -->
@@ -1140,13 +1343,13 @@ button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(
         <div class="card-subtitle" style="margin-bottom:10px">2–4단계 — 화면 탐색 · 동작 기록 · Locator 검토</div>
 
         <!-- 3열 레이아웃 -->
-        <div style="display:grid;grid-template-columns:220px 1fr 300px;grid-template-rows:1fr;gap:12px;align-items:stretch;height:calc(100vh - 250px);min-height:520px;overflow:hidden">
+        <div style="display:grid;grid-template-columns:220px 1fr 300px;grid-template-rows:1fr;gap:12px;align-items:stretch;height:calc(100vh - 250px);min-height:520px;overflow:hidden;position:relative">
 
           <!-- 왼쪽: MJPEG 미러링 -->
           <div style="display:flex;flex-direction:column;gap:8px;min-height:0">
             <div style="font-size:11px;color:var(--text3);font-weight:600">디바이스 화면</div>
             <div id="cs-mirror-container" style="border:1px solid var(--border);border-radius:8px;overflow:hidden;background:#000;aspect-ratio:9/18;position:relative">
-              <img id="cs-mirror-img" src="" alt="미러링" style="width:100%;height:100%;object-fit:contain;display:none" onclick="csMirrorClick(event)">
+              <img id="cs-mirror-img" src="" alt="미러링" style="width:100%;height:100%;object-fit:contain;display:none" onmousedown="csMirrorMouseDown(event)" onmousemove="csMirrorMouseMove(event)" onmouseup="csMirrorMouseUp(event)" onmouseleave="csMirrorMouseUp(event)">
               <div id="cs-mirror-placeholder" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text3);font-size:12px;gap:6px">
                 <span style="font-size:28px">📱</span>
                 <span>세션 시작 후 미러링 연결</span>
@@ -1160,6 +1363,10 @@ button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(
               <div id="cs-element-highlight" style="display:none;position:absolute;pointer-events:none;border:3px solid #a78bfa;background:rgba(167,139,250,.25);box-sizing:border-box;box-shadow:0 0 0 1px rgba(167,139,250,.6),inset 0 0 0 1px rgba(167,139,250,.3);transition:left .1s,top .1s,width .1s,height .1s;animation:cs-hl-pulse 1.2s ease-in-out infinite"></div>
               <!-- 선택 요소 레이블 -->
               <div id="cs-element-highlight-label" style="display:none;position:absolute;pointer-events:none;background:#7c3aed;color:#fff;font-size:9px;font-weight:600;padding:2px 6px;border-radius:3px;white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis;line-height:16px;box-shadow:0 1px 4px rgba(0,0,0,.5)"></div>
+              <!-- iOS 탭 처리 중 오버레이 -->
+              <div id="cs-ios-tap-overlay" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,0.18);pointer-events:none;z-index:10;display:none;align-items:center;justify-content:center">
+                <div style="width:28px;height:28px;border:2px solid rgba(167,139,250,0.8);border-top-color:transparent;border-radius:50%;animation:cs-spin .6s linear infinite"></div>
+              </div>
             </div>
             <div style="display:flex;gap:6px">
               <button class="cs-btn" id="cs-mirror-connect" onclick="csMirrorConnect()" style="flex:1">미러링 연결</button>
@@ -1263,6 +1470,23 @@ button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(
             </div>
 
           </div>
+
+          <!-- Livetail 슬라이드 오버레이 -->
+          <div class="lt-slide-overlay" id="csLtOverlay">
+            <div class="lt-slide-hd">
+              <div style="width:6px;height:6px;border-radius:50%;background:var(--pass);box-shadow:0 0 4px var(--pass)"></div>
+              Livetail
+              <div class="lt-slide-close" onclick="csToggleLivetail()">&#x2715;</div>
+            </div>
+            <div class="lt-ov-filter">
+              <div class="lt-ov-fb u" onclick="csLtFilter('user',this)">&#x1F464; user</div>
+              <div class="lt-ov-fb m" onclick="csLtFilter('mcp',this)">&#x1F916; mcp</div>
+              <div class="lt-ov-fb p" onclick="csLtFilter('pipe',this)">&#x2699; pipeline</div>
+              <div style="margin-left:auto;padding:1px 7px;border-radius:3px;font-size:10px;background:rgba(38,34,72,0.75);border:1px solid rgba(140,120,220,0.15);color:var(--text3);cursor:pointer" onclick="csLtExport()">Export</div>
+            </div>
+            <div class="lt-ov-rows" id="csLtRows"></div>
+            <div class="lt-ov-pin" id="csLtPin">&#x2B07; 하단 고정</div>
+          </div>
         </div>
 
         <!-- Action Timeline -->
@@ -1347,19 +1571,40 @@ function setOverviewLog(mode){
   refreshOverview();
 }
 function renderOverviewTrend(fallbackRate){
-  var entries=loadRunHistory().slice(0,8).reverse();
-  if(!entries.length && fallbackRate>0) entries=[{rate:fallbackRate}];
-  if(!entries.length) return '<div class="overview-trend-empty-message">실행 이력 없음</div>';
-  var left=18, right=302, bottom=120, span=entries.length>1?(right-left)/(entries.length-1):0;
-  var points=entries.map(function(entry,index){
-    var rate=Math.max(0,Math.min(100,Number(entry.rate||0))), x=entries.length>1?left+span*index:(left+right)/2;
-    return {rate:rate,x:x,y:bottom-(rate*.92),color:rate>=100?'var(--pass)':rate>=80?'var(--warn)':'var(--fail)',label:entry.type==='pipeline'?'파이프라인':'빠른'};
+  var allEntries=loadRunHistory().slice(0,8).reverse();
+  if(!allEntries.length && fallbackRate>0) allEntries=[{rate:fallbackRate,executedAt:new Date().toISOString()}];
+  if(!allEntries.length) return '<div class="overview-trend-empty-message">실행 이력 없음</div>';
+  var w=320,h=130,padX=28,padY=18,padBot=18;
+  var chartH=h-padY-padBot;
+  var stepX=allEntries.length>1?(w-padX*2)/(allEntries.length-1):0;
+  var pointStr='', areaStr=padX+','+(padY+chartH)+' ', dots='', pctLabels='', tsLabels='';
+  var prevLabelY=-100, minGap=12;
+  var showEveryN=allEntries.length>5?2:1;
+  allEntries.forEach(function(entry,i){
+    var rate=Math.max(0,Math.min(100,Number(entry.rate||0)));
+    var x=padX+stepX*i;
+    var y=padY+chartH-(rate/100)*chartH;
+    var color=rate>=100?'var(--pass)':rate>=80?'var(--warn)':'var(--fail)';
+    pointStr+=x+','+y+' ';
+    areaStr+=x+','+y+' ';
+    var ts=entry.executedAt?new Date(entry.executedAt).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false}):'';
+    dots+='<circle cx="'+x+'" cy="'+y+'" r="3.5" fill="'+color+'" stroke="rgba(8,7,27,0.6)" stroke-width="1.5" style="filter:drop-shadow(0 0 3px '+color+')"/>';
+    var labelY=y-8;
+    if(Math.abs(labelY-prevLabelY)<minGap){
+      labelY=prevLabelY<y?y+14:y-8-minGap+Math.abs(labelY-prevLabelY);
+    }
+    pctLabels+='<text x="'+x+'" y="'+labelY+'" text-anchor="middle" fill="'+color+'" font-size="9" font-weight="600" font-family="Inter">'+rate+'%</text>';
+    prevLabelY=labelY;
+    if(i===0||i===allEntries.length-1||i%showEveryN===0){
+      tsLabels+='<text x="'+x+'" y="'+(h-3)+'" text-anchor="middle" fill="var(--text3)" font-size="9" font-family="Inter">'+ts+'</text>';
+    }
   });
-  var pointString=points.map(function(point){return point.x+','+point.y;}).join(' ');
-  var marks=points.map(function(point){
-    return '<circle cx="'+point.x+'" cy="'+point.y+'" r="4" fill="'+point.color+'" style="filter:drop-shadow(0 0 4px '+point.color+')"/><text x="'+point.x+'" y="'+Math.max(16,point.y-10)+'" text-anchor="middle" fill="'+point.color+'" font-size="10">'+point.rate+'%</text>';
+  areaStr+=padX+stepX*(allEntries.length-1)+','+(padY+chartH);
+  var gridLines=[100,80,60].map(function(v){
+    var gy=padY+chartH-(v/100)*chartH;
+    return '<line x1="'+padX+'" y1="'+gy+'" x2="'+(w-padX)+'" y2="'+gy+'" stroke="rgba(140,120,220,0.06)" stroke-width="0.5"/>';
   }).join('');
-  return '<svg viewBox="0 0 320 150" preserveAspectRatio="none"><line x1="18" y1="28" x2="302" y2="28" stroke="rgba(140,120,220,.08)"/><line x1="18" y1="74" x2="302" y2="74" stroke="rgba(140,120,220,.08)"/><line x1="18" y1="120" x2="302" y2="120" stroke="rgba(140,120,220,.08)"/><polyline points="'+pointString+'" fill="none" stroke="var(--accent)" stroke-width="2"/>'+marks+'<text x="18" y="143" fill="var(--text3)" font-size="9">최근 실행</text><text x="302" y="143" text-anchor="end" fill="var(--text3)" font-size="9">First Pass</text></svg>';
+  return '<svg viewBox="0 0 '+w+' '+h+'" class="overview-trend-svg"><defs><linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--accent)" stop-opacity="0.2"/><stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>'+gridLines+'<polygon points="'+areaStr+'" fill="url(#areaGrad)"/><polyline points="'+pointStr+'" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px var(--accent))"/>'+dots+pctLabels+tsLabels+'</svg>';
 }
 async function refreshOverview(){
   try{
@@ -1397,7 +1642,7 @@ async function refreshOverview(){
     var trendColor=rate>=100?'var(--pass)':rate>=80?'var(--warn)':'var(--fail)';
     var trendY=120-(rate*.92);
     var set=function(id,value){var el=document.getElementById(id);if(el)el.textContent=value;};
-    set('overview-rate',rate+'%');
+    set('overview-rate',rate);
     set('overview-total',total);
     set('overview-passed',passed);
     set('overview-failed',failed);
@@ -1407,7 +1652,8 @@ async function refreshOverview(){
     set('overview-quick',quickSummary ? quickSummary.passed+'/'+quickSummary.total+' · '+quickSummary.rate+'%' : '실행 없음');
     var donut=document.getElementById('overview-donut-fill');
     if(donut) donut.setAttribute('stroke-dasharray',(302*rate/100)+' 302');
-    set('overview-context',quickSummary && (!summary.total || (quickSummary.executedAt||'')>(state.updated_at||'')) ? '빠른 실행 · '+(quickSummary.platform==='ios'?'iOS':'Android') : (total?'최근 '+(state.platform==='ios'?'iOS':'Android')+' 실행':'최근 실행 없음'));
+    var ctxTimeStr=quickSummary&&quickSummary.executedAt?new Date(quickSummary.executedAt).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}):'';
+    set('overview-context',quickSummary && (!summary.total || (quickSummary.executedAt||'')>(state.updated_at||'')) ? '빠른 실행 · '+ctxTimeStr : (total?'최근 '+(state.platform==='ios'?'iOS':'Android')+' 실행':'최근 실행 없음'));
     var overviewLog='';
     if(_overviewLogMode==='pipeline'){
       overviewLog=log.log||'';
@@ -1422,8 +1668,10 @@ async function refreshOverview(){
     if(trend){
       var trendEntries=loadRunHistory();
       trend.className=(trendEntries.length||total)?'overview-trend-chart':'overview-trend-empty';
+      var lastEntry=trendEntries.length?trendEntries[0]:null;
+      var footerLeft=lastEntry?(lastEntry.duration?lastEntry.duration+' · ':'')+(lastEntry.failed?'Failed':'First Pass'):'실행 추이';
       trend.innerHTML=renderOverviewTrend(rate)
-        +'<div class="overview-trend-footer"><span>실행 추이</span><span class="overview-trend-legend"><span class="overview-legend-item"><i class="overview-legend-dot" style="background:var(--pass)"></i>100%</span><span class="overview-legend-item"><i class="overview-legend-dot" style="background:var(--warn)"></i>80%↑</span><span class="overview-legend-item"><i class="overview-legend-dot" style="background:var(--fail)"></i>80%↓</span></span></div>';
+        +'<div class="overview-trend-footer"><span>'+footerLeft+'</span><span class="overview-trend-legend"><span class="overview-legend-item"><i class="overview-legend-dot" style="background:var(--pass)"></i>100%</span><span class="overview-legend-item"><i class="overview-legend-dot" style="background:var(--warn)"></i>80%↑</span><span class="overview-legend-item"><i class="overview-legend-dot" style="background:var(--fail)"></i>80%↓</span></span></div>';
     }
   }catch(_){
     // Dashboard remains usable when an optional status/log endpoint is unavailable.
@@ -3691,6 +3939,10 @@ function csInit() {
             document.getElementById('cs-setup').style.display='none';
             document.getElementById('cs-workspace').style.display='block'; setTimeout(function(){ csStartMirrorObserver(); csSyncPanelHeight(); }, 100);
             document.getElementById('cs-session-badge').style.display='';
+            var _rPlatform = (d && d.session && d.session.platform) || 'android';
+            var _rDevice = (d && d.session && d.session.device_name) || '';
+            var _rGroup = (d && d.session && d.session.tc_group) || '';
+            csInfoStripShow(_rPlatform, _rDevice, _rGroup);
             csRenderTimeline();
             csMirrorConnect();
             var saveStatus = document.getElementById('cs-save-status');
@@ -3714,7 +3966,7 @@ function csInit() {
       }
     }
   }).catch(function(){});
-  csConnectWsTimeline();
+  csMcpStartPoll();
 }
 
 function csReLaunch() {
@@ -3766,10 +4018,18 @@ function csReLaunch() {
 function csHandleTimelineEvent(evt) {
   // 현재 Capture Studio는 수동 STEP 추가 방식이다. 미러 클릭은 기기만 조작하며,
   // 명시적으로 녹화 중일 때만 서버 action을 타임라인에 반영한다.
-  if(!_cs.recording) return;
-  if(evt.type === 'action_added' && evt.action){
+  if(_cs.recording && evt.type === 'action_added' && evt.action){
     _cs.actions.push(evt.action);
     csRenderTimeline();
+  }
+  // Livetail 연동: source 필드가 있는 이벤트를 csLtAppend에 전달
+  if(evt.source){
+    var src     = evt.source;
+    var type    = evt.type || evt.action || 'event';
+    var summary = evt.summary || evt.locator || '';
+    var result  = evt.ok === false ? 'fail' : 'ok';
+    var ms      = evt.duration_ms ? evt.duration_ms + 'ms' : '';
+    csLtAppend(src, type, evt.platform || '', summary, result, ms);
   }
 }
 
@@ -3866,6 +4126,8 @@ function csStartSession() {
       _cs.sessionId = d.session_id;
       _cs.actions = [];
       _cs.screenshotMode = d.screenshot_mode || (isIos ? 'poll' : 'mjpeg');
+      window._csDeviceWidth  = d.device_width  || 1080;
+      window._csDeviceHeight = d.device_height || 1920;
       var _mjpegUrlEl = document.getElementById('cs-mjpeg-url');
       if(_mjpegUrlEl) _mjpegUrlEl.textContent = d.mjpeg_url || (isIos ? '(polling)' : '');
       csRenderTimeline();
@@ -3906,14 +4168,15 @@ function csStartSession() {
           document.getElementById('cs-setup').style.display='none';
           document.getElementById('cs-workspace').style.display='block'; setTimeout(function(){ csStartMirrorObserver(); csSyncPanelHeight(); }, 100);
           document.getElementById('cs-session-badge').style.display='';
+          csInfoStripShow(platform, document.getElementById('cs-device-name') ? document.getElementById('cs-device-name').value.trim() : '', group);
           // MJPEG 미러 연결
           csMirrorConnect();
           // 초기 hierarchy 로드
           setTimeout(function(){ csRefreshHierarchy(); }, 1500);
           // 화면 전환 자동 감지 시작
           setTimeout(csStartScreenWatcher, 3000);
-          // WebSocket 연결
-          csConnectWsTimeline();
+          // MCP 상태 폴링 시작
+          csMcpStartPoll();
         } else {
           // 백엔드가 이미 친화적 메시지를 반환 (_friendly_appium_error) → 그대로 표시
           var errMsg = d2.error || '알 수 없는 오류가 발생했습니다.';
@@ -3923,6 +4186,7 @@ function csStartSession() {
           document.getElementById('cs-setup').style.display='none';
           document.getElementById('cs-workspace').style.display='block'; setTimeout(function(){ csStartMirrorObserver(); csSyncPanelHeight(); }, 100);
           document.getElementById('cs-session-badge').style.display='';
+          csInfoStripShow(platform, document.getElementById('cs-device-name') ? document.getElementById('cs-device-name').value.trim() : '', group);
           document.getElementById('cs-save-status').textContent = '⚠️ Appium 미연결 — 오류 메시지를 확인하고 세션을 재시작하세요';
           document.getElementById('cs-save-status').style.color = '#fbbf24';
           // 실패해도 미러링 자동 시도 (iOS polling은 WDA 준비 후 자동 복구)
@@ -3946,6 +4210,7 @@ function csStartSession() {
         document.getElementById('cs-setup').style.display='none';
         document.getElementById('cs-workspace').style.display='block'; setTimeout(function(){ csStartMirrorObserver(); csSyncPanelHeight(); }, 100);
         document.getElementById('cs-session-badge').style.display='';
+        csInfoStripShow(platform, document.getElementById('cs-device-name') ? document.getElementById('cs-device-name').value.trim() : '', group);
         document.getElementById('cs-start-btn').disabled = false;
         // catch에서도 미러링 자동 시도
         csMirrorConnect();
@@ -4102,15 +4367,28 @@ function csMirrorClick(event) {
     if (hitNode) csHighlightNodeInTree(hitNode);
   }
 
+  // iOS 탭 처리 중 오버레이 (polling 지연 시각화, 최대 2초)
+  var _isIosTap = (document.getElementById('cs-platform').value === 'ios');
+  var _tapOverlay = document.getElementById('cs-ios-tap-overlay');
+  var _tapOverlayTimer = null;
+  if (_isIosTap && _tapOverlay) {
+    _tapOverlay.style.display = 'flex';
+    _tapOverlayTimer = setTimeout(function(){ _tapOverlay.style.display = 'none'; }, 2000);
+  }
+
   // 미러 클릭은 항상 Appium에 탭 전달 (녹화 상태 무관)
   fetch('/capture/tap', {
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({session_id:_cs.sessionId, x:imgX, y:imgY, img_width:Math.round(imgW), display_width:displayW, context:_cs.context})
   }).then(function(r){ return r.json(); }).then(function(d){
+    if (_tapOverlay && _tapOverlayTimer) { clearTimeout(_tapOverlayTimer); _tapOverlay.style.display = 'none'; }
     if (!d.ok) {
       csStatusMsg('⚠️ ' + (d.error || 'tap 실패'));
     }
-  }).catch(function(err){ csStatusMsg('오류: ' + err); });
+  }).catch(function(err){
+    if (_tapOverlay && _tapOverlayTimer) { clearTimeout(_tapOverlayTimer); _tapOverlay.style.display = 'none'; }
+    csStatusMsg('오류: ' + err);
+  });
 }
 
 function csSetContext(ctx, btn) {
@@ -5149,6 +5427,7 @@ function csForceNewSession() {
   }).catch(function(){}).finally(function(){
     if(_cs.pollTimer){ clearInterval(_cs.pollTimer); _cs.pollTimer = null; }
     csStopScreenWatcher();
+    csMcpStopPoll();
     _cs.sessionId = '';
     _cs.actions = [];
     _cs.recording = false;
@@ -5157,6 +5436,7 @@ function csForceNewSession() {
     document.getElementById('cs-setup').style.display='block';
     document.getElementById('cs-workspace').style.display='none';
     document.getElementById('cs-session-badge').style.display='none';
+    csInfoStripHide();
     document.getElementById('cs-start-btn').disabled = false;
     var statusEl = document.getElementById('cs-setup-status');
     if(statusEl){ statusEl.textContent = '새 세션을 시작할 수 있습니다.'; statusEl.style.color='var(--text3)'; }
@@ -5171,6 +5451,7 @@ function csEndSession() {
   }).then(function(r){ return r.json(); }).then(function(d){
     if(_cs.pollTimer){ clearInterval(_cs.pollTimer); _cs.pollTimer = null; }
     csStopScreenWatcher();
+    csMcpStopPoll();
     _cs.sessionId = '';
     _cs.actions = [];
     _cs.recording = false;
@@ -5178,6 +5459,7 @@ function csEndSession() {
     document.getElementById('cs-setup').style.display='block';
     document.getElementById('cs-workspace').style.display='none';
     document.getElementById('cs-session-badge').style.display='none';
+    csInfoStripHide();
     document.getElementById('cs-start-btn').disabled = false;
     document.getElementById('cs-setup-status').textContent = '세션이 종료되었습니다.';
   });
@@ -5243,7 +5525,286 @@ document.addEventListener('DOMContentLoaded', function(){
       if(!_csInitialized){ _csInitialized=true; csInit(); }
     });
   }
+  csConnectWsTimeline();
 });
+
+// ── Livetail 슬라이드 오버레이 ──────────────────────────
+var _csLtOpen = false;
+var _csLtRows = [];
+var _csLtFilters = {user:true, mcp:true, pipe:true};
+var _csLtPinned = true;
+
+// ── MCP 상태 폴링 ────────────────────────────────────────
+var _csMcpPollTimer = null;
+
+function csMcpStatusPoll() {
+  fetch('/mcp/status').then(function(r){ return r.json(); }).then(function(d){
+    csInfoStripMcp(d.connected);
+  }).catch(function(){});
+}
+
+function csMcpStartPoll() {
+  if(_csMcpPollTimer) return;
+  csMcpStatusPoll();
+  _csMcpPollTimer = setInterval(csMcpStatusPoll, 3000);
+}
+
+function csMcpStopPoll() {
+  if(_csMcpPollTimer){ clearInterval(_csMcpPollTimer); _csMcpPollTimer = null; }
+  csInfoStripMcp(false);
+}
+
+// ── CS 세션 정보 스트립 ───────────────────────────────────────
+function csInfoStripShow(platform, deviceName, group) {
+  var strip = document.getElementById('cs-info-strip');
+  if (!strip) return;
+  // 디바이스 칩
+  var isIos = (platform === 'ios');
+  var platLabel = isIos ? 'iOS' : 'Android';
+  var devText = deviceName ? platLabel + ' \xb7 ' + deviceName : platLabel;
+  document.getElementById('cs-info-device-label').textContent = devText;
+  // 그룹 칩
+  document.getElementById('cs-info-group-label').textContent = group || 'default';
+  // MCP 칩 (Phase 2 전까진 OFF)
+  csInfoStripMcp(false);
+  strip.classList.add('visible');
+}
+
+function csInfoStripHide() {
+  var strip = document.getElementById('cs-info-strip');
+  if (strip) strip.classList.remove('visible');
+}
+
+function csInfoStripMcp(on) {
+  var chip = document.getElementById('cs-info-mcp');
+  var dot  = document.getElementById('cs-info-mcp-dot');
+  var label = document.getElementById('cs-info-mcp-label');
+  if (!chip) return;
+  if (on) {
+    chip.className = 'cs-info-chip mcp-on';
+    dot.className  = 'cs-info-dot green';
+    label.textContent = 'MCP ON';
+  } else {
+    chip.className = 'cs-info-chip mcp-off';
+    dot.className  = 'cs-info-dot gray';
+    label.textContent = 'MCP OFF';
+  }
+}
+
+var _csMcpTooltipTimer = null;
+function csMcpChipClick() {
+  var chip = document.getElementById('cs-info-mcp');
+  if (!chip) return;
+  if (chip.classList.contains('mcp-on')) {
+    // ON → 해제 확인 후 disconnect
+    if (!confirm('MCP 연결을 해제할까요?\nClaude Code에서 다시 도구를 호출하면 자동으로 재연결됩니다.')) return;
+    fetch('/mcp/session', {method: 'DELETE'}).then(function(r){ return r.json(); }).then(function(d){
+      if (d.ok) csInfoStripMcp(false);
+    }).catch(function(){});
+  } else {
+    // OFF → 툴팁 2초 표시
+    var tip = document.getElementById('cs-mcp-tooltip');
+    if (!tip) return;
+    tip.classList.add('visible');
+    if (_csMcpTooltipTimer) clearTimeout(_csMcpTooltipTimer);
+    _csMcpTooltipTimer = setTimeout(function(){ tip.classList.remove('visible'); }, 2500);
+  }
+}
+
+function csToggleLivetail() {
+  _csLtOpen = !_csLtOpen;
+  var overlay = document.getElementById('csLtOverlay');
+  var btn     = document.getElementById('csLivetailBtn');
+  var label   = document.getElementById('csLtBtnLabel');
+  if (_csLtOpen) {
+    overlay.classList.add('open');
+    btn.classList.add('lt-active');
+    label.textContent = 'Livetail ✕';
+    csLtRender();
+    csLtScrollBottom();
+  } else {
+    overlay.classList.remove('open');
+    btn.classList.remove('lt-active');
+    label.textContent = 'Livetail';
+  }
+}
+
+function csLtAppend(source, type, platform, summary, result, ms) {
+  var now = new Date();
+  var ts = now.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+  var icon = source === 'user' ? '\u{1F464}' : source === 'mcp' ? '\u{1F916}' : '⚙';
+  var row = {ts:ts, source:source, icon:icon, type:type, platform:platform, summary:summary, result:result, ms:ms};
+  _csLtRows.push(row);
+  if (_csLtRows.length > 200) _csLtRows.shift();
+  if (_csLtOpen) {
+    csLtRenderRow(row);
+    if (_csLtPinned) csLtScrollBottom();
+  }
+}
+
+function csLtRenderRow(row) {
+  var container = document.getElementById('csLtRows');
+  if (!container) return;
+  var cat = row.source === 'pipeline' ? 'pipe' : row.source;
+  if (!_csLtFilters[cat]) return;
+  var div = document.createElement('div');
+  div.className = 'lt-ov-row' + (row.source === 'pipeline' ? ' lt-pipe' : '');
+  var resClass = row.result === 'ok' ? 'ok' : row.result === 'warn' ? 'wn' : 'fl';
+  var resIcon  = row.result === 'ok' ? '✅' : row.result === 'warn' ? '⚠' : '❌';
+  var msStr    = row.ms ? ' ' + row.ms : '';
+  div.innerHTML =
+    '<div class="lt-ov-t">' + row.ts + '</div>' +
+    '<div class="lt-ov-ic">' + row.icon + '</div>' +
+    '<div class="lt-ov-b"><span class="lt-ty">' + row.type + '</span>' +
+      (row.summary ? '<span class="lt-co">' + row.summary + '</span>' : '') +
+    '</div>' +
+    '<div class="lt-ov-r ' + resClass + '">' + resIcon + msStr + '</div>';
+  container.appendChild(div);
+}
+
+function csLtRender() {
+  var container = document.getElementById('csLtRows');
+  if (!container) return;
+  container.innerHTML = '';
+  _csLtRows.forEach(function(row){ csLtRenderRow(row); });
+}
+
+function csLtScrollBottom() {
+  var container = document.getElementById('csLtRows');
+  if (container) container.scrollTop = container.scrollHeight;
+}
+
+function csLtFilter(cat, el) {
+  _csLtFilters[cat] = !_csLtFilters[cat];
+  el.style.opacity = _csLtFilters[cat] ? '1' : '0.35';
+  if (_csLtOpen) { csLtRender(); csLtScrollBottom(); }
+}
+
+function csLtExport() {
+  var lines = _csLtRows.map(function(r){
+    return [r.ts, r.source, r.type, r.summary||'', r.result, r.ms||''].join('\t');
+  });
+  var blob = new Blob([lines.join('\n')], {type:'text/plain'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'livetail_' + new Date().toISOString().slice(0,19).replace(/:/g,'-') + '.txt';
+  a.click();
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+  var rows = document.getElementById('csLtRows');
+  if (rows) {
+    rows.addEventListener('scroll', function(){
+      var atBottom = rows.scrollHeight - rows.scrollTop - rows.clientHeight < 20;
+      _csLtPinned = atBottom;
+      var pin = document.getElementById('csLtPin');
+      if (pin) pin.textContent = atBottom ? '⬇ 하단 고정' : '▲ 위로 스크롤 중 — 클릭하여 고정';
+      if (pin) pin.style.cursor = atBottom ? 'default' : 'pointer';
+      if (pin && !atBottom) pin.onclick = function(){ _csLtPinned=true; csLtScrollBottom(); };
+    });
+  }
+});
+
+// ── 미러 스와이프 감지 ──────────────────────────────────
+var _csSwipe = {active:false, startX:0, startY:0, curX:0, curY:0};
+
+function csMirrorMouseDown(e) {
+  e.preventDefault();
+  var rect = e.currentTarget.getBoundingClientRect();
+  _csSwipe.active = true;
+  _csSwipe.startX = e.clientX - rect.left;
+  _csSwipe.startY = e.clientY - rect.top;
+  _csSwipe.curX   = _csSwipe.startX;
+  _csSwipe.curY   = _csSwipe.startY;
+  _csSwipeRemoveArrow();
+}
+
+function csMirrorMouseMove(e) {
+  if (!_csSwipe.active) return;
+  var rect = e.currentTarget.getBoundingClientRect();
+  _csSwipe.curX = e.clientX - rect.left;
+  _csSwipe.curY = e.clientY - rect.top;
+  var dx = _csSwipe.curX - _csSwipe.startX;
+  var dy = _csSwipe.curY - _csSwipe.startY;
+  if (Math.sqrt(dx*dx+dy*dy) >= 10) {
+    _csSwipeDrawArrow(e.currentTarget, _csSwipe.startX, _csSwipe.startY, _csSwipe.curX, _csSwipe.curY);
+  }
+}
+
+function csMirrorMouseUp(e) {
+  if (!_csSwipe.active) return;
+  _csSwipe.active = false;
+  _csSwipeRemoveArrow();
+  var dx = _csSwipe.curX - _csSwipe.startX;
+  var dy = _csSwipe.curY - _csSwipe.startY;
+  var dist = Math.sqrt(dx*dx + dy*dy);
+  if (dist < 10) {
+    csMirrorClick(e);
+  } else {
+    _csSendSwipe(e.currentTarget, _csSwipe.startX, _csSwipe.startY, _csSwipe.curX, _csSwipe.curY);
+  }
+}
+
+function _csSwipeDrawArrow(container, x1, y1, x2, y2) {
+  _csSwipeRemoveArrow();
+  var svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.id = 'csSwipeArrow';
+  svg.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:15';
+  svg.setAttribute('width','100%'); svg.setAttribute('height','100%');
+  var defs = document.createElementNS('http://www.w3.org/2000/svg','defs');
+  var marker = document.createElementNS('http://www.w3.org/2000/svg','marker');
+  marker.setAttribute('id','sw-arrow'); marker.setAttribute('markerWidth','8');
+  marker.setAttribute('markerHeight','6'); marker.setAttribute('refX','6');
+  marker.setAttribute('refY','3'); marker.setAttribute('orient','auto');
+  var poly = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+  poly.setAttribute('points','0 0, 8 3, 0 6'); poly.setAttribute('fill','rgba(96,165,250,0.9)');
+  marker.appendChild(poly); defs.appendChild(marker); svg.appendChild(defs);
+  var line = document.createElementNS('http://www.w3.org/2000/svg','line');
+  line.setAttribute('x1',x1); line.setAttribute('y1',y1);
+  line.setAttribute('x2',x2); line.setAttribute('y2',y2);
+  line.setAttribute('stroke','rgba(96,165,250,0.7)'); line.setAttribute('stroke-width','2');
+  line.setAttribute('stroke-dasharray','5 3'); line.setAttribute('marker-end','url(#sw-arrow)');
+  svg.appendChild(line);
+  var dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+  dot.setAttribute('cx',x1); dot.setAttribute('cy',y1); dot.setAttribute('r','5');
+  dot.setAttribute('fill','rgba(96,165,250,0.5)');
+  svg.appendChild(dot);
+  if (container.style.position !== 'relative' && container.style.position !== 'absolute') {
+    container.style.position = 'relative';
+  }
+  container.appendChild(svg);
+}
+
+function _csSwipeRemoveArrow() {
+  var old = document.getElementById('csSwipeArrow');
+  if (old) old.remove();
+}
+
+function _csSendSwipe(container, x1, y1, x2, y2) {
+  var imgEl = container.querySelector('img') || container;
+  var rect  = imgEl.getBoundingClientRect();
+  var dw    = window._csDeviceWidth  || 1080;
+  var dh    = window._csDeviceHeight || 1920;
+  var scaleX = dw / rect.width;
+  var scaleY = dh / rect.height;
+  var devX1 = Math.round(x1 * scaleX), devY1 = Math.round(y1 * scaleY);
+  var devX2 = Math.round(x2 * scaleX), devY2 = Math.round(y2 * scaleY);
+
+  csLtAppend('user','scroll','','↕ ('+devX1+','+devY1+')→('+devX2+','+devY2+')', 'ok', '');
+
+  fetch('/capture/scroll', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      session_id: _cs.sessionId,
+      start_x: devX1, start_y: devY1,
+      end_x: devX2, end_y: devY2
+    })
+  }).then(function(r){ return r.json(); })
+    .then(function(d){
+      if (!d.ok) console.warn('scroll error', d);
+    }).catch(function(err){ console.error(err); });
+}
 </script>
 
 <!-- ── TC Preview Modal ─────────────────────────────────────── -->

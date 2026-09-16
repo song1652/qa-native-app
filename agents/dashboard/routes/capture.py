@@ -339,12 +339,23 @@ async def capture_start_session(request: Request):
     )
     session_dir.joinpath("actions.json").write_text("[]", encoding="utf-8")
 
+    try:
+        _driver = get_capture_driver()
+        _size = _driver.get_window_size() if _driver else {}
+        device_width  = _size.get("width",  1080)
+        device_height = _size.get("height", 1920)
+    except Exception:
+        device_width  = 1080
+        device_height = 1920
+
     resp: dict = {
         "ok":               True,
         "session_id":       new_session_id,
         "reconnected":      False,
         "screenshot_mode":  screenshot_mode,
         "session_dir":      str(session_dir.relative_to(PROJECT_ROOT)),
+        "device_width":     device_width,
+        "device_height":    device_height,
     }
     if screenshot_mode == "mjpeg":
         resp["mjpeg_url"] = f"http://localhost:{mjpeg_port}"
@@ -377,6 +388,7 @@ async def capture_tap(request: Request):
         "locator":     {},
         "device_x":    device_x,
         "device_y":    device_y,
+        "source":      "user",
         "timestamp":   datetime.now().isoformat(),
     }
 
@@ -390,7 +402,11 @@ async def capture_tap(request: Request):
     actions_path.write_text(json.dumps(actions, ensure_ascii=False, indent=2), encoding="utf-8")
 
     save_capture_session({**session, "last_activity_at": datetime.now().isoformat(), "actions": actions})
-    broadcast_timeline_sync({"type": "action_added", "action": action})
+    broadcast_timeline_sync({
+        "type": "action_added", "action": action, "source": "user",
+        "platform": session.get("platform", ""),
+        "summary": f"({device_x},{device_y})", "ok": True,
+    })
 
     loop = asyncio.get_event_loop()
     tap_ok = await loop.run_in_executor(None, _do_appium_tap, device_x, device_y, session["session_id"])
@@ -429,6 +445,7 @@ async def capture_input(request: Request):
         "input_key":     body.get("input_key", f"input_{action_index}"),
         "is_secret":     is_secret,
         "value_preview": stored_value,
+        "source":        "user",
         "timestamp":     datetime.now().isoformat(),
     }
 
@@ -441,7 +458,11 @@ async def capture_input(request: Request):
     actions_path.write_text(json.dumps(actions, ensure_ascii=False, indent=2), encoding="utf-8")
 
     save_capture_session({**session, "last_activity_at": datetime.now().isoformat(), "actions": actions})
-    broadcast_timeline_sync({"type": "action_added", "action": action})
+    broadcast_timeline_sync({
+        "type": "action_added", "action": action, "source": "user",
+        "platform": session.get("platform", ""),
+        "summary": stored_value, "ok": True,
+    })
     return JSONResponse({"ok": True, "action": action})
 
 
@@ -613,9 +634,19 @@ async def capture_generate_from_actions(request: Request):
 
     tc_id    = str(body.get("tc_id", "tc_001")).strip()
     title    = str(body.get("title", "자동 생성 TC")).strip()
+    expected = str(body.get("expected", "")).strip()
     platform = body.get("platform", session.get("platform", "android"))
     tc_group = str(body.get("tc_group", session.get("tc_group", "default"))).strip()
-    actions  = body.get("actions", [])
+    actions      = body.get("actions", [])
+    source_filter = body.get("source_filter", "all")  # all | user | mcp
+    _NON_EXEC = frozenset({"screenshot", "hierarchy", "generate_test_case", "clear_actions", "screen_info"})
+    executable_actions = [
+        a for a in actions
+        if (a.get("type") or a.get("action", "")) not in _NON_EXEC
+        and (source_filter == "all" or a.get("source", "user") == source_filter)
+    ]
+    _origins = {a.get("source", "user") for a in executable_actions}
+    _origin_label = next(iter(_origins)) if len(_origins) == 1 else "mixed"
     app_pkg   = str(session.get("app_package", body.get("app_pkg", ""))).strip()
     app_act   = str(session.get("app_activity", body.get("app_activity", ""))).strip()
     bundle_id = str(session.get("bundle_id", body.get("bundle_id", ""))).strip()
@@ -633,6 +664,7 @@ async def capture_generate_from_actions(request: Request):
         f'"""',
         f'{slug}.py — {platform.capitalize()} | {title}',
         f'자동 생성: Capture Studio ({datetime.now().strftime("%Y-%m-%d %H:%M")})',
+        f'출처: {_origin_label} ({len(executable_actions)} actions)',
         f'"""',
         f"import json, subprocess, shutil, os",
         f"import time as _time",
@@ -809,7 +841,7 @@ async def capture_generate_from_actions(request: Request):
     def _by(strategy: str) -> str:
         return by_map_str.get(strategy.lower().strip(), "AppiumBy.XPATH")
 
-    for i, act in enumerate(actions, 1):
+    for i, act in enumerate(executable_actions, 1):
         atype    = act.get("type") or act.get("action", "")
         label    = act.get("label", f"el_{i}")
         strategy = act.get("locator_strategy", act.get("strategy", "xpath"))
@@ -905,6 +937,30 @@ async def capture_generate_from_actions(request: Request):
 
         else:
             lines.append(f"        pass  # TODO: {atype}")
+
+    # 기대결과 assertion
+    if expected:
+        import html as _html_mod
+        escaped_expected = _html_mod.escape(expected, quote=False)
+        lines.append(f"")
+        lines.append(f"        # 기대결과: {expected}")
+        lines.append(f"        _found = False")
+        lines.append(f"        for _retry in range(5):")
+        lines.append(f"            _src = self.driver.page_source")
+        if escaped_expected != expected:
+            lines.append(f"            if {expected!r} in _src or {escaped_expected!r} in _src:")
+        else:
+            lines.append(f"            if {expected!r} in _src:")
+        lines.append(f"                _found = True; break")
+        lines.append(f"            _time.sleep(1.0)")
+        lines.append(f"        if not _found:")
+        lines.append(f"            from selenium.common.exceptions import NoSuchElementException")
+        lines.append(f"            try:")
+        lines.append(f"                _fb = self.driver.find_element(AppiumBy.XPATH, \"//*[@text={expected!r}]\")")
+        lines.append(f"                _found = _fb is not None")
+        lines.append(f"            except NoSuchElementException:")
+        lines.append(f"                pass")
+        lines.append(f"        assert _found, f\"기대결과 미충족: {expected!r} 가 화면에 없음\"")
 
     lines.append("")
     code = "\n".join(lines)
@@ -1118,6 +1174,7 @@ async def capture_back(request: Request):
         "index":      len(session.get("actions", [])) + 1,
         "action":     "back",
         "context":    body.get("context", "native"),
+        "source":     "user",
         "timestamp":  datetime.now().isoformat(),
         "target_ref": None,
     }
@@ -1131,7 +1188,11 @@ async def capture_back(request: Request):
     if actions_path.parent.exists():
         actions_path.write_text(json.dumps(actions, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    broadcast_timeline_sync({**action, "type": "action"})
+    broadcast_timeline_sync({
+        **action, "type": "action", "source": "user",
+        "platform": session.get("platform", ""),
+        "summary": "back", "ok": True,
+    })
 
     loop = asyncio.get_event_loop()
     back_ok = await loop.run_in_executor(None, _do_appium_back, session_id)
@@ -1159,12 +1220,22 @@ async def capture_scroll(request: Request):
         return JSONResponse({"ok": False, "error": "세션 없음 또는 불일치"}, status_code=400)
 
     direction = body.get("direction", "down")
-    action_type = "scroll_down" if direction != "up" else "scroll_up"
+    start_x   = body.get("start_x")
+    start_y   = body.get("start_y")
+    end_x     = body.get("end_x")
+    end_y     = body.get("end_y")
+
+    # 좌표 기반일 때 action_type 결정 (direction 문자열은 fallback)
+    if start_x is not None and end_x is not None:
+        action_type = "scroll_down" if (end_y or 0) < (start_y or 0) else "scroll_up"
+    else:
+        action_type = "scroll_down" if direction != "up" else "scroll_up"
 
     action = {
         "index":      len(session.get("actions", [])) + 1,
         "action":     action_type,
         "context":    body.get("context", "native"),
+        "source":     "user",
         "timestamp":  datetime.now().isoformat(),
         "target_ref": None,
     }
@@ -1177,19 +1248,27 @@ async def capture_scroll(request: Request):
     actions_path = CAPTURES_DIR / session_id / "actions.json"
     if actions_path.parent.exists():
         actions_path.write_text(json.dumps(actions, ensure_ascii=False, indent=2), encoding="utf-8")
-    broadcast_timeline_sync({**action, "type": "action"})
+    broadcast_timeline_sync({
+        **action, "type": "action", "source": "user",
+        "platform": session.get("platform", ""),
+        "summary": direction, "ok": True,
+    })
 
     def _do_scroll() -> bool:
         driver = get_capture_driver()
         if driver is None:
             return False
         try:
-            sz = driver.get_window_size()
-            w, h = sz["width"], sz["height"]
-            if direction == "up":
-                driver.swipe(w // 2, int(h * 0.3), w // 2, int(h * 0.7), 600)
+            if start_x is not None and end_x is not None:
+                # 좌표 기반 스와이프
+                driver.swipe(start_x, start_y, end_x, end_y, duration=300)
             else:
-                driver.swipe(w // 2, int(h * 0.7), w // 2, int(h * 0.3), 600)
+                sz = driver.get_window_size()
+                w, h = sz["width"], sz["height"]
+                if direction == "up":
+                    driver.swipe(w // 2, int(h * 0.3), w // 2, int(h * 0.7), 600)
+                else:
+                    driver.swipe(w // 2, int(h * 0.7), w // 2, int(h * 0.3), 600)
             _time.sleep(0.8)  # 스크롤 애니메이션 대기
             return True
         except Exception:
@@ -1215,6 +1294,7 @@ async def capture_context_switch(request: Request):
         "action":     "context_switch",
         "context":    body.get("from_context", "native"),
         "to_context": target_ctx,
+        "source":     "user",
         "timestamp":  datetime.now().isoformat(),
         "target_ref": None,
     }
@@ -1228,7 +1308,11 @@ async def capture_context_switch(request: Request):
     if actions_path.parent.exists():
         actions_path.write_text(json.dumps(actions, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    broadcast_timeline_sync({**action, "type": "action"})
+    broadcast_timeline_sync({
+        **action, "type": "action", "source": "user",
+        "platform": session.get("platform", ""),
+        "summary": f"{body.get('from_context','native')} -> {target_ctx}", "ok": True,
+    })
     return JSONResponse({"ok": True, "action": action, "switched_to": target_ctx})
 
 
