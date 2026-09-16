@@ -1015,6 +1015,93 @@
         <p style="font-size:14px;color:var(--text-2);">파이프라인 실행에서 TC가 실패한 경우, 실패 TC를 클릭하면 Capture Studio로 재진입해 Locator를 4단계부터 재검토할 수 있습니다. hierarchy는 실패 직전 스냅샷이 자동으로 로드됩니다.</p>
       </div>
 
+      <div class="card">
+        <div class="card-title"><span class="card-title-icon">🤖</span> Nova MCP — Claude Code로 디바이스 직접 제어</div>
+        <p style="font-size:14px;color:var(--text-2);margin-bottom:14px;">
+          Capture Studio 세션이 열린 상태에서 Claude Code가 MCP 툴을 호출하면, 대시보드 상단 칩이 <strong>MCP ON</strong>으로 전환됩니다. Claude에게 말하는 것만으로 스크린샷 촬영·탭·스크롤·TC 생성이 가능합니다.
+        </p>
+
+        <div class="card-title" style="margin-top:16px;"><span class="card-title-icon">⚙️</span> 1회 설정 — Claude Code에 MCP 서버 등록</div>
+        <p style="font-size:13px;color:var(--text-2);margin-bottom:8px;"><code>.claude/settings.json</code> (또는 전역 <code>~/.claude/settings.json</code>)에 아래 블록을 추가합니다.</p>
+        <div class="code-block"><pre>{
+  "mcpServers": {
+    "qa-capture-studio": {
+      "url": "http://localhost:8767/mcp"
+    }
+  }
+}</pre></div>
+        <p style="font-size:13px;color:var(--text-2);margin-top:8px;">설정 후 Claude Code를 재시작하면 MCP 서버가 인식됩니다.</p>
+
+        <div class="card-title" style="margin-top:18px;"><span class="card-title-icon">💬</span> 사용 방법</div>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <div class="step-title">Capture Studio 세션 먼저 시작</div>
+              <div class="step-desc">세션이 없으면 MCP 툴 호출 시 <code>session_not_active</code> 에러가 반환됩니다.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <div class="step-title">Claude Code에 자연어로 요청</div>
+              <div class="step-desc">
+                예시 발화: <em>"현재 화면 스크린샷 찍어줘"</em> / <em>"지금 화면 hierarchy 가져와줘"</em><br>
+                Claude가 MCP 툴을 호출하는 순간 대시보드 칩이 <span class="pill pill-green" style="display:inline-block;padding:1px 7px;font-size:11px;">MCP ON</span>으로 전환됩니다.
+              </div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <div class="step-title">수동 OFF</div>
+              <div class="step-desc">상단 MCP 칩을 클릭하면 확인 후 세션이 해제됩니다. 다시 ON은 Claude에게 말하면 자동 재연결됩니다.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-title" style="margin-top:18px;"><span class="card-title-icon">🔧</span> 사용 가능한 MCP 툴</div>
+        <div class="state-table-wrap">
+          <table class="state-table">
+            <thead><tr><th>툴</th><th>설명</th></tr></thead>
+            <tbody>
+              <tr><td><code>screenshot</code></td><td>현재 화면 스크린샷 (base64 PNG)</td></tr>
+              <tr><td><code>hierarchy</code></td><td>UI 계층 구조 XML 반환</td></tr>
+              <tr><td><code>device_tap</code></td><td>좌표 탭 (x, y)</td></tr>
+              <tr><td><code>scroll</code></td><td>방향 스크롤 또는 좌표 스와이프</td></tr>
+              <tr><td><code>input_text</code></td><td>텍스트 입력</td></tr>
+              <tr><td><code>back</code></td><td>뒤로 가기</td></tr>
+              <tr><td><code>screen_info</code></td><td>화면 해시·앱 상태 확인</td></tr>
+              <tr><td><code>generate_test_case</code></td><td>기록된 액션으로 TC 파일 생성</td></tr>
+              <tr><td><code>clear_actions</code></td><td>Action Timeline 초기화</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="tip info" style="margin-top:14px;">
+          <span class="tip-icon">ℹ️</span>
+          <div class="tip-body">MCP 경로로 기록된 액션은 <code>source: mcp</code>로 표시되어 사람 액션(<code>source: user</code>)과 구분됩니다. Livetail 🤖 필터로 MCP 행만 볼 수 있습니다.</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="card-title-icon">📡</span> Livetail — 실시간 액션 로그</div>
+        <p style="font-size:14px;color:var(--text-2);margin-bottom:14px;">
+          세션 스트립의 <strong>Livetail</strong> 버튼을 클릭하면 오른쪽 슬라이드 패널이 열립니다. 사람·MCP·파이프라인의 모든 액션이 실시간으로 기록됩니다.
+        </p>
+        <div class="state-table-wrap">
+          <table class="state-table">
+            <thead><tr><th>아이콘</th><th>source</th><th>의미</th></tr></thead>
+            <tbody>
+              <tr><td>👤</td><td><code>user</code></td><td>대시보드에서 직접 수행한 탭·스크롤·입력</td></tr>
+              <tr><td>🤖</td><td><code>mcp</code></td><td>Claude Code MCP 툴 호출</td></tr>
+              <tr><td>⚙</td><td><code>pipe</code></td><td>파이프라인 단계 이벤트</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p style="font-size:13px;color:var(--text-2);margin-top:10px;">상단 필터 버튼(👤 / 🤖 / ⚙)으로 소스별 행을 토글합니다. 최대 200행 유지, 신규 접속 시 기존 행이 replay됩니다.</p>
+      </div>
+
       <div class="tip warn">
         <span class="tip-icon">⚠️</span>
         <div class="tip-body">

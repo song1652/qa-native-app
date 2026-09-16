@@ -91,9 +91,10 @@ pip install -r requirements.txt
 **검증**:
 ```bash
 python3 -c "import fastapi, appium, pytest, playwright; print('OK')"
+pip show pytest-rerunfailures | grep Version
 ```
 
-**기대 결과**: `OK`
+**기대 결과**: `OK` 출력 후 `Version: x.x.x` 출력 (pytest-rerunfailures는 05_execute.py 자동 재시도 기능에 필수)
 
 ---
 
@@ -208,7 +209,7 @@ echo "ANDROID_HOME=$ANDROID_HOME"
 
 1. **Android AVD 이름**: 이미 AVD가 있으면 입력 (예: `Pixel_7_Android15`). 없으면 STEP 16 후 입력
 2. **Android 플랫폼 버전**: 에뮬레이터 OS 버전 (예: `15.0`)
-3. **iOS 시뮬레이터 이름** (iOS 사용 시): `xcrun simctl list | grep Booted` 결과 또는 원하는 시뮬레이터 이름 — STEP 17에서 생성 가능
+3. **iOS 시뮬레이터 이름** (iOS 사용 시): `xcrun simctl list devices` 로 확인한 정확한 이름 — STEP 17에서 생성 가능. **주의**: Capture Studio iOS 세션은 `config/devices.json`의 `deviceName`이 `xcrun simctl list devices` 출력의 이름과 **정확히** 일치해야 합니다.
 4. **iOS 플랫폼 버전** (iOS 사용 시): 시뮬레이터 iOS 버전 (예: `18.0`)
 
 입력값으로 `config/devices.json`의 다음 필드를 업데이트하세요:
@@ -240,7 +241,8 @@ echo "ANDROID_HOME=$ANDROID_HOME"
       "app_path": ""
     },
     "ios": {
-      "bundle_id": "<ios_bundle_id>"
+      "bundle_id": "<ios_bundle_id>",
+      "app_path": ""
     }
   }
 }
@@ -271,6 +273,7 @@ wait $SERVER_PID 2>/dev/null
 ## STEP 13 — Playwright 브라우저 설치
 
 ```bash
+source .venv/bin/activate
 playwright install chromium
 ```
 
@@ -285,7 +288,12 @@ python3 -c "from playwright.sync_api import sync_playwright; p=sync_playwright()
 
 ```bash
 source .venv/bin/activate
-python3 -m py_compile scripts/*.py agents/dashboard/serve.py agents/dashboard/routes/*.py
+python3 -m py_compile scripts/*.py \
+  agents/dashboard/serve.py \
+  agents/dashboard/shared.py \
+  agents/dashboard/ws.py \
+  agents/dashboard/routes/*.py \
+  agents/dashboard/utils/*.py
 echo "문법 오류 없음"
 ```
 
@@ -308,6 +316,7 @@ echo "=== 실행 방법 ==="
 echo "1. Appium 서버 시작:"
 echo "   export ANDROID_HOME=$HOME/Library/Android/sdk"
 echo "   appium --address 127.0.0.1 --port 4723 --allow-insecure=uiautomator2:adb_screen_streaming"
+echo "   # --allow-insecure 플래그: Capture Studio Android MJPEG 스트리밍에 필수"
 echo ""
 echo "2. 대시보드 시작:"
 echo "   source .venv/bin/activate && python agents/dashboard/serve.py"
@@ -397,7 +406,7 @@ $AVDMANAGER list avd
 
 **기대 결과**: 생성한 AVD 이름이 목록에 표시됨
 
-> STEP 10에서 AVD 이름을 건너뛰었다면 지금 `config/devices.json`의 `android.emulator[0].avd`를 업데이트하세요.
+> **주의**: `config/devices.json`의 `android.emulator[0].avd` 값은 위에서 생성한 AVD 이름과 **정확히** 일치해야 합니다. 대소문자·공백 포함 완전 일치가 필요합니다. STEP 10에서 건너뛰었다면 지금 업데이트하세요.
 
 ---
 
@@ -423,7 +432,7 @@ fi
 nohup "$EMULATOR" -avd Pixel_7_Android15 \
   -no-snapshot-save \
   -gpu swiftshader_indirect \
-  > /tmp/emulator.log 2>&1 &
+  > logs/android_avd.log 2>&1 &
 
 echo "에뮬레이터 시작 중... (30–60초 소요)"
 ```
@@ -555,6 +564,8 @@ xcrun simctl list devices | grep "Booted"
 
 > 이후에는 **대시보드 → 환경 설정 → iOS → ▶ 시작**으로 관리할 수 있습니다.
 
+> **WDA(WebDriverAgent) 자동 설치**: Capture Studio iOS 세션을 처음 연결하면 Appium XCUITest 드라이버가 WDA를 시뮬레이터에 자동 빌드·설치합니다. 첫 연결 시 30초 이상 소요될 수 있으며, 화면 미러링이 표시되기 전까지 기다려야 합니다.
+
 ---
 
 ## 자주 발생하는 오류
@@ -566,6 +577,36 @@ xcrun simctl list devices | grep "Booted"
 | `port 8767 already in use` | 대시보드 이미 실행 중 | `lsof -ti :8767 \| xargs kill` |
 | `xcrun: error` | Xcode Command Line Tools 미설치 | `xcode-select --install` |
 | `collected 0 items` | 테스트 함수 없는 빈 파일 | Capture Studio에서 액션 추가 후 재생성 |
+| iOS 세션 충돌 / 드라이버 None | 시뮬레이터당 XCUITest 세션 1개 제한 — Capture Studio iOS 세션이 열린 채 pytest 동시 실행 | Capture Studio 세션 종료 후 실행하거나 대시보드 "🔄 세션 재연결" 버튼 클릭 |
+
+---
+
+## Nova MCP 설정 (선택)
+
+Claude Code에서 디바이스를 직접 제어하려면 MCP 서버를 1회 등록합니다.
+
+`.claude/settings.json` (또는 전역 `~/.claude/settings.json`)에 아래 블록을 추가하세요.
+
+```json
+{
+  "mcpServers": {
+    "qa-capture-studio": {
+      "url": "http://localhost:8767/mcp"
+    }
+  }
+}
+```
+
+설정 후 Claude Code를 재시작합니다.
+
+**사용 방법:**
+1. 대시보드에서 Capture Studio 세션을 먼저 시작합니다.
+2. Claude Code에 자연어로 요청합니다.
+   - 예: `"현재 화면 스크린샷 찍어줘"` / `"지금 화면 hierarchy 가져와줘"`
+3. Claude가 MCP 툴을 호출하면 대시보드 상단 칩이 **MCP ON**으로 전환됩니다.
+
+> Capture Studio 세션이 없으면 `session_not_active` 에러가 반환됩니다.  
+> MCP ON 상태에서 칩을 클릭하면 수동으로 연결을 해제할 수 있습니다.
 
 ---
 
@@ -573,10 +614,14 @@ xcrun simctl list devices | grep "Booted"
 
 온보딩 완료 후 아래 순서로 시작하세요:
 
-1. **환경 설정** 탭 → Appium 시작 → 에뮬레이터/시뮬레이터 시작
-2. **Import Studio** 탭 → `import/` 폴더에 Excel 파일 → TC 등록
-3. **Capture Studio** 탭 → 앱 화면 보면서 TC 직접 생성
-4. **파이프라인 실행** 탭 → 전체 실행
-5. **리포트 목록** 탭 → 결과 확인
+1. 대시보드 서버 시작: `source .venv/bin/activate && python agents/dashboard/serve.py`
+2. 브라우저에서 열기: `http://localhost:8767`
+3. **환경 설정** 탭 → Appium 시작 → 에뮬레이터/시뮬레이터 시작
+4. **Import Studio** 탭 → `import/` 폴더에 Excel 파일 → TC 등록
+5. **Capture Studio** 탭 → 앱 화면 보면서 TC 직접 생성 (또는 Nova MCP로 Claude에게 위임)
+6. **파이프라인 실행** 탭 → 전체 실행
+   - TC 파일이 없으면 `collected 0 items` 로 종료됩니다 — 오류가 아니라 TC 등록 전 정상 상태입니다.
+   - TC 등록 후 실행 시 `tests/reports/` 에 HTML 리포트가 생성되면 성공입니다.
+7. **리포트 목록** 탭 → 결과 확인
 
 더 자세한 사용법은 [`docs/USER_GUIDE.html`](docs/USER_GUIDE.html)을 참고하세요.

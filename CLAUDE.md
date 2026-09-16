@@ -200,8 +200,8 @@ git diff --check
 
 - 요청 스키마: `add` = `{mode, deviceName, avd?|udid?, default?}`, `remove` = `{mode, deviceName}`. `mode`는 Android `emulator|real_device`, iOS `simulator|real_device`
 - 마지막 1개 항목은 삭제 불가 (`400 last_device`). `default: true` 항목 삭제 시 남은 첫 항목이 승계
-- ⚠️ **대시보드 UI는 아직 없습니다** — 추가 버튼·모달·✕ 삭제가 `dashboard.html`에 미구현이라 현재는 `devices.json` 직접 편집 또는 API 직접 호출이 필요합니다 (PRD §15-7 항목 1)
-- ⚠️ add·remove에 Capture/파이프라인 **잠금 가드가 없습니다**. 실행 중 호출하면 설정이 교체됩니다 (PRD §15-7 항목 2)
+- 대시보드 ENV Setup 탭에 추가 버튼·모달·✕ 삭제 UI가 구현되어 있습니다 (PRD §15-7 항목 1 완료)
+- add·remove에 Capture/파이프라인 **잠금 가드가 구현**되어 있습니다. 세션 활성 중 호출 시 403이 반환됩니다 (PRD §15-7 항목 2 완료)
 
 `is_capture_active(platform: str | None = None)` — 인자를 생략하면 전체 플랫폼을 확인합니다(기존 무인자 호출부와 하위호환). 세션 레코드에서 플랫폼을 식별할 수 없으면 보수적으로 `True`를 반환합니다.
 
