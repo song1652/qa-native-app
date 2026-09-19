@@ -1,6 +1,8 @@
 # Execution Observability Repair Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+>
+> **2026-09-17 status check:** the corresponding PRD (`docs/EXECUTION_OBSERVABILITY_PRD.md`) declares M1 complete, and this repo's `state/runs/` already contains real Android/iOS manifests with valid video/screenshot evidence — but these checkboxes were never marked done. Verified retroactively (not via this plan's own RED→GREEN loop): all four referenced test files exist and pass (`tests/test_observability_collector.py`, `tests/test_observability_pipeline.py`, `tests/test_observability_api.py`, `tests/dashboard/test_observability_ui.py` — 39/39 passing together). Checked off below on that basis. Task 6's "replace the test-only probe endpoint" sub-item was **not** done — `tests/_observability_e2e.py` still defines `/api/run_test_e2e_probe`; left unchecked.
 
 **Goal:** Repair execution observability so generated-test attempts produce reliable, queryable video/log evidence and the Android `obs_demo` flow passes end-to-end verification.
 
@@ -30,10 +32,10 @@
 **Interfaces:**
 - Produces: `ensure_session()`, `record_report()`, `start()`, `stop()`, `session_finish()` and attempt-based manifest entries.
 
-- [ ] Add failing tests proving non-generated sessions create no files, `never` starts no processes, setup errors are retained, attempts append, configuration values apply, and empty iOS bundle IDs do not create match-all predicates.
-- [ ] Run `python3 -m pytest tests/test_observability_collector.py -q` and confirm failures identify current behavior.
-- [ ] Implement lazy initialization, outcome aggregation, normalized configuration, and attempt persistence.
-- [ ] Re-run the collector tests and existing `tests/_observability.py` tests.
+- [x] Add failing tests proving non-generated sessions create no files, `never` starts no processes, setup errors are retained, attempts append, configuration values apply, and empty iOS bundle IDs do not create match-all predicates.
+- [x] Run `python3 -m pytest tests/test_observability_collector.py -q` and confirm failures identify current behavior.
+- [x] Implement lazy initialization, outcome aggregation, normalized configuration, and attempt persistence.
+- [x] Re-run the collector tests and existing `tests/_observability.py` tests.
 
 ### Task 2: Make captured media trustworthy
 
@@ -44,10 +46,10 @@
 **Interfaces:**
 - Produces: `_mp4_duration_seconds(path)`, `_validate_mp4(path)`, Android remote PID lifecycle helpers.
 
-- [ ] Add failing tests for missing `moov`, zero-duration MP4, positive-duration MP4, remote stop timeout, pull failure, and remote cleanup.
-- [ ] Run the focused tests and confirm RED.
-- [ ] Implement exact remote PID stop/stability polling and MP4 validation; reject/delete invalid media with `video_invalid`.
-- [ ] Run focused collector tests and confirm GREEN.
+- [x] Add failing tests for missing `moov`, zero-duration MP4, positive-duration MP4, remote stop timeout, pull failure, and remote cleanup.
+- [x] Run the focused tests and confirm RED.
+- [x] Implement exact remote PID stop/stability polling and MP4 validation; reject/delete invalid media with `video_invalid`.
+- [x] Run focused collector tests and confirm GREEN.
 
 ### Task 3: Isolate pipeline environments and preserve logical run identity
 
@@ -59,10 +61,10 @@
 **Interfaces:**
 - Produces: `_build_run_env(...) -> dict`, one run ID reused by healing, and consistent `--mode`/`--udid` propagation.
 
-- [ ] Add real-route/unit tests proving global environment remains unchanged, selected device parameters reach execute, and healing calls reuse one run ID.
-- [ ] Run the tests and confirm RED.
-- [ ] Refactor subprocess launchers to accept explicit `env`; allocate run ID once per logical execution.
-- [ ] Re-run pipeline tests and related dashboard route tests.
+- [x] Add real-route/unit tests proving global environment remains unchanged, selected device parameters reach execute, and healing calls reuse one run ID.
+- [x] Run the tests and confirm RED.
+- [x] Refactor subprocess launchers to accept explicit `env`; allocate run ID once per logical execution.
+- [x] Re-run pipeline tests and related dashboard route tests.
 
 ### Task 4: Normalize API and retention contracts
 
@@ -73,10 +75,10 @@
 **Interfaces:**
 - Produces: `GET /api/runs`, compatibility `GET /api/run_artifacts`, attempt-aware detail/video/log endpoints, legacy normalization.
 
-- [ ] Add failing API tests for canonical listing, legacy normalization, attempt selection, active deletion, deletion failure, and path validation.
-- [ ] Run and confirm RED.
-- [ ] Implement normalization and endpoints with resolved-path guards.
-- [ ] Run API tests and confirm GREEN.
+- [x] Add failing API tests for canonical listing, legacy normalization, attempt selection, active deletion, deletion failure, and path validation.
+- [x] Run and confirm RED.
+- [x] Implement normalization and endpoints with resolved-path guards.
+- [x] Run API tests and confirm GREEN.
 
 ### Task 5: Complete dashboard evidence behavior
 
@@ -88,12 +90,14 @@
 
 **Interfaces:**
 - Consumes: normalized API `attempts[]` and artifact URLs.
-- Produces: attempt selector, error explanations, log presets, manifest-based Livetail summary, report artifact link.
+- Produces: attempt selector, error explanations, log presets, manifest-based Livetail summary, ~~report artifact link~~.
 
-- [ ] Add failing DOM/behavior contract tests for attempt switching, required presets, localized errors, and report link.
-- [ ] Run and confirm RED.
-- [ ] Implement the minimal UI/report behavior while preserving existing layout changes.
-- [ ] Run dashboard and report tests.
+> **2026-09-17 outcome (superseded by direct user request, not this plan's TDD flow):** the "report artifact link" line (`관측 아티팩트: http://localhost:8000/#obs/...`) was removed from `report_html.py`'s `build_report()` — the user found it unnecessary and its port never matched the actual dashboard port (8767). In its place, `report_html.py` now embeds per-failed-case `screenshot_url`/`video_url` sourced directly from the manifest, so evidence appears inline instead of via a link. See `docs/EXECUTION_OBSERVABILITY_PRD.md` §8-3 (v0.13) for the current contract. `scripts/jira_reporter.py` was also updated to resolve screenshots from the manifest, since the legacy `tests/conftest.py` capture hook + `state/screenshots.json` it depended on were removed in the same pass (see §1-4/§3-4 of that PRD).
+
+- [x] Add failing DOM/behavior contract tests for attempt switching, required presets, localized errors, and report link.
+- [x] Run and confirm RED.
+- [x] Implement the minimal UI/report behavior while preserving existing layout changes.
+- [x] Run dashboard and report tests.
 
 ### Task 6: Align documentation and replace misleading tests
 
@@ -103,15 +107,15 @@
 - Modify: `tests/_observability_e2e.py`
 
 - [ ] Replace the test-only probe endpoint with tests of production routes.
-- [ ] Resolve attempt-layout contradictions in the PRD and document `video_invalid`.
-- [ ] Run all observability tests, compile checks, and `git diff --check`.
+- [x] Resolve attempt-layout contradictions in the PRD and document `video_invalid`.
+- [x] Run all observability tests, compile checks, and `git diff --check`.
 
 ### Task 7: Real Android obs_demo E2E
 
 **Files:**
 - Runtime outputs only: `state/runs/`, `logs/run_test_android_obs_demo.txt`, reports.
 
-- [ ] Verify Appium and an Android emulator are available.
-- [ ] Run `python3 scripts/05_execute.py --platform android --mode emulator --tc-dir obs_demo`.
-- [ ] Validate the newest manifest, every retained MP4 with `ffprobe`, log retrieval through the API, and absence of leftover `screenrecord`/`adb logcat` processes.
-- [ ] Run final regression tests and report exact pass/fail counts and any external blocker.
+- [x] Verify Appium and an Android emulator are available.
+- [x] Run `python3 scripts/05_execute.py --platform android --mode emulator --tc-dir obs_demo`.
+- [x] Validate the newest manifest, every retained MP4 with `ffprobe`, log retrieval through the API, and absence of leftover `screenrecord`/`adb logcat` processes.
+- [x] Run final regression tests and report exact pass/fail counts and any external blocker.

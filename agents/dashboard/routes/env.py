@@ -21,12 +21,9 @@ POST /api/env/ios/remove                — iOS 디바이스 삭제 (US-3)
 from __future__ import annotations
 
 import os
-import re
 import signal
-import socket
 import subprocess
 import sys
-import time
 from datetime import datetime
 from pathlib import Path
 
@@ -51,6 +48,17 @@ from utils.state import (  # noqa: E402
     save_devices_json,
     update_env_session_sections,
 )
+from utils.env_devices import (  # noqa: E402
+    configured_android_rows,
+    configured_ios_rows,
+    normalize_device_list,
+    real_device_rows,
+)
+from routes.env_registry import attach_device_registry_routes  # noqa: E402
+from utils.env_processes import (  # noqa: E402
+    command_detail as _command_detail,
+    wait_for_process_and_port_exit as _wait_for_appium_exit,
+)
 from utils.system import (  # noqa: E402
     check_android_real_devices,
     check_ios_real_devices,
@@ -64,38 +72,10 @@ from utils.system import (  # noqa: E402
 )
 
 router = APIRouter()
+attach_device_registry_routes(router, sys.modules[__name__])
 
 # Appium 로그 파일 핸들 (GC 방지용 모듈 레벨 보관)
 _appium_log_fh = None
-
-
-def _command_detail(result: subprocess.CompletedProcess) -> str:
-    """사용자에게 보여 줄 CLI 오류 메시지를 stderr 우선으로 고른다."""
-    stderr = result.stderr.decode(errors="replace") if isinstance(result.stderr, bytes) else result.stderr
-    stdout = result.stdout.decode(errors="replace") if isinstance(result.stdout, bytes) else result.stdout
-    return (stderr or stdout or "명령 실행에 실패했습니다.").strip()
-
-
-def _wait_for_appium_exit(pid: int, port: int, timeout: float = 5.0) -> bool:
-    """Wait until both the managed process and its localhost port are gone."""
-    deadline = time.monotonic() + timeout
-    while time.monotonic() < deadline:
-        try:
-            os.kill(pid, 0)
-            process_alive = True
-        except ProcessLookupError:
-            process_alive = False
-        except PermissionError:
-            process_alive = True
-        try:
-            with socket.create_connection(("127.0.0.1", port), timeout=0.15):
-                port_open = True
-        except OSError:
-            port_open = False
-        if not process_alive and not port_open:
-            return True
-        time.sleep(0.1)
-    return False
 
 
 def _list_installed_avds() -> list[str]:
@@ -138,15 +118,8 @@ def _load_real_devices() -> "tuple[list, list]":
     except Exception:
         return [], []
 
-    android = data.get("android", {}).get("real_device", [])
-    ios = data.get("ios", {}).get("real_device", [])
-
-    # 구버전 dict 호환
-    if isinstance(android, dict):
-        android = [android]
-    if isinstance(ios, dict):
-        ios = [ios]
-
+    android = normalize_device_list(data.get("android", {}).get("real_device", []))
+    ios = normalize_device_list(data.get("ios", {}).get("real_device", []))
     return android, ios
 
 
@@ -186,33 +159,16 @@ def get_system_simulators():
 def get_configured_android_avds():
     """Return configured Android rows joined to the controlled runtime."""
     configured = load_devices_json().get("android", {}).get("emulator", [])
-    if isinstance(configured, dict):
-        configured = [configured]
     runtime = detect_android_runtime(load_env_session().get("android", {}))
-    rows = []
-    for device in configured:
-        active = bool(device.get("avd")) and device.get("avd") == runtime.get("avd")
-        rows.append({
-            **device,
-            "status": runtime.get("status", "stopped") if active else "stopped",
-            "serial": runtime.get("serial") if active else None,
-        })
-    return {"ok": True, "avds": rows}
+    return {"ok": True, "avds": configured_android_rows(configured, runtime)}
 
 
 @router.get("/api/env/ios/simulators")
 def get_configured_ios_simulators():
     """Return configured iOS rows joined to the controlled runtime."""
     configured = load_devices_json().get("ios", {}).get("simulator", [])
-    if isinstance(configured, dict):
-        configured = [configured]
     runtime = detect_ios_runtime(load_env_session().get("ios", {}))
-    rows = []
-    for device in configured:
-        active = bool(device.get("udid")) and device.get("udid") == runtime.get("udid")
-        status = runtime.get("status", "stopped") if active else "stopped"
-        rows.append({**device, "status": status, "state": "Booted" if status == "running" else "Shutdown"})
-    return {"ok": True, "simulators": rows}
+    return {"ok": True, "simulators": configured_ios_rows(configured, runtime)}
 
 
 # ── GET /api/env/status ───────────────────────────────────────────
@@ -276,23 +232,12 @@ def get_env_status():
     android_connected = check_android_real_devices(android_serials)
     ios_connected = check_ios_real_devices(ios_udids)
 
-    android_real_list = [
-        {
-            "deviceName": d.get("deviceName", ""),
-            "serial": d.get("udid", ""),
-            "connected": android_connected.get(d.get("udid", ""), False),
-            "wifi_ip": d.get("wifi_ip", ""),
-        }
-        for d in android_devs
-    ]
-    ios_real_list = [
-        {
-            "deviceName": d.get("deviceName", ""),
-            "udid": d.get("udid", ""),
-            "connected": ios_connected.get(d.get("udid", ""), False),
-        }
-        for d in ios_devs
-    ]
+    android_real_list, ios_real_list = real_device_rows(
+        android_devs,
+        ios_devs,
+        android_connected,
+        ios_connected,
+    )
 
     android_section = dict(runtime_android)
     android_section["real_devices"] = android_real_list
@@ -302,14 +247,10 @@ def get_env_status():
 
     # US-3: devices.json 에뮬레이터/시뮬레이터 목록 포함
     devices_data = load_devices_json()
-    emulators = devices_data.get("android", {}).get("emulator", [])
-    if isinstance(emulators, dict):
-        emulators = [emulators]
+    emulators = normalize_device_list(devices_data.get("android", {}).get("emulator", []))
     android_section["emulators"] = emulators
 
-    simulators = devices_data.get("ios", {}).get("simulator", [])
-    if isinstance(simulators, dict):
-        simulators = [simulators]
+    simulators = normalize_device_list(devices_data.get("ios", {}).get("simulator", []))
     ios_section["simulators"] = simulators
 
     return JSONResponse({
@@ -965,370 +906,6 @@ def post_simulator_stop(body: Optional[dict] = Body(default=None)):
     }
     update_env_session_sections({"ios": new_ios})
     return JSONResponse({"ok": True, "status": "stopped"})
-
-
-# ── US-3: POST /api/env/android/add ──────────────────────────────
-
-@router.post("/api/env/android/add")
-def post_android_add(body: Optional[dict] = Body(default=None)):
-    """Android 디바이스를 devices.json에 추가한다.
-
-    body:
-        mode: "emulator" | "real_device"
-        deviceName: str (필수)
-        avd: str (mode=emulator 시 필수)
-        udid: str (mode=real_device 시 필수)
-        default: bool (선택, 기본 false)
-    """
-    if is_capture_active("android"):
-        return JSONResponse({"ok": False, "error": "capture_session_active"}, status_code=403)
-    if is_pipeline_active():
-        return JSONResponse({"ok": False, "error": "pipeline_running"}, status_code=409)
-
-    if body is None:
-        body = {}
-
-    mode = (body.get("mode") or "").strip()
-    device_name = (body.get("deviceName") or "").strip()
-
-    if not device_name:
-        return JSONResponse({"ok": False, "error": "deviceName is required"}, status_code=400)
-    if mode not in ("emulator", "real_device"):
-        return JSONResponse({"ok": False, "error": "mode must be emulator or real_device"}, status_code=400)
-    if mode == "emulator" and not (body.get("avd") or "").strip():
-        return JSONResponse({"ok": False, "error": "avd is required for emulator"}, status_code=400)
-    if mode == "emulator" and not (body.get("platformVersion") or "").strip():
-        return JSONResponse(
-            {"ok": False, "error": "platformVersion is required for emulator"},
-            status_code=400,
-        )
-    if mode == "real_device" and not (body.get("udid") or "").strip():
-        return JSONResponse({"ok": False, "error": "udid is required for real_device"}, status_code=400)
-
-    discovered_avd = None
-    if mode == "emulator":
-        avd = body["avd"].strip()
-        try:
-            discovered_avd = next(
-                (item for item in list_system_avds() if item.get("avd") == avd),
-                None,
-            )
-        except Exception as exc:
-            return JSONResponse(
-                {"ok": False, "error": "discovery_failed", "message": str(exc)},
-                status_code=500,
-            )
-        if discovered_avd is None:
-            return JSONResponse(
-                {"ok": False, "error": "invalid_avd"}, status_code=400
-            )
-        device_name = discovered_avd.get("deviceName") or device_name
-
-    data = load_devices_json()
-    android = data.setdefault("android", {})
-    section: list = android.setdefault(mode, [])
-    if isinstance(section, dict):
-        section = [section]
-        android[mode] = section
-
-    # ── 중복 검사 409 ────────────────────────────────────────────────
-    dup_key = "avd" if mode == "emulator" else "udid"
-    dup_val = (body.get(dup_key) or "").strip()
-    if any(x.get(dup_key) == dup_val for x in section):
-        return JSONResponse(
-            {"ok": False, "error": f"duplicate_{dup_key}", "detail": f"{dup_key}={dup_val} already exists"},
-            status_code=409,
-        )
-
-    # ── 새 항목 조립 + caps 자동 채움 ────────────────────────────────
-    new_entry: dict = {"deviceName": device_name}
-    if mode == "emulator":
-        avd = body["avd"].strip()
-        new_entry["avd"] = avd
-        new_entry["platformVersion"] = (
-            discovered_avd.get("platformVersion") or body["platformVersion"].strip()
-        )
-        # Appium caps 자동 채움 (기존 항목 첫 번째에서 MJPEG 포트 상속, 없으면 기본값)
-        existing_emulators = [x for x in section if x.get("avd")]
-        base_port = 8093
-        if existing_emulators:
-            used_ports = [x.get("mjpegServerPort", 0) for x in existing_emulators if isinstance(x.get("mjpegServerPort"), int)]
-            base_port = max(used_ports) + 1 if used_ports else 8093
-        new_entry["automationName"] = "UiAutomator2"
-        new_entry["noReset"] = True
-        new_entry["forceAppLaunch"] = True
-        new_entry["shouldTerminateApp"] = True
-        new_entry["mjpegServerPort"] = base_port
-        new_entry["mjpegScalingFactor"] = 75
-        new_entry["mjpegServerScreenshotQuality"] = 70
-        new_entry["appPackage"] = ""
-        new_entry["appActivity"] = ""
-    else:
-        new_entry["udid"] = body["udid"].strip()
-        new_entry["automationName"] = "UiAutomator2"
-        if body.get("wifi_ip"):
-            new_entry["wifi_ip"] = body["wifi_ip"].strip()
-
-    new_entry["default"] = bool(body.get("default", not section))
-
-    # default:true 요청 시 기존 default 해제
-    if new_entry["default"]:
-        for item in section:
-            item["default"] = False
-
-    section.append(new_entry)
-
-    try:
-        save_devices_json(data)
-    except ValueError as exc:
-        return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
-
-    return JSONResponse({"ok": True, "entry": new_entry})
-
-
-# ── US-3: POST /api/env/android/remove ───────────────────────────
-
-@router.post("/api/env/android/remove")
-def post_android_remove(body: Optional[dict] = Body(default=None)):
-    """Android 디바이스를 devices.json에서 제거한다.
-
-    body:
-        mode: "emulator" | "real_device"
-        deviceName: str (제거할 항목의 deviceName)
-    """
-    if is_capture_active("android"):
-        return JSONResponse({"ok": False, "error": "capture_session_active"}, status_code=403)
-    if is_pipeline_active():
-        return JSONResponse({"ok": False, "error": "pipeline_running"}, status_code=409)
-
-    if body is None:
-        body = {}
-
-    mode = (body.get("mode") or "").strip()
-    device_name = (body.get("deviceName") or "").strip()
-
-    if not device_name:
-        return JSONResponse({"ok": False, "error": "deviceName is required"}, status_code=400)
-    if mode not in ("emulator", "real_device"):
-        return JSONResponse({"ok": False, "error": "mode must be emulator or real_device"}, status_code=400)
-
-    data = load_devices_json()
-    section: list = data.get("android", {}).get(mode, [])
-    if isinstance(section, dict):
-        section = [section]
-
-    # 1) 기기 존재 확인 — 빈 섹션이거나 이름 불일치면 404
-    if len(section) == 0:
-        return JSONResponse({"ok": False, "error": "device not found"}, status_code=404)
-    new_section = [x for x in section if x.get("deviceName") != device_name]
-    if len(new_section) == len(section):
-        return JSONResponse({"ok": False, "error": "device not found"}, status_code=404)
-
-    # 2) 최소 보유 정책: 가상 기기(emulator)는 1대 미만 불가, 실기기(real_device)는 0대 허용
-    if mode != "real_device" and len(new_section) < 1:
-        return JSONResponse({"ok": False, "error": "last_device"}, status_code=400)
-
-    # default:true 없으면 첫 번째에 자동 설정
-    if new_section and not any(x.get("default") for x in new_section):
-        new_section[0]["default"] = True
-
-    data.setdefault("android", {})[mode] = new_section
-
-    try:
-        save_devices_json(data)
-    except ValueError as exc:
-        return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
-
-    return JSONResponse({"ok": True})
-
-
-# ── US-3: POST /api/env/ios/add ──────────────────────────────────
-
-@router.post("/api/env/ios/add")
-def post_ios_add(body: Optional[dict] = Body(default=None)):
-    """iOS 디바이스를 devices.json에 추가한다.
-
-    body:
-        mode: "simulator" | "real_device"
-        deviceName: str (필수)
-        udid: str (real_device 시 필수)
-        default: bool (선택, 기본 false)
-    """
-    if is_capture_active("ios"):
-        return JSONResponse({"ok": False, "error": "capture_session_active"}, status_code=403)
-    if is_pipeline_active():
-        return JSONResponse({"ok": False, "error": "pipeline_running"}, status_code=409)
-
-    if body is None:
-        body = {}
-
-    mode = (body.get("mode") or "").strip()
-    device_name = (body.get("deviceName") or "").strip()
-
-    if not device_name:
-        return JSONResponse({"ok": False, "error": "deviceName is required"}, status_code=400)
-    if mode not in ("simulator", "real_device"):
-        return JSONResponse({"ok": False, "error": "mode must be simulator or real_device"}, status_code=400)
-    if mode == "simulator" and not (body.get("udid") or "").strip():
-        return JSONResponse(
-            {"ok": False, "error": "udid is required for simulator"}, status_code=400
-        )
-    if mode == "simulator" and not (body.get("platformVersion") or "").strip():
-        return JSONResponse(
-            {"ok": False, "error": "platformVersion is required for simulator"},
-            status_code=400,
-        )
-    if mode == "real_device" and not (body.get("udid") or "").strip():
-        return JSONResponse({"ok": False, "error": "udid is required for real_device"}, status_code=400)
-
-    discovered_simulator = None
-    if mode == "simulator":
-        udid = body["udid"].strip().upper()
-        if not re.fullmatch(
-            r"[0-9A-F]{8}(?:-[0-9A-F]{4}){3}-[0-9A-F]{12}", udid
-        ):
-            return JSONResponse(
-                {"ok": False, "error": "invalid_udid"}, status_code=400
-            )
-        try:
-            discovered_simulator = next(
-                (
-                    item
-                    for item in list_system_simulators()
-                    if (item.get("udid") or "").upper() == udid
-                ),
-                None,
-            )
-        except Exception as exc:
-            return JSONResponse(
-                {"ok": False, "error": "discovery_failed", "message": str(exc)},
-                status_code=500,
-            )
-        if discovered_simulator is None:
-            return JSONResponse(
-                {"ok": False, "error": "invalid_udid"}, status_code=400
-            )
-        device_name = discovered_simulator.get("deviceName") or device_name
-
-    data = load_devices_json()
-    ios = data.setdefault("ios", {})
-    section: list = ios.setdefault(mode, [])
-    if isinstance(section, dict):
-        section = [section]
-        ios[mode] = section
-
-    # ── 중복 검사 409 ────────────────────────────────────────────────
-    if mode == "real_device":
-        dup_key = "udid"
-        dup_val = (body.get("udid") or "").strip()
-        if any(x.get(dup_key) == dup_val for x in section):
-            return JSONResponse(
-                {"ok": False, "error": "duplicate_udid", "detail": f"udid={dup_val} already exists"},
-                status_code=409,
-            )
-    else:
-        simulator_udid = discovered_simulator["udid"]
-        if any((x.get("udid") or "").upper() == simulator_udid.upper() for x in section):
-            return JSONResponse(
-                {"ok": False, "error": "duplicate_udid", "detail": f"udid={simulator_udid} already exists"},
-                status_code=409,
-            )
-        if any(x.get("deviceName") == device_name for x in section):
-            return JSONResponse(
-                {"ok": False, "error": "duplicate_deviceName", "detail": f"deviceName={device_name} already exists"},
-                status_code=409,
-            )
-
-    # ── 새 항목 조립 + caps 자동 채움 ────────────────────────────────
-    new_entry: dict = {"deviceName": device_name}
-    if mode == "real_device":
-        new_entry["udid"] = body["udid"].strip()
-        new_entry["automationName"] = "XCUITest"
-        if body.get("team_id"):
-            new_entry["team_id"] = body["team_id"].strip()
-        if body.get("bundle_id"):
-            new_entry["bundle_id"] = body["bundle_id"].strip()
-    else:
-        new_entry["automationName"] = "XCUITest"
-        new_entry["udid"] = discovered_simulator["udid"]
-        new_entry["platformVersion"] = (
-            discovered_simulator.get("platformVersion")
-            or body["platformVersion"].strip()
-        )
-        if body.get("bundle_id"):
-            new_entry["bundle_id"] = body["bundle_id"].strip()
-
-    new_entry["default"] = bool(body.get("default", not section))
-
-    # default:true 요청 시 기존 default 해제
-    if new_entry["default"]:
-        for item in section:
-            item["default"] = False
-
-    section.append(new_entry)
-
-    try:
-        save_devices_json(data)
-    except ValueError as exc:
-        return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
-
-    return JSONResponse({"ok": True, "entry": new_entry})
-
-
-# ── US-3: POST /api/env/ios/remove ───────────────────────────────
-
-@router.post("/api/env/ios/remove")
-def post_ios_remove(body: Optional[dict] = Body(default=None)):
-    """iOS 디바이스를 devices.json에서 제거한다.
-
-    body:
-        mode: "simulator" | "real_device"
-        deviceName: str (제거할 항목의 deviceName)
-    """
-    if is_capture_active("ios"):
-        return JSONResponse({"ok": False, "error": "capture_session_active"}, status_code=403)
-    if is_pipeline_active():
-        return JSONResponse({"ok": False, "error": "pipeline_running"}, status_code=409)
-
-    if body is None:
-        body = {}
-
-    mode = (body.get("mode") or "").strip()
-    device_name = (body.get("deviceName") or "").strip()
-
-    if not device_name:
-        return JSONResponse({"ok": False, "error": "deviceName is required"}, status_code=400)
-    if mode not in ("simulator", "real_device"):
-        return JSONResponse({"ok": False, "error": "mode must be simulator or real_device"}, status_code=400)
-
-    data = load_devices_json()
-    section: list = data.get("ios", {}).get(mode, [])
-    if isinstance(section, dict):
-        section = [section]
-
-    # 1) 기기 존재 확인 — 빈 섹션이거나 이름 불일치면 404
-    if len(section) == 0:
-        return JSONResponse({"ok": False, "error": "device not found"}, status_code=404)
-    new_section = [x for x in section if x.get("deviceName") != device_name]
-    if len(new_section) == len(section):
-        return JSONResponse({"ok": False, "error": "device not found"}, status_code=404)
-
-    # 2) 최소 보유 정책: 가상 기기(simulator)는 1대 미만 불가, 실기기(real_device)는 0대 허용
-    if mode != "real_device" and len(new_section) < 1:
-        return JSONResponse({"ok": False, "error": "last_device"}, status_code=400)
-
-    # default:true 없으면 첫 번째에 자동 설정
-    if new_section and not any(x.get("default") for x in new_section):
-        new_section[0]["default"] = True
-
-    data.setdefault("ios", {})[mode] = new_section
-
-    try:
-        save_devices_json(data)
-    except ValueError as exc:
-        return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
-
-    return JSONResponse({"ok": True})
 
 
 # ── Phase 3: POST /api/env/android/real/pair ─────────────────────

@@ -14,12 +14,14 @@ import json
 import sys
 import threading
 import time as _time
-import xml.etree.ElementTree as ET
 from datetime import datetime
 from pathlib import Path
 
+import os as _os
+import subprocess as _subprocess
+
 from fastapi import APIRouter, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from shared import (  # noqa: E402
@@ -37,22 +39,26 @@ from utils.state import (  # noqa: E402
     load_json,
     save_capture_session,
 )
-from utils.system import filter_appium_caps, get_default_device  # noqa: E402
+from utils.capture_codegen import (  # noqa: E402
+    CaptureCodegenValidationError,
+    generate_test_from_actions,
+)
+from utils.capture_streaming import iter_jpeg_frames, resolve_adb_serial  # noqa: E402
+from utils.capture_validation import (  # noqa: E402
+    CaptureLocatorValidationError,
+    validate_locator_xml,
+)
+from utils.capture_driver import (  # noqa: E402
+    IOS_MJPEG_PORT as _IOS_MJPEG_PORT,
+    appium_back as _do_appium_back,
+    appium_tap as _do_appium_tap,
+    resolve_ios_device_name as _resolve_ios_device_name,
+    start_appium_session as _do_start_appium_session,
+    take_hierarchy_snapshot as _take_hierarchy_snapshot,
+)
 from ws import broadcast_timeline_sync  # noqa: E402
 
 router = APIRouter()
-
-
-def _resolve_ios_device_name(platform: str, device_name: str) -> str:
-    """iOS 세션 device_name 보정: 비어있거나 'iPhone Simulator'이면 devices.json 기본값 사용."""
-    if platform != "ios":
-        return device_name or ""
-    if device_name and device_name.lower() not in ("iphone simulator", ""):
-        return device_name
-    default = get_default_device("ios", "simulator")
-    if default:
-        return default.get("deviceName", "iPhone Simulator")
-    return "iPhone Simulator"
 
 
 # A WebDriverAgent instance is shared by every Capture request.  Starting two
@@ -62,229 +68,6 @@ _capture_launch_lock = threading.Lock()
 
 
 # ── Appium 드라이버 헬퍼 ──────────────────────────────────────
-
-def _get_appium_import():
-    """appium webdriver + ArgOptions 임포트 (venv 우선)."""
-    venv_site = PROJECT_ROOT / ".venv" / "lib"
-    if venv_site.exists():
-        for p in sorted(venv_site.iterdir()):
-            site = p / "site-packages"
-            if site.exists() and str(site) not in sys.path:
-                sys.path.insert(0, str(site))
-    from appium import webdriver as _aw
-    from selenium.webdriver.common.options import ArgOptions as _ao
-
-    class _RawOptions(_ao):
-        @property
-        def default_capabilities(self):
-            return {}
-
-    return _aw, _RawOptions
-
-
-def _take_hierarchy_snapshot(session_id: str, driver, context: str = "native") -> str:
-    """page_source를 캡처해 disk에 저장하고 snapshot_id 반환."""
-    xml    = driver.page_source
-    ts     = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-    snap_id = f"hierarchy_{ts}"
-    subdir = CAPTURES_DIR / session_id / context
-    subdir.mkdir(parents=True, exist_ok=True)
-    (subdir / f"{snap_id}.xml").write_text(xml, encoding="utf-8")
-    return snap_id
-
-
-def _friendly_appium_error(exc: Exception) -> str:
-    """Appium/Selenium 예외를 비개발자가 이해할 수 있는 메시지로 변환."""
-    raw = str(exc)
-    low = raw.lower()
-    # 연결 거부 — Appium 서버 미기동
-    if "connection refused" in low or "econnrefused" in low:
-        return "Appium 서버에 연결할 수 없습니다. 터미널에서 'appium --address 127.0.0.1 --port 4723'을 먼저 실행하세요."
-    # 에뮬레이터/시뮬레이터 없음
-    if "no device" in low or "no emulator" in low or "device not found" in low:
-        return "연결된 디바이스를 찾을 수 없습니다. 에뮬레이터/시뮬레이터가 실행 중인지 확인하세요."
-    # App Activity 오류
-    if "activity" in low and ("not found" in low or "unable to find" in low or "does not exist" in low):
-        return "App Activity를 찾을 수 없습니다. 대소문자를 확인하세요 (예: .MainActivity 또는 com.example.app.MainActivity)."
-    # App Package 오류
-    if "package" in low and ("not found" in low or "unable to find" in low or "no installed" in low):
-        return "App Package를 찾을 수 없습니다. 앱이 디바이스에 설치되어 있는지 확인하세요."
-    # WDA / XCUITest
-    if "webdriveragent" in low or "wda" in low:
-        return "WebDriverAgent(WDA) 초기화에 실패했습니다. Appium을 재시작한 후 다시 시도하세요."
-    if "xcuitest" in low and ("driver" in low or "not installed" in low):
-        return "XCUITest 드라이버가 설치되어 있지 않습니다. 터미널에서 'appium driver install xcuitest'를 실행하세요."
-    # 번들 ID 오류
-    if "bundleid" in low or "bundle id" in low or ("bundle" in low and "not found" in low):
-        return "Bundle ID를 찾을 수 없습니다. 시뮬레이터에 앱이 설치되어 있는지 확인하세요."
-    # 타임아웃
-    if "timeout" in low or "timed out" in low:
-        return "앱 실행 대기 시간이 초과되었습니다. Appium 서버와 디바이스 상태를 확인하고 다시 시도하세요."
-    # UiAutomator2 드라이버 없음
-    if "uiautomator2" in low and ("not installed" in low or "driver" in low):
-        return "UiAutomator2 드라이버가 설치되어 있지 않습니다. 터미널에서 'appium driver install uiautomator2'를 실행하세요."
-    # 기본: 첫 줄만 추출
-    first_line = raw.split("\n")[0].replace("Message: ", "").strip()
-    return first_line[:200] if first_line else "알 수 없는 오류가 발생했습니다."
-
-
-def _do_start_android_session(session: dict) -> dict:
-    """Android Emulator — UiAutomator2 + MJPEG. blocking, executor에서 실행."""
-    try:
-        appium_wd, RawOptions = _get_appium_import()
-    except ImportError as exc:
-        return {"ok": False, "error": f"appium 라이브러리 없음: {exc}"}
-
-    opts = RawOptions()
-    opts.set_capability("platformName", "Android")
-    opts.set_capability("deviceName", "Android Emulator")
-    opts.set_capability("automationName", "UiAutomator2")
-    opts.set_capability("appPackage", session.get("app_package", ""))
-    opts.set_capability("appActivity", session.get("app_activity", ""))
-    opts.set_capability("noReset", True)
-    opts.set_capability("forceAppLaunch", True)
-    opts.set_capability("autoLaunch", True)
-    opts.set_capability("newCommandTimeout", 300)
-    _dev = get_default_device("android", "emulator") or {}
-    _mjpeg_port = _dev.get("mjpegServerPort", 8093)
-    _mjpeg_scale = _dev.get("mjpegScalingFactor", 50)
-    _mjpeg_quality = _dev.get("mjpegServerScreenshotQuality", 50)
-    opts.set_capability("mjpegServerPort", session.get("mjpeg_port", _mjpeg_port))
-    opts.set_capability("mjpegScalingFactor", _mjpeg_scale)
-    opts.set_capability("mjpegServerScreenshotQuality", _mjpeg_quality)
-
-    old_driver = clear_capture_driver()
-    if old_driver is not None:
-        try:
-            old_driver.quit()
-        except Exception:
-            pass
-
-    try:
-        driver = appium_wd.Remote("http://localhost:4723", options=opts)
-    except Exception as exc:
-        return {"ok": False, "error": _friendly_appium_error(exc)}
-
-    set_capture_driver(driver)
-    _time.sleep(2)
-    try:
-        snap_id = _take_hierarchy_snapshot(session["session_id"], driver, "native")
-    except Exception:
-        snap_id = None
-
-    return {
-        "ok":                True,
-        "appium_session_id": driver.session_id,
-        "initial_snapshot_id": snap_id,
-        "screenshot_mode":   "mjpeg",
-    }
-
-
-def _do_start_ios_session(session: dict) -> dict:
-    """iOS Simulator — XCUITest. MJPEG 없음, screenshot polling 방식. blocking, executor에서 실행."""
-    try:
-        appium_wd, _ = _get_appium_import()
-    except ImportError as exc:
-        return {"ok": False, "error": f"appium 라이브러리 없음: {exc}"}
-
-    try:
-        from appium.options.ios.xcuitest.base import XCUITestOptions
-        opts = XCUITestOptions()
-    except ImportError:
-        # fallback: RawOptions
-        _, RawOptions = _get_appium_import()
-        opts = RawOptions()
-
-    bundle_id = session.get("bundle_id", "")
-    if not bundle_id:
-        return {"ok": False, "error": "iOS 세션에는 bundle_id가 필요합니다"}
-
-    opts.set_capability("platformName", "iOS")
-    opts.set_capability("automationName", "XCUITest")
-    opts.set_capability("deviceName", session.get("device_name", "iPhone Simulator"))
-    opts.set_capability("bundleId", bundle_id)
-    opts.set_capability("noReset", True)
-    opts.set_capability("forceAppLaunch", True)
-    opts.set_capability("newCommandTimeout", 300)
-    # WDA 첫 빌드(build-for-testing)는 60초를 초과할 수 있음 → 180초로 확장
-    opts.set_capability("webDriverAgentStartupTimeout", 180000)
-
-    old_driver = clear_capture_driver()
-    if old_driver is not None:
-        try:
-            old_driver.quit()
-        except Exception:
-            pass
-
-    try:
-        driver = appium_wd.Remote("http://localhost:4723", options=opts)
-    except Exception as exc:
-        return {"ok": False, "error": _friendly_appium_error(exc)}
-
-    set_capture_driver(driver)
-
-    # WDA 안정화 대기: 기존 세션 종료 → 새 세션 초기화 전환 기간 동안
-    # get_screenshot_as_base64()가 일시적으로 실패할 수 있음.
-    # launch 반환 전에 스크린샷이 실제로 동작하는지 확인(최대 10초 재시도).
-    _screenshot_ready = False
-    for _attempt in range(10):
-        _time.sleep(1)
-        try:
-            driver.get_screenshot_as_base64()
-            _screenshot_ready = True
-            break
-        except Exception:
-            pass
-    if not _screenshot_ready:
-        # 스크린샷 미준비 상태라도 세션은 유지 (hierarchy는 동작 가능)
-        _time.sleep(1)
-
-    snap_id = None
-    for _snap_attempt in range(3):
-        try:
-            snap_id = _take_hierarchy_snapshot(session["session_id"], driver, "native")
-            break
-        except Exception:
-            if _snap_attempt < 2:
-                _time.sleep(2)
-
-    return {
-        "ok":                True,
-        "appium_session_id": driver.session_id,
-        "initial_snapshot_id": snap_id,
-        "screenshot_mode":   "poll",
-        "screenshot_ready":  _screenshot_ready,
-    }
-
-
-def _do_start_appium_session(session: dict) -> dict:
-    """플랫폼에 따라 Android/iOS 세션 시작 함수로 분기."""
-    if session.get("platform") == "ios":
-        return _do_start_ios_session(session)
-    return _do_start_android_session(session)
-
-
-def _do_appium_tap(device_x: int, device_y: int, session_id: str) -> bool:
-    driver = get_capture_driver()
-    if driver is None:
-        return False
-    try:
-        driver.tap([(device_x, device_y)])
-        return True
-    except Exception:
-        return False
-
-
-def _do_appium_back(session_id: str) -> bool:
-    driver = get_capture_driver()
-    if driver is None:
-        return False
-    try:
-        driver.back()
-        return True
-    except Exception:
-        return False
-
 
 # ── 엔드포인트 ────────────────────────────────────────────────
 
@@ -324,10 +107,9 @@ async def capture_start_session(request: Request):
 
     import uuid
     new_session_id = str(uuid.uuid4())
-    mjpeg_port     = body.get("mjpeg_port", 8093)
-
-    # iOS는 MJPEG 미지원 → polling 방식
-    screenshot_mode = "poll" if platform == "ios" else "mjpeg"
+    # iOS: WDA 내장 MJPEG 포트 9100 / Android: 8093 (body 값 우선)
+    mjpeg_port = body.get("mjpeg_port", _IOS_MJPEG_PORT if platform == "ios" else 8093)
+    screenshot_mode = "mjpeg"  # iOS·Android 모두 MJPEG 사용
 
     session_data = {
         "session_id":        new_session_id,
@@ -646,353 +428,13 @@ async def capture_generate(request: Request):
 @router.post("/capture/generate_from_actions")
 async def capture_generate_from_actions(request: Request):
     """actions 배열을 받아 Appium pytest 코드를 자동 생성."""
-    body    = await request.json()
+    body = await request.json()
     session = load_capture_session()
-
-    tc_id    = str(body.get("tc_id", "tc_001")).strip()
-    title    = str(body.get("title", "자동 생성 TC")).strip()
-    expected = str(body.get("expected", "")).strip()
-    platform = body.get("platform", session.get("platform", "android"))
-    tc_group = str(body.get("tc_group", session.get("tc_group", "default"))).strip()
-    actions      = body.get("actions", [])
-    source_filter = body.get("source_filter", "all")  # all | user | mcp
-    _NON_EXEC = frozenset({"screenshot", "hierarchy", "generate_test_case", "clear_actions", "screen_info"})
-    executable_actions = [
-        a for a in actions
-        if (a.get("type") or a.get("action", "")) not in _NON_EXEC
-        and (source_filter == "all" or a.get("source", "user") == source_filter)
-    ]
-    _origins = {a.get("source", "user") for a in executable_actions}
-    _origin_label = next(iter(_origins)) if len(_origins) == 1 else "mixed"
-    app_pkg   = str(session.get("app_package", body.get("app_pkg", ""))).strip()
-    app_act   = str(session.get("app_activity", body.get("app_activity", ""))).strip()
-    bundle_id = str(session.get("bundle_id", body.get("bundle_id", ""))).strip()
-
-    if not tc_id or platform not in ("android", "ios"):
-        return JSONResponse(
-            {"ok": False, "error": "tc_id와 platform이 필요합니다"}, status_code=400
-        )
-
-    slug       = tc_id.replace("-", "_")
-    class_name = "".join(w.capitalize() for w in slug.split("_") if w)
-    parents    = "../" * 4  # tests/generated/{platform}/{group}/tc.py → ROOT
-
-    lines = [
-        f'"""',
-        f'{slug}.py — {platform.capitalize()} | {title}',
-        f'자동 생성: Capture Studio ({datetime.now().strftime("%Y-%m-%d %H:%M")})',
-        f'출처: {_origin_label} ({len(executable_actions)} actions)',
-        f'"""',
-        f"import json, subprocess, shutil, os",
-        f"import time as _time",
-        f"from pathlib import Path",
-        f"from appium import webdriver",
-        (
-            f"from appium.options.android.uiautomator2.base import UiAutomator2Options"
-            if platform == "android"
-            else f"from appium.options.ios.xcuitest.base import XCUITestOptions"
-        ),
-        f"from appium.webdriver.common.appiumby import AppiumBy",
-        f"from selenium.webdriver.support.ui import WebDriverWait",
-        f"",
-        f"CAPTURE_TEMPLATE_VERSION = 2",
-        f'CONFIG_DIR = (Path(__file__).resolve().parent / "{parents.rstrip("/")}" / "config").resolve()',
-        f'APPIUM_URL  = "http://localhost:4723"',
-        f'PLATFORM_MODE = "{"emulator" if platform == "android" else "simulator"}"',
-        f"",
-        f"def _load_json(p): return json.loads(Path(p).read_text(encoding='utf-8'))",
-        f"",
-        (
-            f"APP_ID = {app_pkg!r}"
-            if platform == "android" and app_pkg
-            else f"APP_ID = _load_json(CONFIG_DIR / 'test_data.json')['app']['android']['package']"
-            if platform == "android"
-            else f"APP_ID = {bundle_id!r}"
-            if bundle_id
-            else f"APP_ID = _load_json(CONFIG_DIR / 'test_data.json')['app']['ios']['bundle_id']"
-        ),
-        (
-            f"APP_ACTIVITY = {app_act!r}"
-            if platform == "android" and app_act
-            else f"APP_ACTIVITY = _load_json(CONFIG_DIR / 'test_data.json')['app']['android']['activity']"
-            if platform == "android"
-            else f"APP_ACTIVITY = ''"
-        ),
-        f"",
-        f"_NON_APPIUM_KEYS = frozenset({{'default', 'wifi_ip', 'team_id', 'label', 'note'}})",
-        f"",
-        f"def _get_device(platform, mode):",
-        f"    _s = _load_json(CONFIG_DIR / 'devices.json').get(platform, {{}}).get(mode)",
-        f"    if isinstance(_s, dict): return _s",
-        f"    if isinstance(_s, list):",
-        f"        return next((d for d in _s if d.get('default')), _s[0] if _s else {{}})",
-        f"    return {{}}",
-        f"",
-        f"def _build_driver():",
-        f"    _raw = _get_device('{platform}', PLATFORM_MODE)",
-        f"    caps = {{k: v for k, v in _raw.items() if k not in _NON_APPIUM_KEYS}}",
-        f"    caps['platformName'] = '{'Android' if platform == 'android' else 'iOS'}'",
-        f"    caps.pop('app', None)  # 설치된 앱 사용",
-    ]
-    if platform == "android":
-        lines += [
-            (
-                f"    caps['appPackage'] = APP_ID"
-                if app_pkg
-                else f"    caps['appPackage'] = _load_json(CONFIG_DIR / 'test_data.json')['app']['android']['package']"
-            ),
-            (
-                f"    caps['appActivity'] = APP_ACTIVITY"
-                if app_act
-                else f"    caps['appActivity'] = _load_json(CONFIG_DIR / 'test_data.json')['app']['android']['activity']"
-            ),
-            f"    opts = UiAutomator2Options().load_capabilities(caps)",
-        ]
-    else:
-        lines += [
-            (
-                f"    caps['bundleId'] = APP_ID"
-                if bundle_id
-                else f"    caps['bundleId'] = _load_json(CONFIG_DIR / 'test_data.json')['app']['ios']['bundle_id']"
-            ),
-            f"    opts = XCUITestOptions().load_capabilities(caps)",
-        ]
-    lines += [
-        f"    return webdriver.Remote(APPIUM_URL, options=opts)",
-        f"",
-        f"def _reset_to_start(driver):",
-        f"    \"\"\"Every pytest attempt starts in the target app's native root state.\"\"\"",
-        f"    try:",
-        f"        if driver.current_context != 'NATIVE_APP':",
-        f"            driver.switch_to.context('NATIVE_APP')",
-        f"    except Exception:",
-        f"        pass",
-        *(
-            [
-                f"    try:",
-                f"        _foreground = driver.current_package",
-                f"        if _foreground and _foreground != APP_ID:",
-                f"            driver.terminate_app(_foreground)",
-                f"    except Exception:",
-                f"        pass",
-            ]
-            if platform == "android"
-            else []
-        ),
-        f"    try:",
-        f"        driver.terminate_app(APP_ID)",
-        f"    except Exception:",
-        f"        pass",
-        f"    _time.sleep(0.3)",
-        f"    driver.activate_app(APP_ID)",
-        *(
-            [
-                f"    if APP_ACTIVITY:",
-                f"        try:",
-                f"            driver.execute_script('mobile: startActivity', {{",
-                f"                'intent': f'{{APP_ID}}/{{APP_ACTIVITY}}', 'wait': True, 'stop': True",
-                f"            }})",
-                f"        except Exception:",
-                f"            driver.activate_app(APP_ID)",
-            ]
-            if platform == "android"
-            else []
-        ),
-        f"    _time.sleep(1.0)",
-        f"",
-        f"",
-        f"class Test{class_name}:",
-        f'    """Capture Studio — {title}"""',
-        f"",
-        f"    def setup_method(self):",
-        f"        self.driver = _build_driver()",
-        f"        _reset_to_start(self.driver)",
-        f"",
-        f"    def teardown_method(self):",
-        f"        if hasattr(self, 'driver') and self.driver:",
-        f"            self.driver.quit()",
-        f"",
-        f"    def _el(self, strategy, value):",
-        f"        by_map = {{",
-        f"            'id': AppiumBy.ID, 'xpath': AppiumBy.XPATH,",
-        f"            'accessibility id': AppiumBy.ACCESSIBILITY_ID,",
-        f"            'class name': AppiumBy.CLASS_NAME,",
-        f"            'AppiumBy.ID': AppiumBy.ID, 'AppiumBy.XPATH': AppiumBy.XPATH,",
-        f"            'AppiumBy.ACCESSIBILITY_ID': AppiumBy.ACCESSIBILITY_ID,",
-        f"            'AppiumBy.CLASS_NAME': AppiumBy.CLASS_NAME,",
-        f"        }}",
-        f"        by = by_map.get(strategy, AppiumBy.XPATH)",
-        f"        return WebDriverWait(self.driver, 15).until(lambda d: d.find_element(by, value))",
-        f"",
-        *(
-            [
-                f"    def _ios_tap(self, label):",
-                f"        \"\"\"iOS: 화면 밖 요소는 mobile:scroll로 자동 스크롤 후 탭.\"\"\"",
-                f"        from selenium.common.exceptions import NoSuchElementException",
-                f"        try:",
-                f"            self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, label).click()",
-                f"        except NoSuchElementException:",
-                f"            self.driver.execute_script('mobile: scroll',",
-                f"                {{'direction': 'down', 'predicateString': f'label == \"{{label}}\"'}})",
-                f"            _time.sleep(0.5)",
-                f"            self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, label).click()",
-                f"",
-            ]
-            if platform == "ios"
-            else []
-        ),
-        f"    def test_{slug}(self):",
-        f'        """단계별 동작 및 검증"""',
-    ]
-
-    by_map_str = {
-        "id":               "AppiumBy.ID",
-        "xpath":            "AppiumBy.XPATH",
-        "accessibility id": "AppiumBy.ACCESSIBILITY_ID",
-        "accessibility-id": "AppiumBy.ACCESSIBILITY_ID",
-        "class name":       "AppiumBy.CLASS_NAME",
-        "class":            "AppiumBy.CLASS_NAME",
-        "resource-id":      "AppiumBy.ID",
-    }
-
-    def _by(strategy: str) -> str:
-        return by_map_str.get(strategy.lower().strip(), "AppiumBy.XPATH")
-
-    for i, act in enumerate(executable_actions, 1):
-        atype    = act.get("type") or act.get("action", "")
-        label    = act.get("label", f"el_{i}")
-        strategy = act.get("locator_strategy", act.get("strategy", "xpath"))
-        value    = act.get("locator_value", act.get("value", ""))
-        if strategy.lower().strip() == "text" and value and not value.startswith("/"):
-            strategy = "xpath"
-            value    = f"//*[@text='{value}']"
-        lines.append(f"        # Step {i}: {label}")
-
-        if atype in ("tap", "click"):
-            device_x = act.get("device_x")
-            device_y = act.get("device_y")
-            if not value and device_x is not None and device_y is not None:
-                gesture = "mobile: clickGesture" if platform == "android" else "mobile: tap"
-                lines.append(
-                    f"        self.driver.execute_script({gesture!r}, "
-                    f"{{'x': {int(device_x)}, 'y': {int(device_y)}}})"
-                )
-            # iOS + accessibility-id → _ios_tap() (화면 밖 자동 스크롤 지원)
-            elif platform == "ios" and strategy.lower().strip() in ("accessibility-id", "accessibility id"):
-                lines.append(f"        self._ios_tap({value!r})")
-            else:
-                lines.append(f"        self._el({_by(strategy)!r}, {value!r}).click()")
-            lines.append(f"        _time.sleep(1.5)  # 화면 전환 대기")
-
-        elif atype == "input":
-            input_val = act.get("input_value", act.get("assertion_value", ""))
-            lines.append(f"        el = self._el({_by(strategy)!r}, {value!r})")
-            lines.append(f"        el.clear()")
-            lines.append(f"        el.send_keys({input_val!r})")
-
-        elif atype == "assertion":
-            a_type = act.get("assertion_type", "element_present")
-            a_val  = act.get("assertion_value", "")
-            if a_type == "text_visible":
-                if value:
-                    lines.append(f"        el = self._el({_by(strategy)!r}, {value!r})")
-                    lines.append(f'        assert {a_val!r} in el.text, f"텍스트 {{el.text!r}}에 {a_val!r} 없음"')
-                else:
-                    # page_source는 raw XML → & 는 &amp; 로 인코딩됨
-                    # 5초 재시도 루프 + XPath fallback으로 타이밍 문제·화면 전환 지연 처리
-                    import html as _html_mod
-                    escaped_val = _html_mod.escape(a_val, quote=False)
-                    lines.append(f"        _found_text = False")
-                    lines.append(f"        for _retry_i in range(5):")
-                    lines.append(f"            _src = self.driver.page_source")
-                    if escaped_val != a_val:
-                        lines.append(f"            if {a_val!r} in _src or {escaped_val!r} in _src:")
-                    else:
-                        lines.append(f"            if {a_val!r} in _src:")
-                    lines.append(f"                _found_text = True; break")
-                    lines.append(f"            _time.sleep(1.0)")
-                    # XPath fallback: XPath는 XML 인코딩을 올바르게 처리하므로 &amp; 문제 없음
-                    lines.append(f"        if not _found_text:")
-                    lines.append(f"            from selenium.common.exceptions import NoSuchElementException")
-                    lines.append(f"            try:")
-                    lines.append(f"                _fb_el = self.driver.find_element(")
-                    lines.append(f"                    AppiumBy.XPATH, \"//*[@text={repr(a_val)}]\")")
-                    lines.append(f"                _found_text = _fb_el is not None")
-                    lines.append(f"            except NoSuchElementException:")
-                    lines.append(f"                pass")
-                    lines.append(f"        assert _found_text, f\"페이지 소스·XPath에서 {a_val!r} 없음\"")
-            elif a_type == "element_present":
-                lines.append(f"        assert self._el({_by(strategy)!r}, {value!r}).is_displayed()")
-            elif a_type == "element_absent":
-                lines.append(f"        from selenium.common.exceptions import NoSuchElementException")
-                lines.append(f"        try:")
-                lines.append(f"            self._el({_by(strategy)!r}, {value!r})")
-                lines.append(f"            assert False, '요소가 존재해서 안 됩니다: {value}'")
-                lines.append(f"        except NoSuchElementException:")
-                lines.append(f"            pass")
-
-        elif atype in ("back", "scroll_down", "scroll_up"):
-            if atype == "back":
-                lines.append(f"        self.driver.back()")
-                lines.append(f"        _time.sleep(1.0)  # 화면 복귀 대기")
-            elif atype == "scroll_down":
-                # driver.swipe()는 Android·iOS 양쪽에서 동작
-                # (mobile: scrollGesture는 elementId 없이 호출 시 InvalidArgumentException 발생)
-                lines.append(f"        _sz = self.driver.get_window_size()")
-                lines.append(f"        self.driver.swipe(_sz['width']//2, int(_sz['height']*0.7),")
-                lines.append(f"                          _sz['width']//2, int(_sz['height']*0.3), 400)")
-                lines.append(f"        _time.sleep(0.8)  # 스크롤 완료 대기")
-            else:
-                lines.append(f"        _sz = self.driver.get_window_size()")
-                lines.append(f"        self.driver.swipe(_sz['width']//2, int(_sz['height']*0.3),")
-                lines.append(f"                          _sz['width']//2, int(_sz['height']*0.7), 400)")
-                lines.append(f"        _time.sleep(0.8)  # 스크롤 완료 대기")
-
-        elif atype == "wait":
-            secs = float(act.get("wait_seconds", 1))
-            lines.append(f"        import time; time.sleep({secs})")
-
-        else:
-            lines.append(f"        pass  # TODO: {atype}")
-
-    # 기대결과 assertion
-    if expected:
-        import html as _html_mod
-        escaped_expected = _html_mod.escape(expected, quote=False)
-        lines.append(f"")
-        lines.append(f"        # 기대결과: {expected}")
-        lines.append(f"        _found = False")
-        lines.append(f"        for _retry in range(5):")
-        lines.append(f"            _src = self.driver.page_source")
-        if escaped_expected != expected:
-            lines.append(f"            if {expected!r} in _src or {escaped_expected!r} in _src:")
-        else:
-            lines.append(f"            if {expected!r} in _src:")
-        lines.append(f"                _found = True; break")
-        lines.append(f"            _time.sleep(1.0)")
-        lines.append(f"        if not _found:")
-        lines.append(f"            from selenium.common.exceptions import NoSuchElementException")
-        lines.append(f"            try:")
-        lines.append(f"                _fb = self.driver.find_element(AppiumBy.XPATH, \"//*[@text={expected!r}]\")")
-        lines.append(f"                _found = _fb is not None")
-        lines.append(f"            except NoSuchElementException:")
-        lines.append(f"                pass")
-        lines.append(f"        assert _found, f\"기대결과 미충족: {expected!r} 가 화면에 없음\"")
-
-    lines.append("")
-    code = "\n".join(lines)
-
-    out_dir  = PROJECT_ROOT / "tests" / "generated" / platform / tc_group
-    out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / f"{slug}.py"
-    out_path.write_text(code, encoding="utf-8")
-
-    return JSONResponse({
-        "ok":    True,
-        "file":  str(out_path.relative_to(PROJECT_ROOT)),
-        "code":  code,
-        "lines": len(lines),
-    })
+    try:
+        payload = generate_test_from_actions(body, session, PROJECT_ROOT)
+    except CaptureCodegenValidationError as exc:
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
+    return JSONResponse(payload)
 
 
 @router.get("/capture/generated_code")
@@ -1147,6 +589,9 @@ async def capture_launch(request: Request):
     try:
         loop   = asyncio.get_event_loop()
         result = await loop.run_in_executor(None, _do_start_appium_session, session)
+        if result.get("ok") and result.get("device_name"):
+            updated = load_capture_session()
+            save_capture_session({**updated, "device_name": result["device_name"]})
         return JSONResponse(result, status_code=200 if result["ok"] else 500)
     finally:
         _capture_launch_lock.release()
@@ -1355,80 +800,103 @@ async def capture_validate_locator(request: Request):
         )
 
     try:
-        tree = ET.parse(xml_files[0])
-        root = tree.getroot()
-    except Exception as exc:
-        return JSONResponse({"ok": False, "error": f"XML 파싱 오류: {exc}"}, status_code=500)
-
-    # 플랫폼별 XML 속성 매핑
-    # Android: content-desc (accessibility), resource-id, text
-    # iOS: name (accessibilityIdentifier), label (visible text), value
-    platform = session.get("platform", "android")
-    if platform == "ios":
-        attr_map = {
-            "accessibility-id": "name",    # iOS accessibilityIdentifier → XML name
-            "accessibility id": "name",
-            "name":             "name",
-            "label":            "label",   # iOS visible label
-            "value":            "value",
-            "text":             "label",   # iOS에서 text는 label로 매핑
-        }
-    else:
-        attr_map = {
-            "resource-id":      "resource-id",
-            "accessibility-id": "content-desc",
-            "accessibility id": "content-desc",
-            "text":             "text",
-        }
-
-    count: int = 0
-    matched_bounds: list[str] = []
-
-    def _elem_bounds(elem: ET.Element) -> str:
-        """Android bounds 문자열 또는 iOS x/y/width/height → bounds 문자열."""
-        b = elem.get("bounds", "")
-        if b:
-            return b
-        # iOS: x, y, width, height → "[x1,y1][x2,y2]" 형식 생성
-        x = elem.get("x"); y = elem.get("y")
-        w = elem.get("width"); h = elem.get("height")
-        if x is not None and y is not None and w is not None and h is not None:
-            try:
-                x2 = int(float(x)) + int(float(w))
-                y2 = int(float(y)) + int(float(h))
-                return f"[{int(float(x))},{int(float(y))}][{x2},{y2}]"
-            except (ValueError, TypeError):
-                pass
-        return ""
-
-    if strategy in attr_map:
-        xml_attr = attr_map[strategy]
-        for elem in root.iter():
-            if elem.get(xml_attr) == value:
-                count += 1
-                b = _elem_bounds(elem)
-                if b:
-                    matched_bounds.append(b)
-    elif strategy == "xpath":
-        try:
-            matches        = root.findall(value)
-            count          = len(matches)
-            matched_bounds = [_elem_bounds(m) for m in matches if _elem_bounds(m)]
-        except Exception as exc:
-            return JSONResponse({"ok": False, "error": f"XPath 오류: {exc}"}, status_code=400)
-    else:
-        return JSONResponse(
-            {"ok": False, "error": f"지원하지 않는 strategy: {strategy}"}, status_code=400
+        result = validate_locator_xml(
+            xml_files[0].read_text(encoding="utf-8", errors="replace"),
+            session.get("platform", "android"),
+            strategy,
+            value,
         )
+    except CaptureLocatorValidationError as exc:
+        return JSONResponse(
+            {"ok": False, "error": exc.message},
+            status_code=exc.status_code,
+        )
+    return JSONResponse({"ok": True, **result})
 
-    unique     = count == 1
-    confidence = "high" if unique else ("medium" if count <= 3 else "low")
-    return JSONResponse({
-        "ok":             True,
-        "strategy":       strategy,
-        "value":          value,
-        "match_count":    count,
-        "unique":         unique,
-        "confidence":     confidence,
-        "matched_bounds": matched_bounds[:5],
-    })
+
+@router.get("/capture/stream/{platform}")
+async def capture_stream(platform: str, request: Request):
+    """ffmpeg 기반 고속 MJPEG 스트리밍 — Android(adb screenrecord) / iOS(AVFoundation)."""
+
+    async def generate():
+        procs: list = []
+        try:
+            if platform == "android":
+                serial = resolve_adb_serial(load_capture_session())
+                adb_cmd = ["adb"]
+                if serial and not serial.startswith("emulator"):
+                    adb_cmd += ["-s", serial]
+                adb_cmd += ["exec-out", "screenrecord", "--output-format=h264", "--bit-rate=2M", "-"]
+
+                adb_proc = _subprocess.Popen(
+                    adb_cmd,
+                    stdout=_subprocess.PIPE, stderr=_subprocess.DEVNULL
+                )
+                ffmpeg_proc = _subprocess.Popen(
+                    ["ffmpeg", "-probesize", "5M",
+                     "-i", "pipe:0",
+                     "-f", "image2pipe", "-vcodec", "mjpeg",
+                     "-r", "20", "-q:v", "5",
+                     "-vf", "scale=400:-2",
+                     "pipe:1"],
+                    stdin=adb_proc.stdout,
+                    stdout=_subprocess.PIPE, stderr=_subprocess.DEVNULL
+                )
+                procs = [adb_proc, ffmpeg_proc]
+                stdout = ffmpeg_proc.stdout
+
+            else:  # ios — simctl screenshot 폴링 (시뮬레이터 화면만 캡처)
+                import tempfile as _tempfile
+                boundary = b"--frame\r\nContent-Type: image/jpeg\r\n\r\n"
+                tmp = _tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)
+                tmp.close()
+                try:
+                    while True:
+                        if await request.is_disconnected():
+                            break
+                        loop = asyncio.get_event_loop()
+                        ret = await loop.run_in_executor(
+                            None,
+                            lambda: _subprocess.run(
+                                ["xcrun", "simctl", "io", "booted", "screenshot",
+                                 "--type", "jpeg", tmp.name],
+                                capture_output=True
+                            ).returncode
+                        )
+                        if ret != 0:
+                            await asyncio.sleep(0.5)
+                            continue
+                        with open(tmp.name, "rb") as f:
+                            frame_data = f.read()
+                        if frame_data:
+                            yield boundary + frame_data + b"\r\n"
+                finally:
+                    try:
+                        _os.unlink(tmp.name)
+                    except Exception:
+                        pass
+                return
+
+            loop = asyncio.get_event_loop()
+            boundary = b"--frame\r\nContent-Type: image/jpeg\r\n\r\n"
+            frame_iter = iter_jpeg_frames(stdout)
+            while True:
+                if await request.is_disconnected():
+                    break
+                frame = await loop.run_in_executor(None, next, frame_iter, None)
+                if frame is None:
+                    break
+                yield boundary + frame + b"\r\n"
+        finally:
+            for p in procs:
+                try:
+                    p.kill()
+                    p.wait(timeout=2)
+                except Exception:
+                    pass
+
+    return StreamingResponse(
+        generate(),
+        media_type="multipart/x-mixed-replace; boundary=frame",
+        headers={"Cache-Control": "no-cache"},
+    )

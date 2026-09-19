@@ -4,12 +4,15 @@ CSS/JS 스타일은 qa-native와 동일하게 유지.
 앱 전용 로직(parse_pipeline_to_groups, TC 마크다운 파싱)은 별도 보존.
 """
 import html as _html
+import json
 import re
+import urllib.parse
 from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
 TESTCASES_DIR = ROOT / "testcases"
 REPORTS_DIR = ROOT / "tests" / "reports"
+RUNS_DIR = ROOT / "state" / "runs"
 
 CASES_PER_PAGE = 20
 
@@ -68,7 +71,7 @@ def _parse_tc_meta_from_md(filepath: str) -> dict:
     title = title_match.group(1).strip() if title_match else stem
 
     precondition_match = re.search(
-        r"##\s*(?:전제조건|전제 조건|Precondition)\s*\n(.*?)(?=\n##|\Z)",
+        r"##\s*(?:사전\s*조건|전제조건|전제\s*조건|Precondition)\s*\n(.*?)(?=\n##|\Z)",
         text, re.DOTALL | re.IGNORECASE,
     )
     precondition = []
@@ -78,19 +81,25 @@ def _parse_tc_meta_from_md(filepath: str) -> dict:
             if clean:
                 precondition.append(clean)
 
-    steps_match = re.search(r"###\s*단계\s*\n(.*?)(?=\n###|\Z)", text, re.DOTALL)
+    steps_match = re.search(
+        r"##\s*(?:테스트\s*단계|단계|Steps?)\s*\n(.*?)(?=\n##|\Z)",
+        text, re.DOTALL | re.IGNORECASE,
+    )
     steps = []
     if steps_match:
         for line in steps_match.group(1).splitlines():
-            m = re.match(r"^\s*\d+\.\s+(.+)", line)
+            m = re.match(r"^\s*\d+[\.\)]\s+(.+)", line)
             if m:
                 steps.append(m.group(1).strip())
 
-    exp_match = re.search(r"###\s*기대결과\s*\n(.*?)(?=\n###|\Z)", text, re.DOTALL)
+    exp_match = re.search(
+        r"##\s*(?:예상\s*결과|기대\s*결과|기대결과|Expected(?:\s*Result)?)\s*\n(.*?)(?=\n##|\Z)",
+        text, re.DOTALL | re.IGNORECASE,
+    )
     expected_lines = []
     if exp_match:
         for line in exp_match.group(1).splitlines():
-            clean = re.sub(r"^-\s*", "", line).strip()
+            clean = re.sub(r"^\s*[-*]\s*", "", line).strip()
             if clean:
                 expected_lines.append(clean)
     expected = "\n".join(expected_lines)
@@ -101,6 +110,52 @@ def _parse_tc_meta_from_md(filepath: str) -> dict:
         "steps": steps,
         "expected": expected,
     }
+
+
+def _load_run_manifest(run_id: str) -> dict:
+    """observability run manifest(state/runs/{run_id}/artifacts/manifest.json)를 읽는다."""
+    if not run_id:
+        return {}
+    manifest_path = RUNS_DIR / run_id / "artifacts" / "manifest.json"
+    if not manifest_path.exists():
+        return {}
+    try:
+        return json.loads(manifest_path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def _obs_artifact_urls(manifest: dict, run_id: str, filepath: str, test_name: str) -> dict:
+    """manifest에서 file+test에 해당하는 최신 attempt의 영상·스크린샷 URL을 찾는다.
+
+    영상/스크린샷은 대시보드가 서빙하는 /api/run_artifacts/{run_id}/... 엔드포인트를
+    통해 HTTP로 제공되므로, 리포트 HTML을 어디서 열든(파일 직접 열기 제외) 재생 가능하다.
+    """
+    urls: dict = {}
+    for entry in manifest.get("entries", []):
+        nodeid = entry.get("nodeid", "")
+        if not nodeid.startswith(filepath + "::"):
+            continue
+        if test_name and not nodeid.endswith("::" + test_name):
+            continue
+        attempts = entry.get("attempts") or [entry]
+        attempt = attempts[-1]
+        if not attempt.get("kept"):
+            continue
+        encoded_nodeid = urllib.parse.quote(nodeid, safe="")
+        attempt_n = attempt.get("n", 1)
+        if attempt.get("video"):
+            urls["video_url"] = (
+                f"/api/run_artifacts/{run_id}/video"
+                f"?nodeid={encoded_nodeid}&attempt={attempt_n}"
+            )
+        if attempt.get("screenshot"):
+            urls["screenshot_url"] = (
+                f"/api/run_artifacts/{run_id}/screenshot"
+                f"?nodeid={encoded_nodeid}&attempt={attempt_n}"
+            )
+        break
+    return urls
 
 
 _UNKNOWN_SCREEN = "other"
@@ -133,6 +188,9 @@ def parse_pipeline_to_groups(pipeline_state: dict) -> list:
     errors: list = execute_results.get("errors", [])
     passed_files: list = execute_results.get("passed", [])
 
+    run_id = pipeline_state.get("last_run_id") or pipeline_state.get("obs_last_run_id") or ""
+    manifest = _load_run_manifest(run_id)
+
     groups: dict = {}
 
     def _get_group(screen: str) -> dict:
@@ -142,17 +200,20 @@ def parse_pipeline_to_groups(pipeline_state: dict) -> list:
 
     for entry in errors:
         filepath = entry.get("file", "")
+        test_name = entry.get("test", "")
         screen = _extract_screen(filepath)
         g = _get_group(screen)
         g["failed"] += 1
         tc_meta = _parse_tc_meta_from_md(filepath)
+        artifact_urls = _obs_artifact_urls(manifest, run_id, filepath, test_name)
         g["cases"].append({
             "file": filepath,
             "title": tc_meta["title"],
-            "test": entry.get("test", ""),
+            "test": test_name,
             "outcome": "failed",
             "error": entry.get("error", ""),
-            "screenshot": entry.get("screenshot", ""),
+            "screenshot_url": artifact_urls.get("screenshot_url", ""),
+            "video_url": artifact_urls.get("video_url", ""),
             "precondition": tc_meta["precondition"],
             "steps": tc_meta["steps"],
             "expected": tc_meta["expected"],
@@ -169,7 +230,6 @@ def parse_pipeline_to_groups(pipeline_state: dict) -> list:
             "test": "",
             "outcome": "passed",
             "error": "",
-            "screenshot": "",
             "precondition": tc_meta["precondition"],
             "steps": tc_meta["steps"],
             "expected": tc_meta["expected"],
@@ -192,10 +252,11 @@ def parse_pipeline_to_groups(pipeline_state: dict) -> list:
                     "title": case.get("title", case["file"]),
                     "precondition": case.get("precondition", []),
                     "steps": case.get("steps", []),
-                    "expected": case.get("expected", "") or case.get("error", ""),
+                    "expected": case.get("expected", ""),
                     "error": case.get("error", ""),
-                    "screenshot": case.get("screenshot", ""),
+                    "screenshot_url": case.get("screenshot_url", ""),
                     "video": pipeline_state.get("video_path", ""),
+                    "video_url": case.get("video_url", ""),
                 },
                 uid,
                 case["outcome"],
@@ -236,10 +297,13 @@ def _resolve_media_uri(path_str: str) -> str:
     return ""
 
 
-def _build_artifact_panel(screenshot: str, video: str) -> str:
+def _build_artifact_panel(video: str, screenshot_url: str = "", video_url: str = "") -> str:
     parts = []
 
-    ss_uri = _resolve_media_uri(screenshot)
+    # 스크린샷은 관측성 run manifest에서 얻은 HTTP URL(/api/run_artifacts/...)만
+    # 사용한다. 대시보드가 서빙하는 리포트 페이지에서 바로 표시되며, file:// URI와
+    # 달리 브라우저의 mixed-content 차단에 걸리지 않는다.
+    ss_uri = screenshot_url
     if ss_uri:
         parts.append(
             f'<div class="artifact-sub">'
@@ -250,7 +314,7 @@ def _build_artifact_panel(screenshot: str, video: str) -> str:
             f'</div>'
         )
 
-    vid_uri = _resolve_media_uri(video)
+    vid_uri = video_url or _resolve_media_uri(video)
     if vid_uri:
         parts.append(
             f'<div class="artifact-sub">'
@@ -278,8 +342,9 @@ def case_row(case: dict, uid: str, outcome) -> str:
     steps = case.get("steps", [])
     expected = case.get("expected", "")
     error_msg = case.get("error", "")
-    screenshot = case.get("screenshot", "")
     video = case.get("video", "")
+    screenshot_url = case.get("screenshot_url", "")
+    video_url = case.get("video_url", "")
 
     clean_steps = [_esc(_strip_prefix(s)) for s in steps if s.strip()]
     steps_html = "".join(f"<li>{s}</li>" for s in clean_steps) if clean_steps else "<li>-</li>"
@@ -300,7 +365,7 @@ def case_row(case: dict, uid: str, outcome) -> str:
 
     artifact_html = ""
     if outcome == "failed":
-        artifact_html = _build_artifact_panel(screenshot, video)
+        artifact_html = _build_artifact_panel(video, screenshot_url, video_url)
 
     return (
         f'<div class="case-item {status_cls}" data-status="{status_cls}" data-toggle="{uid}">'

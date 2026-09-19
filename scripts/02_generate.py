@@ -382,10 +382,16 @@ def _check_device_connected() -> None:
 
 
 def _get_device(platform: str, mode: str) -> dict:
-    _s = _load_json(CONFIG_DIR / "devices.json").get(platform, {{}}).get(mode)
+    _mode = os.environ.get("DEVICE_MODE", mode)
+    _uid  = os.environ.get("DEVICE_UDID", "")
+    _s = _load_json(CONFIG_DIR / "devices.json").get(platform, {{}}).get(_mode)
     if isinstance(_s, dict):
         return _s
     if isinstance(_s, list):
+        if _uid:
+            _match = next((d for d in _s if d.get("udid") == _uid), None)
+            if _match:
+                return _match
         return next((d for d in _s if d.get("default")), _s[0] if _s else {{}})
     return {{}}
 
@@ -435,10 +441,16 @@ def _check_device_connected() -> None:
 
 
 def _get_device(platform: str, mode: str) -> dict:
-    _s = _load_json(CONFIG_DIR / "devices.json").get(platform, {{}}).get(mode)
+    _mode = os.environ.get("DEVICE_MODE", mode)
+    _uid  = os.environ.get("DEVICE_UDID", "")
+    _s = _load_json(CONFIG_DIR / "devices.json").get(platform, {{}}).get(_mode)
     if isinstance(_s, dict):
         return _s
     if isinstance(_s, list):
+        if _uid:
+            _match = next((d for d in _s if d.get("udid") == _uid), None)
+            if _match:
+                return _match
         return next((d for d in _s if d.get("default")), _s[0] if _s else {{}})
     return {{}}
 
@@ -988,10 +1000,28 @@ def main():
         "--tc-dir", default=None,
         help="testcases/ 하위 폴더명 (미지정 시 testcases/ 전체 재귀 스캔)"
     )
+    parser.add_argument(
+        "--mode", default=None,
+        choices=["emulator", "real_device", "simulator"],
+        help="디바이스 모드 (android: emulator|real_device, ios: simulator|real_device)"
+    )
+    parser.add_argument(
+        "--device-udid", default=None,
+        help="특정 디바이스 UDID/serial (지정 시 생성 코드에 udid capability 추가)"
+    )
     args = parser.parse_args()
 
     platform = args.platform
-    print(f"[02_generate] platform={platform}")
+
+    # --mode 인자로 PLATFORM_MODE 상수 오버라이드
+    if args.mode:
+        global PLATFORM_MODE_ANDROID, PLATFORM_MODE_IOS
+        if platform == "android":
+            PLATFORM_MODE_ANDROID = args.mode
+        else:
+            PLATFORM_MODE_IOS = args.mode
+
+    print(f"[02_generate] platform={platform} mode={PLATFORM_MODE_ANDROID if platform == 'android' else PLATFORM_MODE_IOS}")
 
     # testcases/ 스캔 루트 결정
     if args.tc_dir:

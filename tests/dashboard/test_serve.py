@@ -2,6 +2,8 @@ import importlib.util
 import sys
 from pathlib import Path
 
+from tests.dashboard.dashboard_source import load_dashboard_source
+
 # ── dashboard.html 직접 읽기 ─────────────────────────────────────
 _DASHBOARD_DIR = Path(__file__).parents[2] / "agents" / "dashboard"
 _DASHBOARD_HTML_PATH = _DASHBOARD_DIR / "dashboard.html"
@@ -16,7 +18,7 @@ from utils.state import (  # noqa: E402
     list_tc_folders,
 )
 
-DASHBOARD_HTML = _DASHBOARD_HTML_PATH.read_text(encoding="utf-8")
+DASHBOARD_HTML = load_dashboard_source()
 
 
 # ── 하위호환: serve 네임스페이스 (utils.state 함수를 re-export) ──

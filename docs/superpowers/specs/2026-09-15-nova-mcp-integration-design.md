@@ -1,9 +1,9 @@
 # Nova MCP Integration — 설계 문서
 
-> 작성일: 2026-09-15  
-> 최종 업데이트: 2026-09-16 (에이전트 4종 리뷰 반영)  
-> 상태: v0.2 — 구현 착수 전 결정 필요 항목 포함  
-> 관련 문서: `docs/ENV_SETUP_PRD.md`, `CLAUDE.md §Capture Studio`  
+> 작성일: 2026-09-15
+> 최종 업데이트: 2026-09-16 (에이전트 4종 리뷰 반영)
+> 문서 성격: Nova MCP의 구조와 인터페이스를 설명하는 설계 자료. 동작의 최종 기준은 제품 코드와 API 테스트입니다.
+> 관련 문서: `docs/ENV_SETUP_PRD.md`, `CLAUDE.md §Capture Studio`
 > 디자인 목업: https://claude.ai/code/artifact/4d819f9b-382a-4f45-b3e1-720c9d9d8047
 
 ---
@@ -215,7 +215,7 @@ es.onmessage = (e) => appendLivetailRow(JSON.parse(e.data));
 ## 7. MCP 서버
 
 ### 7-1. 프로토콜
-MCP over HTTP+SSE (표준 Model Context Protocol).  
+MCP over HTTP+SSE (표준 Model Context Protocol).
 별도 라이브러리 없이 FastAPI로 직접 구현 — CLAUDE.md "외부 LLM SDK 금지" 규칙 준수.
 
 ### 7-2. 엔드포인트
@@ -251,7 +251,7 @@ GET  /mcp/sse      ← 서버→클라이언트 이벤트 스트림
 ```
 
 ### 7-5. 세션 가드
-MCP 툴 호출 시 활성 Capture Studio 세션이 없으면 `session_not_active` 에러 반환.  
+MCP 툴 호출 시 활성 Capture Studio 세션이 없으면 `session_not_active` 에러 반환.
 기존 `is_capture_active()` 함수 재활용.
 
 ---

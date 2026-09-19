@@ -21,7 +21,7 @@ _HERE = Path(__file__).resolve().parent
 if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 
-from shared import PORT  # noqa: E402
+from shared import PORT, restore_running_procs  # noqa: E402
 from utils.system import kill_port  # noqa: E402
 
 # ── 라우터 임포트 ─────────────────────────────────────────────
@@ -30,6 +30,8 @@ from routes.api import router as api_router  # noqa: E402
 from routes.capture import router as capture_router  # noqa: E402
 from routes.env import router as env_router  # noqa: E402
 from routes.import_studio import router as import_router  # noqa: E402
+from routes.mcp import router as mcp_router  # noqa: E402
+from routes.observability import router as observability_router  # noqa: E402
 from routes.pipeline import router as pipeline_router  # noqa: E402
 
 # ── FastAPI 앱 ────────────────────────────────────────────────
@@ -44,6 +46,8 @@ app.add_middleware(
 
 app.include_router(ws.router)
 app.include_router(api_router)
+app.include_router(mcp_router)
+app.include_router(observability_router)
 app.include_router(pipeline_router)
 app.include_router(import_router)
 app.include_router(capture_router)
@@ -53,6 +57,7 @@ app.include_router(env_router)
 # ── 서버 시작 ─────────────────────────────────────────────────
 def main():
     kill_port(PORT)
+    restore_running_procs()
     url = f"http://localhost:{PORT}"
     print(f"[Dashboard] 서버 시작: {url}")
     print(f"[Dashboard] WebSocket: ws://localhost:{PORT}/ws/timeline")

@@ -204,6 +204,79 @@ _process_lock = threading.Lock()
 _running:    dict[str, subprocess.Popen] = {}
 _test_runs:  dict[str, dict]             = {}
 
+# ── 서버 재시작 후 고아 프로세스 복구 ────────────────────────────
+
+_RUNNING_PIDS_PATH = PROJECT_ROOT / "state" / "running_procs.json"
+
+
+class _PidOnlyProc:
+    """서버 재시작 후 Popen 객체 없이 PID만 알 때 사용하는 경량 래퍼."""
+
+    def __init__(self, pid: int) -> None:
+        self.pid = pid
+        self.returncode: int | None = None
+
+    def poll(self) -> int | None:
+        try:
+            os.kill(self.pid, 0)
+            return None   # 살아있음
+        except ProcessLookupError:
+            self.returncode = -1
+            return -1
+        except PermissionError:
+            return None   # 다른 사용자 소유지만 살아있음
+
+    def terminate(self) -> None:
+        try:
+            os.kill(self.pid, 15)
+        except ProcessLookupError:
+            pass
+
+
+def save_running_pids() -> None:
+    """_running의 살아있는 PID를 파일에 기록. _process_lock 안에서 호출."""
+    import json
+    data = {k: v.pid for k, v in _running.items() if v.poll() is None}
+    try:
+        tmp = _RUNNING_PIDS_PATH.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(data), encoding="utf-8")
+        tmp.replace(_RUNNING_PIDS_PATH)
+    except Exception:
+        pass
+
+
+def restore_running_procs() -> dict[str, list[str]]:
+    """서버 시작 시 살아있는 PID를 복원하고 죽은 항목을 영구 제거한다."""
+    import json
+    result: dict[str, list[str]] = {"restored": [], "discarded": []}
+    if not _RUNNING_PIDS_PATH.exists():
+        return result
+    try:
+        data = json.loads(_RUNNING_PIDS_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return result
+    if not isinstance(data, dict):
+        return result
+    with _process_lock:
+        for key, pid in data.items():
+            if not isinstance(key, str) or not isinstance(pid, int) or pid <= 0:
+                result["discarded"].append(str(key))
+                continue
+            try:
+                os.kill(pid, 0)
+                _running[key] = _PidOnlyProc(pid)
+                result["restored"].append(key)
+            except PermissionError:
+                _running[key] = _PidOnlyProc(pid)
+                result["restored"].append(key)
+            except ProcessLookupError:
+                result["discarded"].append(key)
+        save_running_pids()
+    if result["restored"]:
+        labels = [f"{key}(pid={_running[key].pid})" for key in result["restored"]]
+        print(f"[Dashboard] 고아 프로세스 복구: {', '.join(labels)}")
+    return result
+
 
 # ── Capture Studio — Appium 드라이버 관리 ──────────────────────
 

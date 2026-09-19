@@ -6,7 +6,10 @@ Usage:
                                   [--report] [--record]
 """
 import argparse
+import importlib.util
 import json
+import os
+import struct
 import subprocess
 import sys
 import time
@@ -37,7 +40,13 @@ TESTS_DIR = ROOT / "tests" / "generated"
 JUNIT_XML = STATE_DIR / "pytest_report.xml"
 JSON_REPORT = STATE_DIR / "pytest_report.json"
 REPORTS_DIR = ROOT / "tests" / "reports"
-SCREENSHOTS_JSON = ROOT / "state" / "screenshots.json"
+
+
+def _pytest_html_options(report_path: Path) -> list[str]:
+    """Return pytest-html flags only when its plugin is installed."""
+    if importlib.util.find_spec("pytest_html") is None:
+        return []
+    return [f"--html={report_path}", "--self-contained-html"]
 
 
 def check_appium_server() -> bool:
@@ -64,34 +73,93 @@ def _get_device_id() -> str:
     return ""
 
 
-def _start_screen_recording(device_id: str) -> "subprocess.Popen":
+def _start_screen_recording(device_id: str) -> int | None:
     subprocess.run(
         [ADB, "-s", device_id, "shell", "rm", "-f", "/sdcard/qa_record.mp4"],
         capture_output=True,
     )
-    return subprocess.Popen(
-        [ADB, "-s", device_id, "shell", "screenrecord",
-         "--time-limit", "300", "/sdcard/qa_record.mp4"],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+    result = subprocess.run(
+        [
+            ADB,
+            "-s",
+            device_id,
+            "shell",
+            "screenrecord --time-limit 300 /sdcard/qa_record.mp4 "
+            ">/dev/null 2>&1 & echo $!",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=10,
     )
+    if result.returncode == 0:
+        for line in reversed(result.stdout.splitlines()):
+            if line.strip().isdigit():
+                return int(line.strip())
+    return None
 
 
-def _stop_and_pull_recording(proc: "subprocess.Popen",
+def _valid_recording(path: Path) -> bool:
+    try:
+        data = path.read_bytes()
+        idx = data.find(b"mvhd")
+        if idx < 4 or idx + 24 > len(data):
+            return False
+        version = data[idx + 4]
+        if version == 0:
+            timescale = struct.unpack(">I", data[idx + 16:idx + 20])[0]
+            duration = struct.unpack(">I", data[idx + 20:idx + 24])[0]
+        elif version == 1 and idx + 36 <= len(data):
+            timescale = struct.unpack(">I", data[idx + 24:idx + 28])[0]
+            duration = struct.unpack(">Q", data[idx + 28:idx + 36])[0]
+        else:
+            return False
+        return bool(timescale and duration)
+    except (OSError, struct.error):
+        return False
+
+
+def _stop_and_pull_recording(pid: int,
                               device_id: str,
                               local_path: Path) -> bool:
-    proc.terminate()
-    time.sleep(2)  # flush buffer
-    local_path.parent.mkdir(parents=True, exist_ok=True)
-    result = subprocess.run(
-        [ADB, "-s", device_id, "pull", "/sdcard/qa_record.mp4", str(local_path)],
-        capture_output=True, text=True,
+    subprocess.run(
+        [ADB, "-s", device_id, "shell", "kill", "-2", str(pid)],
+        capture_output=True,
+        timeout=10,
     )
-    if result.returncode != 0 or not local_path.exists():
-        print(f"[05_execute] WARNING: screen recording pull failed — {result.stderr.strip()}")
-        return False
-    print(f"[05_execute] Screen recording saved: {local_path}")
-    return True
+    deadline = time.monotonic() + 8
+    while time.monotonic() < deadline:
+        alive = subprocess.run(
+            [ADB, "-s", device_id, "shell", "kill", "-0", str(pid)],
+            capture_output=True,
+            timeout=10,
+        )
+        if alive.returncode != 0:
+            break
+        time.sleep(0.2)
+    else:
+        subprocess.run(
+            [ADB, "-s", device_id, "shell", "kill", "-9", str(pid)],
+            capture_output=True,
+            timeout=10,
+        )
+    time.sleep(0.5)
+    try:
+        local_path.parent.mkdir(parents=True, exist_ok=True)
+        result = subprocess.run(
+            [ADB, "-s", device_id, "pull", "/sdcard/qa_record.mp4", str(local_path)],
+            capture_output=True, text=True,
+        )
+        if result.returncode != 0 or not _valid_recording(local_path):
+            local_path.unlink(missing_ok=True)
+            print(f"[05_execute] WARNING: screen recording invalid — {result.stderr.strip()}")
+            return False
+        print(f"[05_execute] Screen recording saved: {local_path}")
+        return True
+    finally:
+        subprocess.run(
+            [ADB, "-s", device_id, "shell", "rm", "-f", "/sdcard/qa_record.mp4"],
+            capture_output=True,
+        )
 
 
 def load_state() -> dict:
@@ -113,43 +181,6 @@ def _classname_to_filepath(classname: str) -> str:
     return classname.replace(".", "/") + ".py"
 
 
-def _load_screenshots_map() -> dict:
-    """state/screenshots.json → {nodeid: relative_path} 매핑 반환."""
-    if SCREENSHOTS_JSON.exists():
-        try:
-            return json.loads(SCREENSHOTS_JSON.read_text(encoding="utf-8"))
-        except Exception:
-            return {}
-    return {}
-
-
-def _inject_screenshots(errors: list) -> list:
-    """errors[] 각 항목에 screenshot 필드를 추가한다.
-
-    conftest.py가 저장한 screenshots.json을 읽어 nodeid 기반으로 매핑한다.
-    nodeid 형식: tests/generated/android/tc_001.py::TestFoo::test_bar
-    errors[].test 는 pytest testcase name (test_bar 부분).
-    """
-    shots = _load_screenshots_map()
-    if not shots:
-        return errors
-
-    result = []
-    for entry in errors:
-        entry = dict(entry)
-        test_name = entry.get("test", "")
-        filepath = entry.get("file", "")
-        matched = ""
-        # nodeid에 filepath와 test_name이 모두 포함된 항목 탐색
-        for nodeid, rel_path in shots.items():
-            if filepath.replace("/", "_") in nodeid or test_name in nodeid:
-                matched = rel_path
-                break
-        entry["screenshot"] = matched
-        result.append(entry)
-    return result
-
-
 def _has_json_report_plugin() -> bool:
     """pytest-json-report 패키지 설치 여부 확인."""
     try:
@@ -166,6 +197,13 @@ def _has_rerun_plugin() -> bool:
         return importlib.util.find_spec("pytest_rerunfailures") is not None
     except Exception:
         return False
+
+
+def _pytest_rerun_options(disabled: bool) -> list[str]:
+    """Return the existing retry policy unless one-attempt mode is requested."""
+    if disabled or not _has_rerun_plugin():
+        return []
+    return ["--reruns", "2", "--reruns-delay", "5"]
 
 
 def parse_json_report(json_path: Path) -> dict:
@@ -210,9 +248,21 @@ def parse_json_report(json_path: Path) -> dict:
 
         if outcome in ("failed", "error"):
             call_info = test.get("call") or test.get("setup") or {}
-            longrepr = call_info.get("longrepr", "") or ""
-            first_line = longrepr.splitlines()[0] if longrepr else "Unknown error"
-            errors.append({"file": filepath, "test": test_name, "error": first_line})
+            crash_message = (call_info.get("crash") or {}).get("message", "")
+            if not crash_message:
+                longrepr = call_info.get("longrepr", "") or ""
+                # longrepr의 첫 줄은 "self = <ClassName object at 0x...>"이므로
+                # "E   " 접두 실제 실패 라인을 찾아 사용한다.
+                error_line = next(
+                    (
+                        ln.strip()[2:].strip()
+                        for ln in longrepr.splitlines()
+                        if ln.strip().startswith("E ") or ln.strip() == "E"
+                    ),
+                    "",
+                )
+                crash_message = error_line or (longrepr.splitlines()[-1] if longrepr else "Unknown error")
+            errors.append({"file": filepath, "test": test_name, "error": crash_message})
             seen_files[filepath] = False
         elif outcome == "passed":
             if filepath not in seen_files:
@@ -312,10 +362,24 @@ def main():
                         help="tests/generated/{platform}/ 기준 단일 생성 파일 경로")
     parser.add_argument("--no-report", action="store_true")
     parser.add_argument("--only-failed", action="store_true")
+    parser.add_argument(
+        "--no-rerun", action="store_true",
+        help="Disable pytest-rerunfailures and execute each test exactly once",
+    )
     parser.add_argument("--record", action="store_true",
                         help="Record emulator screen during test run (requires --report)")
+    parser.add_argument("--mode", default=None,
+                        choices=["emulator", "real_device", "simulator"],
+                        help="런타임 디바이스 모드 오버라이드 (DEVICE_MODE env)")
+    parser.add_argument("--udid", default=None,
+                        help="런타임 디바이스 UDID 오버라이드 (DEVICE_UDID env)")
     args = parser.parse_args()
+    # PRD §4-1: report_stamp 재사용 — run_id와 리포트 파일명이 같은 타임스탬프를 공유
     report_stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
+    platform = args.platform
+
+    # run_id 발급 (QA_RUN_ID가 이미 설정된 경우 — pipeline.py에서 발급 — 재사용)
+    run_id = os.environ.get("QA_RUN_ID", "").strip() or f"run_{platform}_{report_stamp}"
 
     # 디바이스 연결 가드
     if args.platform == "android":
@@ -330,15 +394,11 @@ def main():
         sys.exit(1)
 
     state = load_state()
-    platform = args.platform
 
     # 플랫폼 전환 시 이전 실행 아티팩트 초기화
     prev_platform = state.get("platform")
     if prev_platform and prev_platform != platform:
         print(f"[05_execute] 플랫폼 전환 감지: {prev_platform} → {platform}")
-        if SCREENSHOTS_JSON.exists():
-            SCREENSHOTS_JSON.write_text("{}", encoding="utf-8")
-            print("[05_execute] screenshots.json 초기화 완료")
 
     test_dir = TESTS_DIR / platform
     if args.tc_dir:
@@ -359,7 +419,6 @@ def main():
         test_target = test_dir
 
     use_json_report = _has_json_report_plugin()
-    use_rerun = _has_rerun_plugin()
     cmd = [
         sys.executable, "-m", "pytest", str(test_target), "-v",
         f"--junit-xml={JUNIT_XML}",
@@ -372,9 +431,12 @@ def main():
         print("[05_execute] Using pytest-json-report for result parsing.")
 
     # Appium 세션 초기화 실패(setup error) 자동 재시도 — 5초 대기 후 최대 2회
-    if use_rerun:
-        cmd += ["--reruns", "2", "--reruns-delay", "5"]
+    rerun_options = _pytest_rerun_options(args.no_rerun)
+    if rerun_options:
+        cmd += rerun_options
         print("[05_execute] pytest-rerunfailures: setup 실패 시 최대 2회 재시도 (5초 대기)")
+    elif args.no_rerun:
+        print("[05_execute] 단일 실행 모드: 실패 재시도 비활성화")
 
     if args.only_failed:
         cmd.append("--lf")
@@ -383,27 +445,49 @@ def main():
         report_dir = ROOT / "tests" / "reports"
         report_dir.mkdir(parents=True, exist_ok=True)
         report_name = f"report_{platform}_{report_stamp}.html"
-        cmd += [f"--html={report_dir / report_name}", "--self-contained-html"]
+        html_options = _pytest_html_options(report_dir / report_name)
+        cmd += html_options
+        if not html_options:
+            print("[05_execute] pytest-html not installed; using built-in report generator only.")
 
     # Screen recording
-    rec_proc = None
+    rec_pid = None
+    rec_device_id = None
     video_path = None
     if args.record and platform == "android":
         device_id = _get_device_id()
         if device_id:
+            rec_device_id = device_id
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
             video_path = REPORTS_DIR / "recordings" / f"test_run_{ts}.mp4"
             print(f"[05_execute] Starting screen recording on {device_id} ...")
-            rec_proc = _start_screen_recording(device_id)
+            rec_pid = _start_screen_recording(device_id)
         else:
             print("[05_execute] WARNING: --record skipped, no device found")
 
-    print(f"[05_execute] Running: {' '.join(cmd)}")
-    result = subprocess.run(cmd, cwd=ROOT)
+    run_env = os.environ.copy()
+    # QA_RUN_ID · QA_OBS_KEEP 주입 (pytest subprocess에 전달)
+    run_env["QA_RUN_ID"] = run_id
+    run_env["QA_PLATFORM"] = platform
+    run_env.setdefault("QA_OBS_KEEP", "on_failure")
+    if rec_pid is not None:
+        # A device can run only one screenrecord encoder reliably. The legacy
+        # whole-run recorder and per-TC collector must never compete.
+        run_env["QA_OBS_DISABLE"] = "1"
+    print(f"[05_execute] QA_RUN_ID={run_id}")
 
-    if rec_proc is not None:
-        device_id = _get_device_id()
-        _stop_and_pull_recording(rec_proc, device_id, video_path)
+    if args.mode:
+        run_env['DEVICE_MODE'] = args.mode
+        print(f"[05_execute] DEVICE_MODE={args.mode}")
+    if args.udid:
+        run_env['DEVICE_UDID'] = args.udid
+        print(f"[05_execute] DEVICE_UDID={args.udid}")
+
+    print(f"[05_execute] Running: {' '.join(cmd)}")
+    result = subprocess.run(cmd, cwd=ROOT, env=run_env)
+
+    if rec_pid is not None and rec_device_id is not None:
+        _stop_and_pull_recording(rec_pid, rec_device_id, video_path)
         if video_path and video_path.exists():
             state["video_path"] = str(video_path)
 
@@ -414,10 +498,9 @@ def main():
     else:
         print("[05_execute] Parsing JUnit XML results...")
         report_data = parse_junit_xml(JUNIT_XML)
-    errors_with_shots = _inject_screenshots(report_data["errors"])
     execute_results = {
         "exit_code": result.returncode,
-        "errors": errors_with_shots,
+        "errors": report_data["errors"],
         "passed": report_data["passed"],
         "summary": report_data["summary"],
     }
@@ -426,6 +509,8 @@ def main():
     state["execute_results"] = execute_results
     # Keep legacy field for backwards compatibility
     state["last_exit_code"] = result.returncode
+    # PRD §4-1: last_run_id 기록 — 리포트·대시보드가 역참조
+    state["last_run_id"] = run_id
     save_state(state)
 
     summary = report_data["summary"]
@@ -477,7 +562,7 @@ def _generate_html_report(state: dict, platform: str,
     subtitle = f"{platform.upper()} Test Report"
     html_content = report_html.build_report(
         groups_data, summary, created_at, subtitle,
-        video_path=rel_video, platform=platform
+        video_path=rel_video, platform=platform,
     )
 
     stamp = report_stamp or datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]

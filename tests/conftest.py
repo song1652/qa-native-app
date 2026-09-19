@@ -1,7 +1,7 @@
-"""pytest conftest — 실패 시 Appium driver screenshot 자동 캡처."""
-import json
+"""pytest conftest — 실패 시 Appium driver screenshot 자동 캡처 + TC 실행 관측성."""
 import sys
 from pathlib import Path
+from typing import Optional
 
 import pytest
 
@@ -10,71 +10,85 @@ if str(ROOT) not in sys.path:
     # --import-mode=importlib does not guarantee that the repository root is
     # importable, while generated artifacts intentionally reuse scripts/*.
     sys.path.insert(0, str(ROOT))
-SCREENSHOTS_JSON = ROOT / "state" / "screenshots.json"
+
+# 관측 헬퍼 import (기기 없어도 안전하게 로드)
+try:
+    import tests._observability as _obs  # type: ignore[import]
+    _OBS_AVAILABLE = True
+except Exception:
+    _OBS_AVAILABLE = False
 
 
-def _screenshots_dir(nodeid: str) -> Path:
-    # nodeid: tests/generated/{platform}/...
-    parts = Path(nodeid.split("::")[0]).parts
-    try:
-        gen_idx = next(i for i, p in enumerate(parts) if p == "generated")
-        platform = parts[gen_idx + 1] if len(parts) > gen_idx + 1 else "unknown"
-    except StopIteration:
-        platform = "unknown"
-    d = ROOT / "reports" / "screenshots" / platform
-    d.mkdir(parents=True, exist_ok=True)
-    return d
-
-
-def _load_screenshots() -> dict:
-    if SCREENSHOTS_JSON.exists():
+def pytest_sessionstart(session):
+    """관측: manifest 초기화."""
+    if _OBS_AVAILABLE:
         try:
-            return json.loads(SCREENSHOTS_JSON.read_text(encoding="utf-8"))
-        except Exception:
-            return {}
-    return {}
+            _obs.session_start(session.config)
+        except Exception as e:
+            print(f"\n[conftest] obs session_start error: {e}")
 
 
-def _save_screenshots(data: dict):
-    SCREENSHOTS_JSON.parent.mkdir(parents=True, exist_ok=True)
-    SCREENSHOTS_JSON.write_text(
-        json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
+def pytest_runtest_setup(item):
+    """관측: tests/generated/ TC에 한해 영상·로그 프로세스 시작."""
+    if _OBS_AVAILABLE:
+        try:
+            _obs.start(item)
+        except Exception as e:
+            print(f"\n[conftest] obs start error: {e}")
+
+
+# 프로세스 전역 — teardown 훅에서 stop() 호출 시 스크린샷 경로 전달용
+_last_screenshot: dict = {}  # {nodeid: Path}
+
+# pytest phase별 outcome. setup/teardown 실패는 관측 결과에서 error로 보존한다.
+_phase_outcomes: dict = {}  # {nodeid: {setup|call|teardown: outcome}}
+
+
+def _final_outcome(phases: dict) -> str:
+    if phases.get("setup") == "failed" or phases.get("teardown") == "failed":
+        return "error"
+    if "call" in phases:
+        return phases["call"]
+    if phases.get("setup") == "skipped":
+        return "skipped"
+    return "unknown"
 
 
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_makereport(item, call):
     outcome = yield
     report = outcome.get_result()
+    phases = _phase_outcomes.setdefault(item.nodeid, {})
+    phases[report.when] = report.outcome
 
-    if report.when != "call" or report.outcome != "failed":
-        return
+    # ── call 단계: 스크린샷 + outcome 기록 ───────────────────
+    if report.when == "call":
+        driver = None
+        if hasattr(item, "instance") and item.instance is not None:
+            driver = getattr(item.instance, "driver", None)
 
-    # driver는 테스트 인스턴스의 self.driver 에서 가져온다
-    driver = None
-    if hasattr(item, "instance") and item.instance is not None:
-        driver = getattr(item.instance, "driver", None)
+        if driver is not None and _OBS_AVAILABLE:
+            try:
+                obs_screenshot = _obs.capture_screenshot(item, driver, report.outcome)
+                if obs_screenshot is not None:
+                    _last_screenshot[item.nodeid] = obs_screenshot
+            except Exception as exc:
+                print(f"\n[conftest] obs screenshot failed: {exc}")
 
-    if driver is None:
-        return
+    # ── teardown 단계: 관측 프로세스 종료 ─────────────────────
+    if report.when == "teardown" and _OBS_AVAILABLE:
+        try:
+            final_outcome = _final_outcome(_phase_outcomes.pop(item.nodeid, {}))
+            shot_path: Optional[Path] = _last_screenshot.pop(item.nodeid, None)
+            _obs.stop(item, final_outcome, shot_path)
+        except Exception as e:
+            print(f"\n[conftest] obs stop error: {e}")
 
-    screenshots_dir = _screenshots_dir(item.nodeid)
 
-    safe_name = item.nodeid.replace("/", "_").replace("::", "__").replace(" ", "_")
-    screenshot_path = screenshots_dir / f"{safe_name}.png"
-
-    try:
-        driver.save_screenshot(str(screenshot_path))
-    except Exception as exc:
-        print(f"\n[conftest] screenshot failed: {exc}")
-        return
-
-    # state/screenshots.json 에 nodeid → 상대경로 매핑 저장
-    data = _load_screenshots()
-    try:
-        rel = str(screenshot_path.relative_to(ROOT / "reports"))
-    except ValueError:
-        rel = str(screenshot_path)
-    data[item.nodeid] = rel
-    _save_screenshots(data)
-    print(f"\n[conftest] screenshot saved: {screenshot_path}")
+def pytest_sessionfinish(session, exitstatus):  # noqa: ARG001
+    """관측: finished_at 기록."""
+    if _OBS_AVAILABLE:
+        try:
+            _obs.session_finish(session.config)
+        except Exception as e:
+            print(f"\n[conftest] obs session_finish error: {e}")

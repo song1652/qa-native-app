@@ -7,9 +7,10 @@ import threading
 from pathlib import Path
 from unittest.mock import patch
 
+from tests.dashboard.dashboard_source import load_dashboard_source
 
 DASHBOARD = Path(__file__).parents[2] / "agents" / "dashboard"
-HTML = (DASHBOARD / "dashboard.html").read_text(encoding="utf-8")
+HTML = load_dashboard_source()
 sys.path.insert(0, str(DASHBOARD))
 
 from routes import capture  # noqa: E402

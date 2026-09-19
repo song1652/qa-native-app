@@ -2,7 +2,7 @@
 
 Appium 기반 Android/iOS 앱 테스트 자동화 프로젝트입니다. native 화면을 기본으로 실행하고, 실제 WebView context가 감지된 화면만 Playwright DOM locator를 선택적으로 사용합니다.
 
-## 현재 파이프라인
+## 테스트 파이프라인
 
 ```text
 01_analyze → 02_generate → 03_lint → 05_execute → 06_heal
@@ -145,7 +145,8 @@ iOS 카드     — 시뮬레이터 목록 · 부팅(비동기) · 종료 · 기�
 5. 저장 및 생성 — /capture/generate_from_actions → 자체 완결형 pytest 파일 생성
 ```
 
-**구현 완료 기능 (Phase 0–7 + Nova MCP):**
+#### 주요 기능
+
 - Android MJPEG 화면 미러링 (포트 8093)
 - iOS XCUITest 스크린샷 폴링 (1.2초), WDA 안정화 30초 여유
 - hierarchy 트리 렌더링·노드 선택, 화면 전환 자동 감지 (4초 폴링, 쿨다운 3초)
@@ -155,8 +156,8 @@ iOS 카드     — 시뮬레이터 목록 · 부팅(비동기) · 종료 · 기�
 - Healing 연계: 실패 TC에서 Locator 검토 4단계 재진입
 - 세션 재연결 버튼 (`csReLaunch()`)
 - **Nova MCP**: `routes/mcp.py` — HTTP+SSE MCP 서버, 툴 9종 (`screenshot`, `hierarchy`, `device_tap`, `scroll`, `input_text`, `back`, `screen_info`, `generate_test_case`, `clear_actions`). Claude Code에서 MCP 툴 호출 시 자동 연결, 대시보드 MCP ON/OFF 칩으로 상태 확인·수동 해제.
-- **Livetail 전역**: Capture Studio 세션 없이도 항상 접근 가능. user·mcp·pipeline 소스 필터, 200행 버퍼. 파이프라인 단계 시작·완료 이벤트 실시간 표시
-- **TC 생성 소스 필터**: `source_filter` 파라미터(`all`|`user`|`mcp`)로 TC에 포함할 액션 출처 지정. 비실행 타입(`screenshot`·`hierarchy` 등) 자동 제거, 생성 TC docstring에 출처·액션 수 표기
+- **Livetail**: Capture Studio 세션 없이도 접근 가능. user·mcp·pipeline 소스 필터, 200행 버퍼. 파이프라인 단계 시작·완료 이벤트 실시간 표시
+- **TC 생성 소스 선택**: `source_filter` 파라미터(`all`|`user`|`mcp`)로 TC에 포함할 액션 출처 지정. 비실행 타입(`screenshot`·`hierarchy` 등) 자동 제거, 생성 TC docstring에 출처·액션 수 표기
 
 **제약사항:**
 - Android MJPEG: Appium `--allow-insecure=uiautomator2:adb_screen_streaming` 필수, 포트 8093 개방 필요
@@ -164,6 +165,16 @@ iOS 카드     — 시뮬레이터 목록 · 부팅(비동기) · 종료 · 기�
 - 같은 플랫폼의 Capture Studio 세션과 파이프라인 실행은 동시에 불가. 다른 플랫폼(iOS Capture ↔ Android 파이프라인)은 독립 실행 가능
 
 생성된 pytest 파일은 자체 완결형(`_build_driver()` + `_el()` + class 구조 포함)으로, 수정 없이 `05_execute.py`로 바로 실행할 수 있습니다.
+
+### 실행 증거와 결과 확인
+
+빠른 실행과 파이프라인 실행은 Android/iOS에서 같은 결과 화면을 사용합니다. TC 목록은 전체·성공·실패로 필터링하고 페이지 단위로 확인할 수 있으며, 실패 TC를 선택하면 해당 시도의 영상, 시스템 로그, 스크린샷을 한 화면에서 확인할 수 있습니다.
+
+- 기본 보존 정책은 실패 또는 재시도가 발생한 TC만 보존하는 `on_failure`입니다.
+- `always`를 선택하면 성공 TC의 증거도 보존합니다.
+- 실행 증거는 `state/runs/{run_id}/`에 저장됩니다.
+- 보존 한도 기본값은 최근 20개 run, 전체 2GB입니다. `config/observability.json`의 `retention.max_runs`, `retention.max_total_mb`로 조정할 수 있습니다.
+- 빠른 실행의 `힐링 생략`은 기본 체크 상태이며, 이 경우 실패 TC를 재시도하지 않고 한 번만 실행합니다.
 
 ### CLI 실행
 
@@ -210,8 +221,12 @@ DOM을 모르는 상태에서 locator를 추측해 코드를 확정하지 않습
 
 | 경로 | 역할 |
 |---|---|
-| `agents/dashboard/serve.py` | 대시보드 서버와 파이프라인 API |
-| `agents/dashboard/dashboard.html` | 대시보드 UI와 Import Studio 위저드 |
+| `agents/dashboard/serve.py` | FastAPI 앱 구성과 대시보드 서버 진입점 |
+| `agents/dashboard/dashboard.html` | 대시보드 문서 구조와 화면 컨테이너 |
+| `agents/dashboard/static/dashboard.css` | 대시보드 공통 스타일 |
+| `agents/dashboard/static/*.js` | 환경 설정, 실행, 관측성, Capture Studio, 리포트 UI 모듈 |
+| `agents/dashboard/routes/*.py` | 환경·실행·Capture·관측성·MCP API 라우트 |
+| `agents/dashboard/utils/*.py` | 디바이스, 프로세스, 코드 생성, 증거 보존 공통 서비스 |
 | `agents/dashboard/routes/mcp.py` | Nova MCP HTTP+SSE 서버 (JSON-RPC 2.0, 툴 9종) |
 | `scripts/import_excel.py` | Excel 열 매핑과 OS별 TC Markdown 변환 |
 | `scripts/01_analyze.py` | Appium native UI hierarchy 수집 |
@@ -229,7 +244,18 @@ DOM을 모르는 상태에서 locator를 추측해 코드를 확정하지 않습
 
 ## 산출물 및 제한사항
 
-- 산출물: `tests/generated/`, `tests/reports/`, `state/pipeline.json`, `logs/run_*.txt`, `agents/lessons_learned.md`
-- 실제 디바이스/Appium 서버가 없으면 end-to-end 실행은 검증할 수 없습니다.
+- 산출물: `tests/generated/`, `tests/reports/`, `state/pipeline.json`, `state/runs/`, `logs/run_*.txt`, `agents/lessons_learned.md`
+- API·UI 계약, 증거 manifest, 보존 정책, 프로세스 복구는 디바이스 없이 회귀 테스트할 수 있습니다. 실제 앱 조작을 포함한 end-to-end 실행에는 Appium과 에뮬레이터·시뮬레이터 또는 실기기가 필요합니다.
 - 후보가 여러 개이거나 snapshot이 없으면 자동 healing하지 않고 실패 원인을 남깁니다.
 - GUI Appium Inspector를 매 실행마다 조작하지는 않지만, 같은 native hierarchy를 Appium `page_source`로 자동 수집합니다.
+
+## 개발 검증
+
+제품 코드의 회귀 테스트는 의도적으로 성공·실패가 섞인 생성형 데모 TC를 제외하고 실행합니다.
+
+```bash
+source .venv/bin/activate
+pytest -q tests --ignore=tests/generated
+```
+
+`tests/generated/android/obs_demo`와 `tests/generated/ios/obs_demo`는 결과 UI와 증거 수집을 확인하기 위한 데모로, 각 플랫폼에 성공 1건과 의도적 실패 2건이 포함되어 있습니다.

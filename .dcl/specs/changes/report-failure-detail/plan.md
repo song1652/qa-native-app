@@ -2,6 +2,8 @@
 
 **Date**: 2026-06-17
 
+> **2026-09-17 superseded.** This plan's "Chosen Approach" (conftest hook → `state/screenshots.json` → `05_execute.py` injection) was removed entirely and replaced by the observability manifest (`state/runs/{run_id}/artifacts/manifest.json`); see `docs/EXECUTION_OBSERVABILITY_PRD.md` §1-4/§3-4/§8-3 (v0.13). Also, this plan's TC markdown headers (`### 단계`, `### 기대결과`) never matched the actual format (`## 사전 조건` / `## 테스트 단계` / `## 예상 결과`), so `report_html.py`'s Precondition/Steps/Expected fields silently rendered "-" for every case since this plan shipped — fixed in the same 2026-09-17 pass. Kept below for history; do not implement against this spec.
+
 ## Intent
 실패한 테스트 케이스의 HTML 결과지에 Steps / 기대결과 / 스크린샷 / 영상을 표시한다.
 

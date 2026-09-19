@@ -45,12 +45,41 @@ from utils.system import (  # noqa: E402
 
 router = APIRouter()
 
+_DASHBOARD_ASSETS = {
+    "dashboard.css": "text/css",
+    "dashboard-shell.js": "text/javascript",
+    "execution.js": "text/javascript",
+    "import-studio.js": "text/javascript",
+    "quick-run.js": "text/javascript",
+    "reports.js": "text/javascript",
+    "observability.js": "text/javascript",
+    "environment.js": "text/javascript",
+    "environment-devices.js": "text/javascript",
+    "capture-studio.js": "text/javascript",
+    "capture-inspector.js": "text/javascript",
+    "capture-actions.js": "text/javascript",
+    "capture-livetail.js": "text/javascript",
+    "dashboard-init.js": "text/javascript",
+}
+
 
 @router.get("/", response_class=HTMLResponse)
 async def index():
     # 개발 중 수정사항 즉시 반영을 위해 매 요청마다 파일 읽기
     html = (HERE / "dashboard.html").read_text(encoding="utf-8")
     return HTMLResponse(content=html)
+
+
+@router.get("/static/{asset_name}", include_in_schema=False)
+async def dashboard_static_asset(asset_name: str):
+    """Serve only the dashboard bundles explicitly owned by this app."""
+    media_type = _DASHBOARD_ASSETS.get(asset_name)
+    if media_type is None:
+        return Response(status_code=404)
+    asset_path = HERE / "static" / asset_name
+    if not asset_path.is_file():
+        return Response(status_code=404)
+    return FileResponse(str(asset_path), media_type=media_type)
 
 
 @router.get("/api/state")
@@ -89,6 +118,7 @@ async def get_status(platform: str | None = None):
         "capture_platform": cap_platform,
         "capture_device": cap_device,
         "capture_group": cap_group,
+        "obs_last_run_id": state.get("obs_last_run_id", ""),
     })
 
 

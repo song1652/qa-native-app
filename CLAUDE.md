@@ -53,19 +53,19 @@ testcases/ios/{group}/     → tests/generated/ios/{group}/
 
 대시보드의 Capture Studio 탭에서 실제 앱 화면을 보며 요소를 선택하고 TC를 직접 생성합니다.
 
-**현재 구현 상태 (2026-09-16):**
-- Phase 0–1 완료: FastAPI 전환, 세션 충돌 방지, MJPEG/iOS poll 환경 확인, 세션 설정 화면
-- Phase 2–4 완료: hierarchy 트리 렌더링·노드 선택, 동작 기록(tap/scroll/back/wait), Locator 후보·승인
-- Phase 7 완료: `저장 및 생성` 버튼 → `/capture/generate_from_actions` → 자체 완결형 pytest 파일 생성
+**구성 요소:**
+- FastAPI 세션 API, 플랫폼별 세션 충돌 방지, Android MJPEG/iOS polling 화면, 세션 설정 화면
+- hierarchy 트리 렌더링·노드 선택, 동작 기록(tap/scroll/back/wait), Locator 후보·승인
+- `저장 및 생성` 버튼 → `/capture/generate_from_actions` → 자체 완결형 pytest 파일 생성
 - 생성 코드 구조: `_build_driver()` + `_el()` + `_ios_tap()` (iOS 전용) + class + test 함수
-- Healing 연계: 실패 TC에서 Locator 검토 4단계 재진입 완료
+- Healing 연계: 실패 TC에서 Locator 검토 단계 재진입
 - **iOS 화면 미러링**: XCUITest + `GET /capture/screenshot` polling (1.2초), 25회 실패 후 에러 표시 (WDA 안정화 30초 여유)
 - **화면 전환 자동 감지**: `GET /capture/page_source_hash` 4초 폴링 → hash 변경 시 hierarchy 자동 새로고침 (쿨다운 3초)
 - **back 액션**: 실행 후 1.2초 뒤 hierarchy 자동 새로고침
 - **세션 복구**: mirror 에러 시 "🔄 세션 재연결" 버튼 → `csReLaunch()` → Back 없이 드라이버 재시작
 - **Nova MCP** (`routes/mcp.py`): HTTP+SSE MCP 서버, JSON-RPC 2.0, 툴 9종. Claude Code에서 MCP 툴 호출 시 자동 연결, 대시보드 MCP ON/OFF 칩으로 상태 확인·수동 해제
 - **TC 생성 소스 필터**: `/capture/generate_from_actions`에 `source_filter` 파라미터 추가 (`all`|`user`|`mcp`, 기본 `all`). `screenshot`·`hierarchy` 등 비실행 타입은 자동 제거. 생성 TC docstring에 출처(user/mcp/mixed)·액션 수 표기
-- **Livetail 전역화**: Livetail 버튼이 Capture Studio 세션 없이도 항상 표시. 페이지 로드 시 WebSocket 자동 연결
+- **Livetail**: Livetail 버튼이 Capture Studio 세션 없이도 항상 표시. 페이지 로드 시 WebSocket 자동 연결
 - **파이프라인 Livetail 연동**: `pipeline.py`의 각 단계 시작·완료가 Livetail에 `source: pipeline` 이벤트로 실시간 표시 (단건 `/api/run` 포함)
 
 **TC 파일 명명 규칙:**
@@ -111,6 +111,7 @@ python scripts/02_generate.py --platform ios --strict-locators
 | `config/screens.json` | 분석 화면과 진입 action |
 | `config/locators.json` | 플랫폼별 target locator registry |
 | `config/jira_config.json` | 이 제품 전용 Jira 프로젝트/이슈 설정 |
+| `config/observability.json` | TC 실행 관측성 옵션. 파일이 없으면 코드 기본값 적용 |
 
 `config/locators.json` target key는 `{tc_slug}.{selector_key}` 형식입니다. entry의 `surface`는 `auto`(native 우선), `native`, `webview` 중 하나이며 WebView locator는 `webview` 객체에 별도로 둡니다. WebView가 감지되지 않으면 Playwright를 시작하지 않으며, CDP 미지원 WebView는 Appium context로 실행합니다.
 
@@ -147,6 +148,7 @@ tests/generated/{android,ios}/ # OS별 생성 코드
 tests/reports/             # 실행 리포트
 state/pipeline.json        # 실행 상태와 snapshot
 state/capture_session.json # Capture Studio 세션 상태
+state/runs/{run_id}/artifacts/ # TC attempt별 영상·시스템 로그 + manifest.json
 logs/                      # 단계별 로그
 docs/LOCATOR_HEALING.md    # healing 정책
 docs/CAPTURE_STUDIO_PLAN.md # Capture Studio 구현 플랜
@@ -209,6 +211,30 @@ git diff --check
 
 `is_capture_active(platform: str | None = None)` — 인자를 생략하면 전체 플랫폼을 확인합니다(기존 무인자 호출부와 하위호환). 세션 레코드에서 플랫폼을 식별할 수 없으면 보수적으로 `True`를 반환합니다.
 
+## TC 실행 관측성
+
+`tests/generated/` TC 실행 시 attempt 단위 화면 영상과 시스템 로그를 수집합니다.
+
+- 저장: `state/runs/{run_id}/artifacts/{node_slug}/attempt{n}/`
+- 기본 보존: `on_failure`; 대시보드에서 `always` 선택 가능
+- 조회: 대시보드 증거 패널 또는 `GET /api/run_artifacts/{run_id}`
+- 보존 상한: 최근 20 run 및 총 2GB
+- healing과 pytest rerun은 최초 run_id 아래 다음 attempt로 누적
+- `QA_OBS_DISABLE=1` 또는 `QA_OBS_KEEP=never`이면 수집 프로세스를 시작하지 않음
+- iOS 실기기는 M1에서 미지원
+
 ## 연속 Appium 세션 주의사항
 
 3개 이상의 테스트를 순차 실행할 때 3번째 이후 세션에서 UiAutomator2 초기화 실패가 발생할 수 있습니다. `pytest-rerunfailures`(`--reruns 2 --reruns-delay 5`)가 이를 제품 레벨에서 처리합니다. 테스트 파일을 수정하지 않아도 됩니다. 재시도 후에도 반복 실패하면 `agents/lessons_learned.md`를 확인하고 Appium 서버를 재기동하세요.
+
+## 대시보드 서버 재시작 시 프로세스 복구
+
+대시보드 서버(`serve.py`)가 재시작되면 `state/running_procs.json`에 저장된 PID를 읽어 살아있는 프로세스를 자동으로 `_running` dict에 복원합니다(`shared.restore_running_procs()`). 덕분에:
+
+- 재시작 후에도 `/api/cancel`로 실행 중인 프로세스를 정상 취소할 수 있습니다.
+- 폴링(`/api/run_log`)이 `done: false`를 올바르게 반환해 UI가 "완료"로 오판하지 않습니다.
+- 중복 실행 가드가 재시작 전 프로세스도 감지합니다.
+
+대시보드 WebSocket(Livetail)이 서버 재시작으로 끊기면 지수 백오프(1초→2초→…→30초)로 자동 재연결합니다. 재연결 후 이후 이벤트부터 정상 수신됩니다.
+
+`state/running_procs.json`은 `_running`의 살아있는 PID 스냅샷입니다. 직접 편집하지 마세요. 프로세스가 정상 종료되면 자동으로 제거됩니다.

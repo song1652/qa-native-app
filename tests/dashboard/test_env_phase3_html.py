@@ -11,8 +11,10 @@ from pathlib import Path
 
 import pytest
 
+from tests.dashboard.dashboard_source import load_dashboard_source
+
 _DASHBOARD_HTML_PATH = Path(__file__).parents[2] / "agents" / "dashboard" / "dashboard.html"
-HTML = _DASHBOARD_HTML_PATH.read_text(encoding="utf-8")
+HTML = load_dashboard_source()
 
 
 # ── Phase 3 Android 실기기 UI ───────────────────────────────────

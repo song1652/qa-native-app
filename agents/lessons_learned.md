@@ -5,6 +5,22 @@
 
 ## Appium / Android
 
+### [Locator Heal Failed] toggle — UNKNOWN
+**문제**: `SEL_* 상수를 찾을 수 없음` — XML에서 유사 요소를 찾지 못함
+**원인**: dom_info XML이 오래됐거나 화면 구조 변경 가능성
+**해결**: `01_analyze.py` 재실행 후 dom_info 갱신 필요
+**적용 범위**: toggle 화면 heal 재시도 시 참고
+
+---
+
+### [Locator Heal Failed] brightness — UNKNOWN
+**문제**: `SEL_* 상수를 찾을 수 없음` — XML에서 유사 요소를 찾지 못함
+**원인**: dom_info XML이 오래됐거나 화면 구조 변경 가능성
+**해결**: `01_analyze.py` 재실행 후 dom_info 갱신 필요
+**적용 범위**: brightness 화면 heal 재시도 시 참고
+
+---
+
 ### [Locator Heal Failed] settings_search_input — UNKNOWN
 **문제**: `SEL_* 상수를 찾을 수 없음` — XML에서 유사 요소를 찾지 못함
 **원인**: dom_info XML이 오래됐거나 화면 구조 변경 가능성

@@ -21,6 +21,39 @@ ROOT = Path(__file__).resolve().parent.parent
 CONFIG_PATH = ROOT / "config" / "jira_config.json"
 STATE_FILE = ROOT / "state" / "pipeline.json"
 TESTCASES_DIR = ROOT / "testcases"
+RUNS_DIR = ROOT / "state" / "runs"
+
+
+def _load_run_manifest(run_id: str) -> dict:
+    """observability run manifest(state/runs/{run_id}/artifacts/manifest.json)를 읽는다."""
+    if not run_id:
+        return {}
+    manifest_path = RUNS_DIR / run_id / "artifacts" / "manifest.json"
+    if not manifest_path.exists():
+        return {}
+    try:
+        return json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def _obs_screenshot_path(manifest: dict, run_id: str,
+                          filepath: str, test_name: str) -> "Path | None":
+    """manifest에서 file+test에 해당하는 최신 attempt의 스크린샷 파일 경로를 찾는다."""
+    for entry in manifest.get("entries", []):
+        nodeid = entry.get("nodeid", "")
+        if not nodeid.startswith(filepath + "::"):
+            continue
+        if test_name and not nodeid.endswith("::" + test_name):
+            continue
+        attempts = entry.get("attempts") or [entry]
+        attempt = attempts[-1]
+        shot = attempt.get("screenshot")
+        if attempt.get("kept") and shot and shot.get("path"):
+            path = RUNS_DIR / run_id / "artifacts" / shot["path"]
+            return path if path.exists() else None
+        return None
+    return None
 
 
 def load_config() -> dict:
@@ -129,12 +162,12 @@ class JiraClient:
             pass
 
 
-def _failure_description(failure: dict, platform: str, video: str) -> dict:
+def _failure_description(failure: dict, platform: str, video: str,
+                          screenshot_path: "Path | None" = None) -> dict:
     file_path = failure.get("file", "")
     test_name = failure.get("test", "unknown")
     error = failure.get("error", "알 수 없는 오류")
-    screenshot = _relative_path(failure.get("screenshot", ""))
-    attachments = [str(p) for p in (screenshot, _relative_path(video)) if p]
+    attachments = [str(p) for p in (screenshot_path, _relative_path(video)) if p]
     return {"type": "doc", "version": 1, "content": [
         _heading("기본 정보"),
         _bullet([
@@ -152,14 +185,15 @@ def _failure_description(failure: dict, platform: str, video: str) -> dict:
 
 
 def create_issue(client: JiraClient, config: dict, failure: dict,
-                 platform: str, video: str) -> str:
+                 platform: str, video: str,
+                 screenshot_path: "Path | None" = None) -> str:
     file_path = failure.get("file", "")
     test_name = failure.get("test", "unknown")
     body = {"fields": {
         "project": {"key": config["project_key"]},
         "issuetype": {"id": config["issue_type_id"]},
         "summary": f"[QA 실패][{platform}] {_tc_title(file_path)}",
-        "description": _failure_description(failure, platform, video),
+        "description": _failure_description(failure, platform, video, screenshot_path),
     }}
     if config.get("version"):
         body["fields"]["versions"] = [{"name": config["version"]}]
@@ -176,8 +210,7 @@ def create_issue(client: JiraClient, config: dict, failure: dict,
     if not issue_key:
         raise RuntimeError(f"Jira issue key가 응답되지 않았습니다: {result}")
     if config.get("auto_attach", True):
-        for value in (failure.get("screenshot", ""), video):
-            path = _relative_path(value)
+        for path in (screenshot_path, _relative_path(video)):
             if path:
                 client.attach(issue_key, path)
     return issue_key
@@ -203,10 +236,15 @@ def report_from_state(platform: str) -> list[str]:
         print(f"[jira] 설정 미완료 — 건너뜀: {exc}")
         return []
     video = state.get("last_fail_video", "")
+    run_id = state.get("last_run_id") or state.get("obs_last_run_id") or ""
+    manifest = _load_run_manifest(run_id)
     created = []
     for failure in failures:
+        screenshot_path = _obs_screenshot_path(
+            manifest, run_id, failure.get("file", ""), failure.get("test", "")
+        )
         try:
-            key = create_issue(client, config, failure, platform, video)
+            key = create_issue(client, config, failure, platform, video, screenshot_path)
             created.append(key)
             print(f"[jira] 이슈 생성: {key}")
         except Exception as exc:
