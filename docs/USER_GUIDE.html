@@ -472,7 +472,10 @@
       </a>
     </div>
     <div class="sidebar-section">
-      <div class="sidebar-label">TC 작성</div>
+    <div class="sidebar-label">TC 작성</div>
+      <a class="sidebar-link" data-page="tc-studio" href="#tc-studio">
+        <span class="sidebar-dot"></span>TC 스튜디오
+      </a>
       <a class="sidebar-link" data-page="import" href="#import">
         <span class="sidebar-dot"></span>Import Studio
       </a>
@@ -689,6 +692,33 @@
             시뮬레이터당 Appium 세션은 1개만 허용됩니다. <strong>Capture Studio iOS 세션이 열려 있으면 iOS 파이프라인을 동시에 실행할 수 없습니다</strong> (반대도 동일). 충돌 시 "🔄 세션 재연결" 버튼으로 복구합니다.
           </div>
         </div>
+      </div>
+    </section>
+
+    <hr class="divider">
+
+    <section class="page-section" id="tc-studio">
+      <div class="page-header blue">
+        <div class="page-icon">🧪</div>
+        <div class="page-header-text">
+          <div class="page-label">TC 작성</div>
+          <h2>TC 스튜디오</h2>
+          <p>대시보드의 TC 스튜디오에서 엑셀 TC를 가져오고, 기획 자료를 바탕으로 초안을 만들고, 검토한 TC를 관리합니다.</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">엑셀 TC 가져오기와 비교</div>
+        <p>라이브러리 탭에서 <code>.xlsx</code> 파일을 선택해 시트와 열을 확인한 뒤 가져옵니다. 2줄 헤더의 <code>환경 → And | iOS</code>와 1줄 헤더의 <code>Android | iOS</code>를 인식합니다. 앱 스위트에서는 두 결과가 별도 열로 표시되고, 플랫폼 필터와 <strong>And·iOS 결과가 다른 것만</strong> 필터로 비교할 수 있습니다. 엑셀로 다시 내보내도 각 플랫폼 결과를 유지합니다.</p>
+        <p>플랫폼 한쪽에 <code>NA</code>가 있으면 해당 TC는 다른 플랫폼 전용으로 취급합니다. 상세 화면에서 대상 플랫폼과 각각의 결과를 수정할 수 있으며, 일괄 결과 변경 시에도 Android 또는 iOS를 먼저 선택합니다.</p>
+      </div>
+      <div class="card">
+        <div class="card-title">LLM으로 초안 만들기</div>
+        <p>기획 정보/생성 탭에 텍스트·PDF·DOCX를 올리거나 내용을 붙여넣습니다. URL, Confluence, Figma 연결도 설정할 수 있습니다. 생성 위치, 작성 프로필, 대상 플랫폼을 선택한 뒤 생성하면 <code>claude</code> CLI가 초안을 작성합니다. 검토 탭에서 출처와 중복 여부를 확인하고 승인합니다. 실제 Claude 사용량에 따른 비용이 발생할 수 있습니다.</p>
+      </div>
+      <div class="card">
+        <div class="card-title">승인 TC 내보내기</div>
+        <p>내보내기 탭에서 라이브러리 경로에 그룹 폴더와 ID 접두어를 지정하고 미리보기를 확인합니다. 승인된 TC만 <code>testcases/android/{group}/</code> 또는 <code>testcases/ios/{group}/</code> Markdown으로 반영됩니다. 기존 파일은 기본적으로 건너뛰며, 덮어쓰기는 명시적으로 선택해야 합니다. 반영 후 파일을 직접 수정했다면 되돌리기가 그 변경을 보존합니다.</p>
+        <p>기존 Import Studio는 별도 메뉴로 유지됩니다. 엑셀에서 Markdown을 바로 만드는 기존 흐름이 필요할 때 사용합니다.</p>
       </div>
     </section>
 

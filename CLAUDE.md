@@ -2,10 +2,13 @@
 
 이 저장소는 웹 QA 프로젝트와 분리된 Appium 기반 Android/iOS 네이티브 앱 자동화 프로젝트입니다.
 
-## 진행 중 작업: TC 스튜디오 앱 지원
+## TC 스튜디오
 
-- 시작 문서: [`docs/tc-studio/README.md`](docs/tc-studio/README.md) → 설계 `TC_STUDIO_APP_DESIGN.md` → 실행 계획 `TC_STUDIO_APP_PLAN.md` (Phase 0부터).
+- 시작 문서: [`docs/tc-studio/README.md`](docs/tc-studio/README.md) → 설계 `TC_STUDIO_APP_DESIGN.md` → 실행 계획 `TC_STUDIO_APP_PLAN.md`.
 - TC 스튜디오는 웹 저장소(`/Users/junghoyoung/qa-native-fixed`, 기준 `f4e7a6b`)를 **참고만 해서 이 저장소에 이식**한다. 웹 저장소는 읽기 전용 — 수정·커밋·push·서버 재시작 금지.
+- 대시보드 `http://localhost:8767`의 TC 스튜디오 메뉴에서 엑셀 TC 가져오기, 기획 자료 기반 초안 생성, 검토, 엑셀·Markdown 내보내기를 수행한다. API는 `agents/dashboard/routes/tc_studio.py`, 데이터 처리는 `scripts/_tc_*.py`, 저장소는 `state/tc_library/`다.
+- 앱 스위트의 Android/iOS 결과는 `results`에 따로 저장한다. Markdown은 `scripts/_tc_md_export.py`가 기존 `scripts/import_excel.py:_render_markdown` 형식으로 만들어 `testcases/{android,ios}/{group}/`에 쓴다.
+- 기존 Import Studio는 별도 메뉴로 유지한다. 테스트에서는 `state/tc_library/`, `testcases/`, `import/`의 실제 데이터를 사용하지 않는다.
 
 ## 핵심 원칙
 
