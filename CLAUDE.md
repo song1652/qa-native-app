@@ -2,6 +2,11 @@
 
 이 저장소는 웹 QA 프로젝트와 분리된 Appium 기반 Android/iOS 네이티브 앱 자동화 프로젝트입니다.
 
+## 진행 중 작업: TC 스튜디오 앱 지원
+
+- 시작 문서: [`docs/tc-studio/README.md`](docs/tc-studio/README.md) → 설계 `TC_STUDIO_APP_DESIGN.md` → 실행 계획 `TC_STUDIO_APP_PLAN.md` (Phase 0부터).
+- TC 스튜디오 코드는 웹 저장소(`/Users/junghoyoung/qa-native-fixed`)에만 둔다. 이 저장소로 복사하지 않는다.
+
 ## 핵심 원칙
 
 - 외부 LLM SDK(`anthropic`, `langchain`, `openai` 등)를 제품 코드에 import하지 않습니다.
