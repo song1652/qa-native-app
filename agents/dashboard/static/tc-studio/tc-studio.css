@@ -75,7 +75,7 @@
 .tc-studio .studio-loading { display:none; align-items:center; justify-content:center; gap:8px; padding:48px 16px; color:var(--text2); font-size:13px; }
 .tc-studio .studio-loading::before { content:""; width:14px; height:14px; border:2px solid var(--accent); border-right-color:transparent; border-radius:50%; animation:spin .7s linear infinite; }
 .tc-studio .studio:not(:has(.screen.active)) .studio-loading { display:flex; }
-.tc-studio .btn { padding:7px 14px; border-radius:var(--radius-sm); font-size:12.5px; font-weight:600; cursor:pointer; border:1px solid transparent; transition:all .15s; display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
+.tc-studio .btn { flex:0 0 auto; padding:7px 14px; border-radius:var(--radius-sm); font-size:12.5px; font-weight:600; cursor:pointer; border:1px solid transparent; transition:all .15s; display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
 .tc-studio .btn-primary { background:var(--accent); color:var(--on-accent); box-shadow:0 2px 12px var(--accent-glow); }
 .tc-studio .btn-primary:hover { background:var(--accent2); }
 .tc-studio .btn-ghost { background:transparent; color:var(--text2); border-color:var(--line); }
@@ -176,7 +176,7 @@
 .tc-studio .banner.warn b { color:var(--warn); }
 .tc-studio .banner.info { background:var(--info-bg); border:1px solid rgba(96,165,250,.3); }
 .tc-studio .grid-wrap { overflow:auto; max-height:560px; margin:0 14px 14px; border:1px solid var(--line); border-radius:var(--radius-sm); flex:1; }
-.tc-studio table.grid { border-collapse:separate; border-spacing:0; width:100%; min-width:1250px; font-size:12px; table-layout:fixed; }
+.tc-studio table.grid { display:table; border-collapse:separate; border-spacing:0; width:100%; min-width:1250px; font-size:12px; table-layout:fixed; }
 .tc-studio .grid th { position:sticky; top:0; z-index:2; background:var(--card2); color:var(--text2); font-weight:600; font-size:11px; text-align:left; padding:7px 8px; border-bottom:1px solid var(--line); white-space:nowrap; }
 .tc-studio .grid th .xl { font-family:var(--mono); font-size:9.5px; color:var(--text3); margin-right:4px; }
 .tc-studio .grid td { padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top; color:var(--text); background:var(--bg2); }
@@ -424,7 +424,7 @@
 .tc-studio { padding:24px; background:transparent; }
 .tc-studio .studio { max-width:none; background:transparent; border:0; border-radius:0; overflow:visible; }
 .tc-studio .page-header { padding:0 0 14px; }
-.tc-studio .page-title { font-family:'Outfit', var(--sans); line-height:normal; }
+.tc-studio .page-title { font-family:'Outfit', var(--sans); line-height:normal; background:none; -webkit-text-fill-color:currentColor; }
 .tc-studio .ph-top { align-items:flex-start; }
 .tc-studio .grid-wrap { max-height:max(360px, calc(100vh - 330px)); }
 .tc-studio .chip-select.is-unset { color:var(--text3); font-style:italic; }

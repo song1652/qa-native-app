@@ -1,5 +1,8 @@
 // ── 초기화 ───────────────────────────────────────────────────
 (async function init(){
+  if(location.pathname === '/tc-studio'){
+    selectView('tc_studio', document.querySelector('.sidebar-item[data-view="tc_studio"]'));
+  }
   initReportControls();
   renderRunHistory();
   renderProgressBar();

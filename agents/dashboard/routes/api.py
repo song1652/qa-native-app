@@ -64,6 +64,7 @@ _DASHBOARD_ASSETS = {
 
 
 @router.get("/", response_class=HTMLResponse)
+@router.get("/tc-studio", response_class=HTMLResponse)
 async def index():
     # 개발 중 수정사항 즉시 반영을 위해 매 요청마다 파일 읽기
     html = (HERE / "dashboard.html").read_text(encoding="utf-8")

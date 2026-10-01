@@ -66,6 +66,13 @@ def _check_browser(tc_server):
         page = browser.new_page()
         page.goto(tc_server)
         page.locator('[data-view="tc_studio"]').click()
+        page.wait_for_function("document.querySelector('#grid-body tr[data-case]') !== null")
+        assert page.locator('table#grid').evaluate('(el) => getComputedStyle(el).display') == 'table'
+        assert page.url.endswith('/tc-studio')
+        assert not page.locator('.status-bar').is_visible()
+        studio_box = page.locator('.tc-studio .studio').bounding_box()
+        assert abs(studio_box['x'] - 308) <= 2 and abs(studio_box['y'] - 102) <= 2
+        assert page.locator('#btn-import-xlsx').bounding_box()['width'] < 160
         for suite in ("one", "two"):
             page.locator("#suite-select").select_option(suite)
             page.locator("#lib-filter-mismatch").click()
@@ -83,4 +90,9 @@ def _check_browser(tc_server):
         page.locator("#lib-filter-mismatch").click()
         page.wait_for_function("document.querySelectorAll('#grid-body tr[data-case]').length === 0")
         assert page.locator('#grid-body tr[data-case]').count() == 0
+        direct = browser.new_page()
+        direct.goto(f'{tc_server}/tc-studio')
+        direct.wait_for_selector('#suite-select')
+        assert direct.locator('[data-view="tc_studio"]').get_attribute('class').find('active') >= 0
+        direct.close()
         browser.close()

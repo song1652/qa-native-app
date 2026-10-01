@@ -187,6 +187,9 @@ function selectView(view, item){
   document.body.classList.toggle('quick-mode', view === 'tests');
   document.body.classList.toggle('report-mode', view === 'reports');
   document.body.classList.toggle('dashboard-mode', view === 'dashboard');
+  document.body.classList.toggle('tc-studio-mode', view === 'tc_studio');
+  if(view === 'tc_studio' && location.pathname !== '/tc-studio') history.replaceState(null,'','/tc-studio');
+  else if(view !== 'tc_studio' && location.pathname === '/tc-studio') history.replaceState(null,'','/');
   if(main) main.classList.toggle('report-view', view === 'reports');
   if(main) main.classList.toggle('import-view', view === 'import');
   if(main) main.classList.toggle('capture-view', view === 'capture');
