@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans (또는 subagent-driven-development) to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+**핵심 요구:** And와 iOS 결과를 비교할 수 있으면 된다(사용자 2026-10-01). 범위를 넘는 기능은 만들지 않는다.
+
 **Goal:** 웹 TC 스튜디오(코드 1벌)에 앱 스위트 모드(공통 TC + Android/iOS 결과)를 넣고, 앱 대시보드에서 같은 화면을 메뉴로 쓰며, 앱 TC를 엑셀로 이 저장소 Import Studio에 넘긴다.
 
 **Design:** [TC_STUDIO_APP_DESIGN.md](TC_STUDIO_APP_DESIGN.md) · **안내:** [README.md](README.md)
@@ -52,7 +54,7 @@ cd /Users/junghoyoung/qa-native-app && python3 -m pytest tests/unit tests/dashbo
 
 목적: "TC 스튜디오 엑셀 → APP Import Studio → 02_generate"가 지금도 되는지, 어디서 막히는지 확인한다.
 
-- [ ] WEB TC 스튜디오에서 앱 TC 3~5건이 든 스위트를 엑셀로 내보낸다(예: LODIS 스위트를 시트 1개만 선택).
+- [ ] WEB TC 스튜디오에서 앱 TC 3~5건이 든 스위트를 엑셀로 내보낸다(예: LODIS 스위트를 시트 1개만 선택). 야핏무브(`~/Downloads/야핏무브_Full.xlsx`, 마스터 TC)도 같은 경로로 시험한다.
 - [ ] 그 xlsx를 APP `import/`에 복사하고 APP Import Studio에서 열 매핑 → 미리보기 → 반영(Android·iOS). `testcases/{android,ios}/{시트}/`에 md 생성 확인.
 - [ ] `python3 scripts/02_generate.py --platform android` 로 생성 파일 수(`tc_blocks` 0이 아님) 확인. 실기기 실행은 하지 않는다.
 - [ ] 막힌 지점을 기록한다. 이미 알려진 것: (a) 우선순위 `P0`/`P1`이 `medium`이 됨(`scripts/import_excel.py:56`), (b) TC ID에 `_`도 숫자도 없으면 그 행을 건너뜀(`:213`), (c) 행별 플랫폼 지정 불가.
@@ -72,7 +74,7 @@ cd /Users/junghoyoung/qa-native-app && python3 -m pytest tests/unit tests/dashbo
 - Create: `tests/unit/tc_library/test_tc_platform_results.py`
 
 - [ ] RED: `results={"android":"pass","ios":"fail"}`인 케이스의 `execution_result`가 `fail`로 파생되는지, `results`가 없으면 기존 `execution_result`를 그대로 쓰는지 테스트.
-- [ ] 플랫폼 키 정규화 함수 `platform_key(label) -> "android"|"ios"|None` (Android/AOS/안드로이드 → android, iOS/IOS/아이폰 → ios). 하나의 모듈에만 둔다.
+- [ ] 플랫폼 키 정규화 함수 `platform_key(label) -> "android"|"ios"|None` (**And**/Android/AOS/안드로이드 → android, iOS/IOS/아이폰 → ios — 대소문자 무시, 앞뒤 공백 무시). 하나의 모듈에만 둔다. 테스트에 `And`(야핏무브)와 `Android`(LODIS) 둘 다 포함.
 - [ ] `EDITABLE_FIELDS`에 `platforms`, `results` 추가. `results` 값은 `EXECUTION_RESULTS` 검증, `platforms`는 `{"android","ios"}`의 비어 있지 않은 부분집합.
 - [ ] 저장 시 `results`가 있으면 `execution_result = merge_results(results.values())`로 맞춘다(패치·일괄 변경 공통 경로 `scripts/_tc_library.py:_apply`).
 
@@ -82,7 +84,7 @@ cd /Users/junghoyoung/qa-native-app && python3 -m pytest tests/unit tests/dashbo
 - Modify: `scripts/_tc_xlsx_import.py:82-93`, `scripts/_tc_library.py`(`list_suites` :147 근처에 `kind`), 가져오기 커밋 경로 `scripts/_tc_import_ops.py`
 - Test: `tests/unit/tc_library/test_tc_platform_results.py`
 
-- [ ] RED: LODIS 형식 픽스처(`tests/unit/tc_library/test_tc_template.py`의 `test_test_level_sub_header_becomes_priority…` 워크북 생성 방식 재사용)에서 Android Pass·iOS Fail 행 → `results == {"android":"pass","ios":"fail"}`.
+- [ ] RED: 야핏무브 형식(`환경` 아래 `And | iOS`, 헤더 11행) 픽스처에서 `And=NA`, `iOS=` 빈 행 → `platforms == ["ios"]`. LODIS 형식 픽스처(`tests/unit/tc_library/test_tc_template.py`의 `test_test_level_sub_header_becomes_priority…` 워크북 생성 방식 재사용)에서 Android Pass·iOS Fail 행 → `results == {"android":"pass","ios":"fail"}`.
 - [ ] 결과 열 라벨 → `platform_key`로 `results` 구성. 플랫폼 열이 없으면 지금처럼 `execution_result`만.
 - [ ] 한쪽 결과가 `na`이고 다른 쪽이 값이면 `platforms`를 값 있는 쪽만으로(전용 TC). 둘 다 비면 둘 다.
 - [ ] 스위트 `kind`: 템플릿 프로필 `result_columns` 라벨에 플랫폼 키가 있으면 `"app"`. `GET /api/tc-library` 응답 스위트 항목에 `kind` 추가(테스트 기대값 `tests/unit/tc_library/test_tc_library.py:28`, `test_tc_library_api.py:66` 갱신).
@@ -104,18 +106,18 @@ cd /Users/junghoyoung/qa-native-app && python3 -m pytest tests/unit tests/dashbo
 - Modify: `agents/dashboard/static/css/tc-studio.css`
 - Test: `tests/unit/tc_library/test_tc_studio_e2e.py` (앱 스위트 시드 추가)
 
-- [ ] 표: 앱 스위트면 "실행 결과" 1칸 대신 `AOS`·`iOS` 2칸(각각 선택 상자). 플랫폼 밖이면 회색 N/A, 선택 불가. 웹 스위트는 지금 그대로(회귀 E2E).
-- [ ] 필터: 앱 스위트에만 `플랫폼(전체/AOS/iOS)`, `결과 불일치만`. 서버 `filter_cases`(`scripts/_tc_library.py`)에 `platform`, `mismatch` 쿼리 추가.
+- [ ] 표: 앱 스위트면 "실행 결과" 1칸 대신 `And`·`iOS` 2칸(각각 선택 상자). 플랫폼 밖이면 회색 N/A, 선택 불가. 웹 스위트는 지금 그대로(회귀 E2E).
+- [ ] 필터: 앱 스위트에만 `플랫폼(전체/And/iOS)`, **`And·iOS 결과가 다른 것만`**(이 계획의 핵심 — E2E로 반드시 검증). 서버 `filter_cases`(`scripts/_tc_library.py`)에 `platform`, `mismatch` 쿼리 추가.
 - [ ] 상세 패널: 결과 선택 2개 + 대상 플랫폼 체크박스.
-- [ ] 일괄 변경 "실행 결과": 앱 스위트는 대상 플랫폼 선택(AOS/iOS/둘 다).
+- [ ] 일괄 변경 "실행 결과": 앱 스위트는 대상 플랫폼 선택(And/iOS/둘 다).
 - [ ] 레이아웃 회귀: `tests/unit/dashboard/test_view_layout_e2e.py` 통과.
 
 ### Task 1.5: LLM 초안 — 대상 플랫폼
 
 **Files:** `agents/dashboard/static/js/tc-studio/generate.js`(생성 대상), `scripts/_tc_generate.py`(job target), `scripts/_tc_prompt.py`(규칙 줄) · Test `tests/unit/tc_library/test_tc_generate.py`
 
-- [ ] 앱 스위트일 때 생성 대상에 `대상 플랫폼(둘 다/AOS/iOS)` 선택. 초안 `platforms`에 반영.
-- [ ] 프롬프트 규칙 1줄: "공통 동작으로 쓴다. 한쪽 플랫폼에만 있는 기능은 별도 TC로 만든다." (두 벌 생성 금지).
+- [ ] 앱 스위트일 때 생성 대상에 `대상 플랫폼(둘 다/And/iOS)` 선택. 초안 `platforms`에 반영.
+- [ ] 프롬프트 규칙(팀 관행): "공통 동작으로 쓴다. 흐름 전체가 한쪽에만 있으면 별도 TC(platforms 하나). 같은 TC에서 문구만 다르면 Expected에 `And : …` / `iOS : …` 줄로 적는다." 두 벌 생성 금지.
 - [ ] 가짜 LLM(`tests/unit/tc_library/conftest.py:fake_claude`)으로 생성 → 초안 `platforms` 확인.
 
 ### Task 1.6: 기존 데이터·문서
@@ -123,7 +125,7 @@ cd /Users/junghoyoung/qa-native-app && python3 -m pytest tests/unit tests/dashbo
 - [ ] 이미 가져온 앱 스위트(`results` 없음): 화면은 `execution_result`를 두 칸에 같은 값으로 보여 주고 상단에 "원본 엑셀을 다시 가져오면 플랫폼별 결과가 채워집니다" 1회 안내. **자동 변환으로 결과를 추측하지 않는다.**
 - [ ] 사용자 설명서에 "앱 스위트(iOS/Android)" 절 추가: 판정 기준, 결과 2칸, 필터, 전용 TC, 생성 대상 플랫폼, 재가져오기 안내. 문제 해결 표 1행.
 - [ ] `doc/reference/API_REFERENCE.md`: `kind`, `platforms`, `results`, 필터 쿼리.
-- [ ] 완료 조건: WEB 전체 테스트 통과, LODIS 원본 재가져오기 → 내보내기 왕복에서 결과 불일치 27건 보존(사용자 화면에서 확인 요청).
+- [ ] 완료 조건: WEB 전체 테스트 통과, 야핏무브 원본 가져오기 → iOS 전용 21건이 `platforms=["ios"]`, 내보내기 후 `And` 칸 `NA` 유지, LODIS 원본 재가져오기 → 내보내기 왕복에서 결과 불일치 27건 보존(사용자 화면에서 확인 요청).
 
 ---
 

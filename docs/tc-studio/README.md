@@ -7,6 +7,8 @@
 
 웹 프로젝트(`qa-native-fixed`)에 있는 **TC 스튜디오를 코드 1벌로 유지**하면서, 앱 TC(공통 TC 하나 + Android/iOS 결과)를 다루는 **앱 스위트 모드**를 추가하고, 이 앱 대시보드에서는 **같은 화면을 메뉴로 띄워** 쓰며, 앱 TC는 **엑셀로 이 저장소의 Import Studio에 넘겨** md로 변환한다.
 
+> **핵심 요구: And와 iOS 결과를 비교할 수 있으면 된다.** AUTO 열은 쓰지 않는다.
+
 ## 읽는 순서
 
 1. [설계 — 무엇을 왜 이렇게 하는가](TC_STUDIO_APP_DESIGN.md): 결정, 근거(LODIS 실데이터), 데이터 모델, 거절한 안
@@ -38,6 +40,7 @@ docs/tc-studio/README.md, TC_STUDIO_APP_DESIGN.md, TC_STUDIO_APP_PLAN.md를 읽�
 - 웹 TC 스튜디오: `qa-native-fixed` main `f4e7a6b`. 사용자 설명서 `doc/guides/tc-studio/TC_AUTHORING_USER_GUIDE.md`.
 - 웹 대시보드: `http://localhost:8766/tc-studio` (`cd qa-native-fixed && python3 agents/dashboard/serve.py --port 8766`).
 - 앱 대시보드: `http://localhost:8767` (이 저장소, FastAPI).
+- 참고 엑셀: `~/Downloads/야핏무브_Full.xlsx`(마스터 TC 926건, `환경` 아래 `And | iOS`, iOS 전용 21건은 `And=NA`, `History` 시트) — 팀의 앱 TC 문서화 방식을 보여 준다.
 - 실데이터: 웹 TC 스튜디오에 LODIS 앱 TC 1,731건이 들어 있다(스위트 이름이 `LODIS______________230830_3__`로 깨진 채 — 이름 버그는 고쳐졌으니 재가져오기로 바로잡을 수 있다). 원본 `~/Downloads/LODIS_통합테스트_230830_3차.xlsx`.
 - **알려진 버그(Phase 1에서 고침)**: 웹 TC 스튜디오가 Android/iOS 결과를 하나로 합쳐 저장하고, 엑셀로 다시 내보내면 두 열에 같은 값을 쓴다.
 - 이 저장소 작업 트리에 정리되지 않은 변경이 있다(Phase 0).
