@@ -231,7 +231,13 @@ def list_tc_folders(platform: str | None = None) -> list[str]:
         return []
     if platform in ("android", "ios"):
         platform_dir = TESTCASES_DIR / platform
-        return [platform] if platform_dir.is_dir() and any(platform_dir.rglob("tc_*.md")) else []
+        if not platform_dir.is_dir():
+            return []
+        return sorted(
+            folder.name for folder in platform_dir.iterdir()
+            if folder.is_dir() and not folder.name.startswith(".")
+            and any(folder.rglob("tc_*.md"))
+        )
     return sorted([
         d.name for d in TESTCASES_DIR.iterdir()
         if d.is_dir() and not d.name.startswith(".") and list(d.glob("tc_*.md"))

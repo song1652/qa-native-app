@@ -81,6 +81,75 @@ def test_sidebar_items_stay_in_place_between_dashboard_and_studio(tc_server):
         pool.submit(_check_sidebar_positions, tc_server).result(timeout=60)
 
 
+def test_tc_studio_shows_live_environment_status(tc_server):
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        pool.submit(_check_studio_status, tc_server).result(timeout=60)
+
+
+def test_tc_studio_pipeline_link_keeps_ios_platform(tc_server):
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        pool.submit(_check_ios_pipeline_link, tc_server).result(timeout=60)
+
+
+def test_legacy_import_link_opens_excel_modal(tc_server):
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        pool.submit(_check_legacy_import_link, tc_server).result(timeout=60)
+
+
+def _check_legacy_import_link(tc_server):
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        page = browser.new_page()
+        page.goto(f'{tc_server}/?view=import')
+        page.wait_for_url(f'{tc_server}/tc-studio?import=1')
+        page.locator('#import-modal').wait_for(state='visible')
+        assert page.locator('#import-modal').is_visible()
+        assert page.locator('#import-file').count() == 1
+        browser.close()
+
+
+def _check_ios_pipeline_link(tc_server):
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        page = browser.new_page()
+        page.route('**/api/state', lambda route: route.fulfill(json={
+            'platform': 'android', 'step': 'executed', 'heal_count': 0,
+        }))
+        page.route('**/api/devices?platform=*', lambda route: route.fulfill(json={
+            'ok': True, 'devices': [],
+        }))
+        page.goto(f'{tc_server}/?view=pipeline&from_tc_studio=1&platform=ios&tc_folder=ios_studio_case')
+        page.locator('#radio-ios').wait_for(state='attached')
+        page.wait_for_timeout(1000)
+        assert page.locator('#radio-ios').is_checked()
+        assert page.locator('#txt-automation').inner_text() == '자동화: XCUITest'
+        browser.close()
+
+
+def _check_studio_status(tc_server):
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        page = browser.new_page()
+        page.route('**/api/status*', lambda route: route.fulfill(json={
+            'appium': True, 'devices': ['HA1XM5MS'], 'device_count': 1,
+            'platform': 'android',
+        }))
+        page.route('**/api/state', lambda route: route.fulfill(json={
+            'platform': 'android', 'step': 'generated', 'heal_count': 0,
+        }))
+        page.goto(f'{tc_server}/tc-studio')
+        assert page.title() == 'App QA Dashboard'
+        assert page.locator('.sidebar-item[data-view="tc_studio"] .sidebar-name').inner_text() == 'TC Studio'
+        page.wait_for_selector('.page-title')
+        assert page.locator('.page-title').inner_text() == 'TC Studio'
+        page.wait_for_function("document.querySelector('#txt-step')?.textContent === 'generated'")
+        assert page.locator('.studio-status-bar').is_visible()
+        assert page.locator('#txt-appium').inner_text() == 'Appium 연결됨'
+        assert page.locator('#txt-device').inner_text() == 'HA1XM5MS'
+        assert page.locator('#txt-automation').inner_text() == '자동화: ADB'
+        browser.close()
+
+
 def _check_sidebar_positions(tc_server):
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True)
@@ -107,7 +176,7 @@ def _check_default_with_existing(tc_server):
         page.goto(f'{tc_server}/tc-studio')
         page.wait_for_function("document.querySelector('#suite-select')?.value === '기본양식'")
         page.wait_for_selector('#screen-generate.active')
-        assert page.locator('#suite-select option').all_text_contents() == ['기본양식 (0)', '야핏무브 (1)']
+        assert page.locator('#suite-select option').all_text_contents() == ['야핏무브 (1)', '기본양식 (0)']
         browser.close()
 
 
@@ -152,7 +221,7 @@ def _check_browser(tc_server):
         assert page.url.endswith('/tc-studio')
         assert not page.locator('.status-bar').is_visible()
         studio_box = page.locator('.tc-studio .studio').bounding_box()
-        assert abs(studio_box['x'] - 308) <= 2 and abs(studio_box['y'] - 102) <= 2
+        assert abs(studio_box['x'] - 308) <= 2 and abs(studio_box['y'] - 148) <= 2
         assert page.locator('#btn-import-xlsx').bounding_box()['width'] < 160
         for suite in ("one", "two"):
             page.locator("#suite-select").select_option(suite)

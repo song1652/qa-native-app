@@ -1,7 +1,18 @@
 .header-spacer { flex: 1; }
+@view-transition { navigation: auto; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0s; }
 .header-title, .sidebar-item { text-decoration: none; }
 .header-title:hover, .sidebar-item:hover { text-decoration: none; }
-.sidebar-scroll { padding-top: 60px; }
+.studio-status-bar { min-height:46px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;flex-shrink:0;padding:7px 24px;background:rgba(12,10,30,.62);border-bottom:1px solid var(--border-glass);position:relative;z-index:9; }
+.studio-status-bar .status-item { display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-dim);white-space:nowrap; }
+.studio-status-bar .status-item[hidden] { display:none; }
+.studio-status-bar .status-divider { width:1px;height:16px;background:var(--border); }
+.studio-status-bar .status-dot { width:8px;height:8px;border-radius:50%;flex-shrink:0; }
+.studio-status-bar .status-dot.on { background:var(--approved-color);box-shadow:0 0 6px var(--approved-color); }
+.studio-status-bar .status-dot.off { background:var(--revision-color); }
+.studio-status-bar .status-badge { padding:3px 9px;border-radius:10px;color:var(--delib-accent);background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.22);font-size:11px;font-weight:600; }
+.studio-status-bar #heal-cnt { color:var(--pending-color);font-weight:700; }
+.sidebar-scroll { padding-top: 14px; }
 .sidebar-section { padding: 8px 0 12px; }
 .sidebar-label { padding: 6px 16px; opacity: .75; }
 .sidebar-item { gap: 9px; padding: 9px 16px; font-size: 14px; }

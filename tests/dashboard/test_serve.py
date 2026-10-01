@@ -62,6 +62,8 @@ def test_dashboard_html_contains_core_shell():
     assert "is-stage-mapping" in serve.DASHBOARD_HTML
     assert "is-stage-preview" in serve.DASHBOARD_HTML
     assert "setImportPreviewFilter" in serve.DASHBOARD_HTML
+    assert "analyze: null, generate:null" in serve.DASHBOARD_HTML
+    assert '<span>TC Studio</span>' in serve.DASHBOARD_HTML
 
 
 def test_parse_failed_tcs_deduplicates_summary_entries():
@@ -165,5 +167,18 @@ def test_tc_folders_follow_selected_platform(tmp_path, monkeypatch):
         (group / "tc_001.md").write_text("", encoding="utf-8")
     monkeypatch.setattr(state_mod, "TESTCASES_DIR", testcases)
 
-    assert list_tc_folders("android") == ["android"]
-    assert list_tc_folders("ios") == ["ios"]
+    assert list_tc_folders("android") == ["login"]
+    assert list_tc_folders("ios") == ["login"]
+
+
+def test_tc_folders_list_only_groups_with_cases(tmp_path, monkeypatch):
+    import utils.state as state_mod
+    testcases = tmp_path / "testcases"
+    for group in ("location", "settings"):
+        folder = testcases / "android" / group
+        folder.mkdir(parents=True)
+        (folder / "tc_001.md").write_text("", encoding="utf-8")
+    (testcases / "android" / "empty").mkdir()
+    monkeypatch.setattr(state_mod, "TESTCASES_DIR", testcases)
+
+    assert list_tc_folders("android") == ["location", "settings"]

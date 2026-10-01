@@ -11,8 +11,8 @@ import sys
 from html import escape as html_escape
 from pathlib import Path
 
-from fastapi import APIRouter, Response
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi import APIRouter, Request, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 
 # shared 및 utils는 agents/dashboard/ 에 있으므로 부모 디렉토리를 sys.path에 추가
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -64,7 +64,9 @@ _DASHBOARD_ASSETS = {
 
 
 @router.get("/", response_class=HTMLResponse)
-async def index():
+async def index(request: Request):
+    if request.query_params.get("view") == "import":
+        return RedirectResponse(url="/tc-studio?import=1", status_code=307)
     # 개발 중 수정사항 즉시 반영을 위해 매 요청마다 파일 읽기
     html = (HERE / "dashboard.html").read_text(encoding="utf-8")
     return HTMLResponse(content=html)

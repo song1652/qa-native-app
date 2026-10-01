@@ -20,9 +20,9 @@ var _guideMessages = {
 var _nextStep = {
   analyze:'generate', generate:'lint', lint:'execute', execute:null, heal:null
 };
-// 소프트 순서 강제: 이 단계가 done이어야 다음 단계가 활성화
+// 코드 생성은 Markdown만 필요하다. 분석은 기기 UI 수집을 별도로 실행할 때 사용한다.
 var _prereq = {
-  analyze: null, generate:'analyze', lint:'generate', execute:'lint', heal:'execute'
+  analyze: null, generate:null, lint:'generate', execute:'lint', heal:'execute'
 };
 var STEP_ORDER = ['analyze','generate','lint','execute','heal'];
 var STEP_LABEL = {analyze:'분석',generate:'생성',lint:'린트',execute:'실행',heal:'힐링'};

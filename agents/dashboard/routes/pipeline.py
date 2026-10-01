@@ -172,6 +172,23 @@ def _device_execute_args(platform: str, device_mode: str, device_udid: str) -> l
     return args
 
 
+def _tc_folder_args(step: str, platform: str, folder: str) -> list[str]:
+    """Scope source Markdown and generated tests to the same selected group."""
+    if not folder:
+        return []
+    if step == "generate":
+        return ["--tc-dir", f"{platform}/{folder}"]
+    if step == "execute":
+        return ["--tc-dir", folder]
+    return []
+
+
+def _pipeline_steps(*, from_tc_studio: bool) -> list[str]:
+    """Exported Markdown can generate code without a device UI scan."""
+    return (["generate", "lint", "execute"] if from_tc_studio
+            else ["analyze", "generate", "lint", "execute"])
+
+
 def _quick_run_execute_args(
     platform: str, *, test_folder: str, test_file: str, heal: bool
 ) -> list[str]:
@@ -249,7 +266,7 @@ async def post_run(request: Request):
         return JSONResponse({"ok": False, "error": "invalid platform"}, status_code=400)
     if step not in SCRIPT_MAP:
         return JSONResponse({"ok": False, "error": "invalid step"}, status_code=400)
-    if tc_folder and (".." in tc_folder or "/" in tc_folder):
+    if tc_folder and tc_folder not in list_tc_folders(platform):
         return JSONResponse({"ok": False, "error": "invalid tc_folder"}, status_code=400)
     if is_capture_active(platform):
         return JSONResponse(
@@ -291,10 +308,7 @@ async def post_run(request: Request):
         extra_args += ["--mode", _mode]
         if step == "generate" and device_udid:
             extra_args += ["--device-udid", device_udid]
-    if step == "generate" and tc_folder:
-        extra_args += ["--tc-dir", tc_folder]
-    if step == "execute" and tc_folder and tc_folder != platform:
-        extra_args += ["--tc-dir", tc_folder]
+    extra_args += _tc_folder_args(step, platform, tc_folder)
     if step == "execute":
         extra_args += _device_execute_args(platform, device_mode, device_udid)
     if step == "analyze" and device_udid:
@@ -320,6 +334,7 @@ async def post_run(request: Request):
 
     with _process_lock:
         _running[step] = proc
+        _test_runs[log_name] = {"key": step, "done": False, "returncode": None}
         save_running_pids()
 
     broadcast_timeline_sync({
@@ -332,6 +347,8 @@ async def post_run(request: Request):
         with _process_lock:
             if _running.get(s) is p:
                 del _running[s]
+            _test_runs[lname]["done"] = True
+            _test_runs[lname]["returncode"] = p.returncode
             save_running_pids()
         broadcast_timeline_sync({
             "type": "pipeline_stage_complete", "source": "pipeline",
@@ -356,6 +373,7 @@ async def post_run_all(request: Request):
     tc_folders   = body.get("tc_folders")
     device_mode  = body.get("mode", "").strip()
     device_udid  = body.get("device_udid", "").strip()
+    from_tc_studio = body.get("from_tc_studio") is True
     if not isinstance(tc_folders, list):
         legacy_folder = body.get("tc_folder", "").strip()
         tc_folders = [legacy_folder] if legacy_folder else [""]
@@ -365,8 +383,10 @@ async def post_run_all(request: Request):
         return JSONResponse({"ok": False, "error": "invalid platform"}, status_code=400)
     available_folders = set(list_tc_folders(platform))
     for tc_folder in tc_folders:
-        if tc_folder and (".." in tc_folder or "/" in tc_folder or tc_folder not in available_folders):
+        if tc_folder and tc_folder not in available_folders:
             return JSONResponse({"ok": False, "error": f"invalid tc_folder: {tc_folder}"}, status_code=400)
+    if from_tc_studio and (not tc_folders or any(not folder for folder in tc_folders)):
+        return JSONResponse({"ok": False, "error": "TC Studio 폴더를 선택하세요"}, status_code=400)
     if is_capture_active(platform):
         return JSONResponse(
             {"ok": False, "error": "Capture Studio 세션이 실행 중입니다. 먼저 Capture Studio를 종료하세요."},
@@ -381,7 +401,7 @@ async def post_run_all(request: Request):
     save_state(state)
 
     MAX_HEAL = 3
-    PIPELINE  = ["analyze", "generate", "lint", "execute"]
+    PIPELINE = _pipeline_steps(from_tc_studio=from_tc_studio)
 
     def _spawn(step, folder="", extra=None, log_suffix="", env=None):
         script_rel, extra_args_tmpl, log_name = SCRIPT_MAP[step]
@@ -393,10 +413,7 @@ async def post_run_all(request: Request):
                 extra_args += ["--device-udid", device_udid]
         if step == "analyze" and device_udid:
             extra_args += ["--udid", device_udid]
-        if step == "generate" and folder:
-            extra_args += ["--tc-dir", folder]
-        if step == "execute" and folder and folder != platform:
-            extra_args += ["--tc-dir", folder]
+        extra_args += _tc_folder_args(step, platform, folder)
         if step == "execute":
             extra_args += _device_execute_args(platform, device_mode, device_udid)
         if extra:
@@ -418,6 +435,7 @@ async def post_run_all(request: Request):
             )
         with _process_lock:
             _running[step] = proc
+            _test_runs[lname] = {"key": step, "done": False, "returncode": None}
             save_running_pids()
         broadcast_timeline_sync({
             "type": "pipeline_stage_start", "source": "pipeline",
@@ -427,6 +445,8 @@ async def post_run_all(request: Request):
         with _process_lock:
             if _running.get(step) is proc:
                 del _running[step]
+            _test_runs[lname]["done"] = True
+            _test_runs[lname]["returncode"] = proc.returncode
             save_running_pids()
         broadcast_timeline_sync({
             "type": "pipeline_stage_complete", "source": "pipeline",

@@ -191,7 +191,7 @@ EMULATOR_BIN = _find_emulator_bin()
 SCRIPT_MAP: dict[str, tuple[str, list[str], str]] = {
     "analyze":  ("scripts/01_analyze.py",  ["--platform", "{platform}"],                     "run_analyze.txt"),
     "generate": ("scripts/02_generate.py", ["--platform", "{platform}", "--strict-locators"], "run_generate.txt"),
-    "lint":     ("scripts/03_lint.py",     [],                                               "run_lint.txt"),
+    "lint":     ("scripts/03_lint.py",     ["--platform", "{platform}"],                     "run_lint.txt"),
     "execute":  ("scripts/05_execute.py",  ["--platform", "{platform}"],                     "run_execute.txt"),
     "heal":     ("scripts/06_heal.py",     ["--platform", "{platform}"],                     "run_heal.txt"),
 }

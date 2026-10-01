@@ -89,6 +89,16 @@
 
   const STATUS_TAG = { added: ['ok', '신규'], updated: ['info', '갱신'], conflict: ['warn', '충돌'], same: ['', '동일'], error: ['err', '오류'] };
 
+  function pipelineLinks(paths) {
+    const targets = [...new Set(paths.map((file) => file.split('/').slice(0, 2).join('/')))]
+      .filter((target) => /^(android|ios)\/[A-Za-z0-9_-]+$/.test(target));
+    return targets.map((target) => {
+      const [platform, folder] = target.split('/');
+      const href = `/?view=pipeline&from_tc_studio=1&platform=${encodeURIComponent(platform)}&tc_folder=${encodeURIComponent(folder)}`;
+      return `<a class="btn btn-primary" data-id="md-pipeline-link" href="${href}">${esc(folder)} 파이프라인 실행 →</a>`;
+    }).join(' ');
+  }
+
   function renderMdPreview() {
     const s = mdRun.summary;
     const conflicts = mdRun.rows.filter((r) => r.status === 'conflict');
@@ -99,8 +109,8 @@
       ${mdRun.rows.map((r) => `<tr><td><span class="tag ${STATUS_TAG[r.status][0]}">${STATUS_TAG[r.status][1]}</span></td><td class="mono">${esc(r.case_id)} · ${esc(r.file)}</td><td>${esc(r.reason)}</td>
         <td>${r.status === 'conflict' ? `<select class="select md-conflict-decision" data-id="md-conflict-decision" data-tc="${esc(r.file)}" aria-label="${esc(r.file)} 충돌 처리"><option value="">기본: 건너뛰기</option><option value="skip">건너뛰기</option><option value="overwrite">라이브러리 값으로 덮어쓰기</option></select>` : r.excluded ? '반영 안 함' : '자동'}</td></tr>`).join('')}
       </tbody></table></div>
-      <div class="row"><button class="btn btn-success" id="md-commit" data-id="md-commit">md 반영</button><span class="help" id="md-commit-hint"></span></div>
-      <div id="md-result" hidden class="row"><span class="tag ok" id="md-result-text"></span><button class="btn btn-ghost" id="md-rollback" data-id="md-rollback">이 작업 롤백</button></div>`;
+      <div class="row"><button class="btn btn-success" id="md-commit" data-id="md-commit">md 반영</button><span class="help" id="md-commit-hint"></span><span id="md-existing-pipeline">${pipelineLinks(mdRun.rows.filter((r) => ['same', 'updated', 'conflict'].includes(r.status)).map((r) => r.file))}</span></div>
+      <div id="md-result" hidden class="row"><span class="tag ok" id="md-result-text"></span><span id="md-run-links"></span><button class="btn btn-ghost" id="md-rollback" data-id="md-rollback">이 작업 롤백</button></div>`;
     const update = () => {
       const pending = $$('.md-conflict-decision', root).filter((x) => !x.value).length;
       $('#md-commit', root).disabled = false;
@@ -116,6 +126,7 @@
         $('#md-commit', root).disabled = true;
         $('#md-result', root).hidden = false;
         $('#md-result-text', root).textContent = `반영 완료 · 신규 ${res.created} · 갱신 ${res.updated}${skip.length ? ` · 건너뜀 ${skip.length}` : ''}`;
+        $('#md-run-links', root).innerHTML = pipelineLinks(res.written || []);
         toast('md 파일을 반영했습니다. 필요하면 이 작업을 롤백할 수 있습니다.', 'ok');
         await loadMd();
       } catch (err) { toast(`반영하지 못했습니다: ${esc(err.message)}`, 'err'); }
@@ -142,7 +153,7 @@
     syncSheets();
     const d = new Date();
     const yymmdd = `${String(d.getFullYear()).slice(2)}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
-    if (!$('#xlsx-history-note', root).value) $('#xlsx-history-note', root).value = `${yymmdd} TC 스튜디오 반영\n- `;
+    if (!$('#xlsx-history-note', root).value) $('#xlsx-history-note', root).value = `${yymmdd} TC Studio 반영\n- `;
     resetCheck('');
   }
 

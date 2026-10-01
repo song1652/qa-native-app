@@ -271,6 +271,7 @@ def parse_md_file(md_path: Path) -> dict:
         "title": title,
         "platform": platforms,
         "precondition": precondition,
+        "precondition_text": precond_section,
         "tc_blocks": tc_blocks,
     }
 
@@ -330,6 +331,7 @@ from scripts.hybrid_runtime import HybridSession"""
 def _build_ios_imports() -> str:
     return """\
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -340,8 +342,24 @@ from scripts.hybrid_runtime import HybridSession"""
 
 
 def _build_android_helpers(tc_number: str, tc_slug: str,
-                           config_dir_expr: str = "") -> str:
+                           config_dir_expr: str = "",
+                           app_package: str = "", app_activity: str = "") -> str:
     cfg = config_dir_expr or 'Path(__file__).parent.parent.parent.parent / "config"'
+    if app_package and app_activity:
+        app_caps = (
+            f'    caps["appPackage"] = {json.dumps(app_package)}\n'
+            f'    caps["appActivity"] = {json.dumps(app_activity)}\n'
+            '    caps["forceAppLaunch"] = True'
+        )
+    else:
+        app_caps = (
+            '    test_data = _load_json(CONFIG_DIR / "test_data.json")\n'
+            '    caps["appPackage"] = test_data["app"]["android"]["package"]\n'
+            '    caps["appActivity"] = test_data["app"]["android"]["activity"]\n'
+            '    app_path = test_data["app"]["android"]["app_path"]\n'
+            '    if app_path:\n'
+            '        caps["app"] = app_path'
+        )
     return f"""\
 CONFIG_DIR = {cfg}
 APPIUM_URL = "{APPIUM_URL}"
@@ -383,7 +401,7 @@ def _check_device_connected() -> None:
 
 def _get_device(platform: str, mode: str) -> dict:
     _mode = os.environ.get("DEVICE_MODE", mode)
-    _uid  = os.environ.get("DEVICE_UDID", "")
+    _uid = os.environ.get("DEVICE_UDID", "")
     _s = _load_json(CONFIG_DIR / "devices.json").get(platform, {{}}).get(_mode)
     if isinstance(_s, dict):
         return _s
@@ -401,23 +419,31 @@ _NON_APPIUM_KEYS = frozenset({{"default", "wifi_ip", "team_id", "label", "note"}
 
 def _build_driver() -> webdriver.Remote:
     _raw = _get_device("android", PLATFORM_MODE)
-    test_data = _load_json(CONFIG_DIR / "test_data.json")
 
     caps = {{k: v for k, v in _raw.items() if k not in _NON_APPIUM_KEYS}}
     caps["platformName"] = "Android"
-    caps["appPackage"] = test_data["app"]["android"]["package"]
-    caps["appActivity"] = test_data["app"]["android"]["activity"]
-    app_path = test_data["app"]["android"]["app_path"]
-    if app_path:
-        caps["app"] = app_path
+    _uid = os.environ.get("DEVICE_UDID", "")
+    if _uid:
+        caps["udid"] = _uid
+{app_caps}
 
     options = UiAutomator2Options().load_capabilities(caps)
     return webdriver.Remote(APPIUM_URL, options=options)"""
 
 
 def _build_ios_helpers(tc_number: str, tc_slug: str,
-                       config_dir_expr: str = "") -> str:
+                       config_dir_expr: str = "", bundle_id: str = "") -> str:
     cfg = config_dir_expr or 'Path(__file__).parent.parent.parent.parent / "config"'
+    if bundle_id:
+        app_caps = f'    caps["bundleId"] = {json.dumps(bundle_id)}'
+    else:
+        app_caps = (
+            '    test_data = _load_json(CONFIG_DIR / "test_data.json")\n'
+            '    caps["bundleId"] = test_data["app"]["ios"]["bundle_id"]\n'
+            '    app_path = test_data["app"]["ios"]["app_path"]\n'
+            '    if app_path:\n'
+            '        caps["app"] = app_path'
+        )
     return f"""\
 CONFIG_DIR = {cfg}
 APPIUM_URL = "{APPIUM_URL}"
@@ -442,7 +468,7 @@ def _check_device_connected() -> None:
 
 def _get_device(platform: str, mode: str) -> dict:
     _mode = os.environ.get("DEVICE_MODE", mode)
-    _uid  = os.environ.get("DEVICE_UDID", "")
+    _uid = os.environ.get("DEVICE_UDID", "")
     _s = _load_json(CONFIG_DIR / "devices.json").get(platform, {{}}).get(_mode)
     if isinstance(_s, dict):
         return _s
@@ -460,14 +486,13 @@ _NON_APPIUM_KEYS = frozenset({{"default", "wifi_ip", "team_id", "label", "note"}
 
 def _build_driver() -> webdriver.Remote:
     _raw = _get_device("ios", PLATFORM_MODE)
-    test_data = _load_json(CONFIG_DIR / "test_data.json")
 
     caps = {{k: v for k, v in _raw.items() if k not in _NON_APPIUM_KEYS}}
     caps["platformName"] = "iOS"
-    caps["bundleId"] = test_data["app"]["ios"]["bundle_id"]
-    app_path = test_data["app"]["ios"]["app_path"]
-    if app_path:
-        caps["app"] = app_path
+    _uid = os.environ.get("DEVICE_UDID", "")
+    if _uid:
+        caps["udid"] = _uid
+{app_caps}
 
     options = XCUITestOptions().load_capabilities(caps)
     return webdriver.Remote(APPIUM_URL, options=options)"""
@@ -489,6 +514,7 @@ def _build_setup_android(precondition: str, has_credentials: bool) -> str:
         + guard
         + creds
         + "        self.driver = _build_driver()\n"
+        + "        self.driver.implicitly_wait(10)\n"
         + "        self.hybrid = HybridSession(self.driver)\n"
     )
 
@@ -509,6 +535,7 @@ def _build_setup_ios(precondition: str, has_credentials: bool) -> str:
         + guard
         + creds
         + "        self.driver = _build_driver()\n"
+        + "        self.driver.implicitly_wait(10)\n"
         + "        self.hybrid = HybridSession(self.driver)\n"
     )
 
@@ -646,13 +673,29 @@ def _build_test_method(block: dict, tc_number: str, idx: int,
             lines.append("        el.clear()")
             lines.append("        el.send_keys(self._invalid[\"password\"])")
 
-        elif "탭한다" in step_text or "탭 한다" in step_text:
+        elif "탭한다" in step_text or "탭 한다" in step_text or "누른다" in step_text:
             # 탭 액션 — 셀렉터 힌트에서 셀렉터 찾기
             sel = _find_selector_for_step(step_text, selectors)
             if sel:
                 const = sel_const_map.get(sel, f'"{sel}"')
                 by = _appiumby_for(sel, locator_specs)
                 lines.append(f"        self._find({by}, {const}).click()")
+            elif platform == "android" and (quoted := re.search(r"'([^']+)'", step_text)):
+                label = quoted.group(1)
+                lines.extend([
+                    "        target = (",
+                    "            'new UiScrollable(new UiSelector().scrollable(true))'",
+                    "            '.scrollIntoView(new UiSelector().text("
+                    + json.dumps(label, ensure_ascii=False).replace('"', '\\"') + "))'",
+                    "        )",
+                    "        self.driver.find_element("
+                    "AppiumBy.ANDROID_UIAUTOMATOR, target).click()",
+                ])
+            elif platform == "ios" and (quoted := re.search(r"'([^']+)'", step_text)):
+                lines.append(
+                    "        self.driver.find_element(AppiumBy.ACCESSIBILITY_ID, "
+                    f"{quoted.group(1)!r}).click()"
+                )
             else:
                 lines.append(
                     "        # TODO: 셀렉터 힌트에서 탭 대상을 특정할 수 없음"
@@ -685,7 +728,8 @@ def _build_test_method(block: dict, tc_number: str, idx: int,
 
     # assert — 기대결과 기반
     lines.append("        # 기대결과 검증")
-    asserted = _build_assert(expected, selectors, sel_const_map, locator_specs)
+    asserted = _build_assert(expected, selectors, sel_const_map, locator_specs,
+                             platform=platform)
     lines.extend(asserted)
 
     return "\n".join(lines)
@@ -768,7 +812,8 @@ def _find_selector_for_step(step_text: str, selectors: dict) -> str:
 
 
 def _build_assert(expected: str, selectors: dict,
-                  sel_const_map: dict, locator_specs: dict | None = None) -> list:
+                  sel_const_map: dict, locator_specs: dict | None = None,
+                  platform: str = "") -> list:
     """기대결과 텍스트로부터 assert 라인 목록을 생성한다."""
     lines = []
     # selectors 키(short name) 또는 값이 기대결과 텍스트에 포함된 것을 찾아 assert
@@ -790,6 +835,27 @@ def _build_assert(expected: str, selectors: dict,
             short = expected[:55].replace('"', "'")
             lines.append(f'            "{short}"')
             lines.append("        )")
+    elif platform == "android" and (
+        labels := list(dict.fromkeys(re.findall(r"'([^']+)'", expected)))
+    ):
+        for label in labels:
+            quoted_label = json.dumps(label, ensure_ascii=False)
+            xpath = (
+                f"//*[@text={quoted_label} or @content-desc={quoted_label}]"
+            )
+            lines.append("        assert_el = self.driver.find_element(")
+            lines.append(f"            AppiumBy.XPATH, {xpath!r}")
+            lines.append("        )")
+            lines.append(f"        assert assert_el.is_displayed(), {label!r}")
+    elif platform == "ios" and (
+        labels := list(dict.fromkeys(re.findall(r"'([^']+)'", expected)))
+    ):
+        for label in labels:
+            lines.append(
+                "        assert_el = self.driver.find_element("
+                f"AppiumBy.ACCESSIBILITY_ID, {label!r})"
+            )
+            lines.append(f"        assert assert_el.is_displayed(), {label!r}")
     else:
         # PLACEHOLDER — 셀렉터 힌트에서 검증 셀렉터를 특정할 수 없는 경우
         lines.append(
@@ -833,6 +899,15 @@ def generate_test_file(meta: dict, platform: str,
     title = meta["title"]
     tc_blocks = meta["tc_blocks"]
     precondition = meta["precondition"]
+    app_match = re.search(
+        r"\b([a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+)/"
+        r"(\.[A-Za-z][A-Za-z0-9_.]*)",
+        meta.get("precondition_text", ""),
+    )
+    bundle_match = re.search(
+        r"\b([a-z][a-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)+)",
+        meta.get("precondition_text", ""),
+    ) if platform == "ios" else None
 
     class_name = _to_class_name(tc_slug)
     all_selectors = _collect_all_selectors(tc_blocks)
@@ -920,9 +995,16 @@ def generate_test_file(meta: dict, platform: str,
 
     # --- 헬퍼 함수 ---
     if platform == "android":
-        helpers = _build_android_helpers(tc_number, tc_slug, config_dir_expr)
+        helpers = _build_android_helpers(
+            tc_number, tc_slug, config_dir_expr,
+            app_match.group(1) if app_match else "",
+            app_match.group(2) if app_match else "",
+        )
     else:
-        helpers = _build_ios_helpers(tc_number, tc_slug, config_dir_expr)
+        helpers = _build_ios_helpers(
+            tc_number, tc_slug, config_dir_expr,
+            bundle_match.group(1) if bundle_match else "",
+        )
 
     # --- 클래스 ---
     if platform == "android":

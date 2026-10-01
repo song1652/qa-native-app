@@ -27,7 +27,7 @@
  <div class="studio" id="studio">
   <header class="page-header">
     <div class="ph-top">
-      <h1 class="page-title">TC 스튜디오</h1>
+      <h1 class="page-title">TC Studio</h1>
       <select class="suite-select" id="suite-select" data-id="suite-select" aria-label="스위트 선택"></select>
       <div class="suite-menu-wrap">
         <button class="icon-btn suite-menu-btn" type="button" id="suite-menu-btn" data-id="suite-menu-btn" aria-label="스위트 관리" aria-haspopup="menu" aria-expanded="false">⋯</button>
@@ -87,7 +87,9 @@
 
   function renderSuiteSelect() {
     const sel = $('#suite-select', root);
-    sel.innerHTML = state.suites.map((s) => `<option value="${esc(s.suite)}" ${s.suite === state.suite ? 'selected' : ''}>${esc(s.suite)} (${s.count})</option>`).join('')
+    const ordered = [...state.suites].sort((a, b) =>
+      Number(a.suite === '기본양식') - Number(b.suite === '기본양식'));
+    sel.innerHTML = ordered.map((s) => `<option value="${esc(s.suite)}" ${s.suite === state.suite ? 'selected' : ''}>${esc(s.suite)} (${s.count})</option>`).join('')
       || '<option value="">스위트 없음</option>';
     sel.disabled = !state.suites.length;
     $('#gen-no-suite', root).hidden = !!state.suites.length;
@@ -331,6 +333,7 @@
     // 새 선택이 화면을 고른다 (여기서 라이브러리를 띄우면 새 선택이 '사용자가 탭을 눌렀다'고 보고 물러난다)
     try { await NS.reloadSuites(firstSuite); } catch (err) { if (!$('.screen.active', root)) show('library', true); throw err; }
     if (!state.suites.length && !$('.screen.active', root)) show('generate', true);
+    if (NS.importModal && new URLSearchParams(window.location.search).get('import') === '1') NS.importModal.open();
   }
 
   window.TCS = { init };

@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>App QA Dashboard</title>
+<link rel="prefetch" href="/tc-studio" as="document">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;600;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -47,11 +48,8 @@
     <div class="sidebar-section">
       <div class="sidebar-label">TC 작성</div>
       <a class="sidebar-item" data-view="tc_studio" href="/tc-studio" style="text-decoration:none">
-        <span class="sidebar-dot"></span><span>TC 스튜디오</span>
+        <span class="sidebar-dot"></span><span>TC Studio</span>
       </a>
-      <div class="sidebar-item" data-view="import" onclick="selectView('import',this)">
-        <span class="sidebar-dot"></span><span>Import Studio</span>
-      </div>
       <div class="sidebar-item" data-view="capture" onclick="selectView('capture',this)" id="sidebar-capture">
         <span class="sidebar-dot" style="background:rgba(167,139,250,.4)"></span><span>Capture Studio</span>
       </div>

@@ -15,6 +15,9 @@ var _runAllStartedAt = 0;
 var _runAllFolders = [];
 var _runAllPlatform = 'android';
 var _runAllHistoryRecorded = false;
+var _runAllMainSteps = ['analyze','generate','lint','execute'];
+var _tcStudioFolder = new URLSearchParams(location.search).get('tc_folder') || '';
+var _fromTcStudio = new URLSearchParams(location.search).get('from_tc_studio') === '1';
 
 // ── 디바이스 선택 상태 ──
 var _selectedDevice = null; // {mode, deviceName, udid, connected}
@@ -166,13 +169,15 @@ async function runAll(){
     var res = await fetch('/api/run_all', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(Object.assign({platform: platform, tc_folders: tcFolders, obs_keep: _obsKeep}, getSelectedDeviceParams()))
+      body: JSON.stringify(Object.assign({platform: platform, tc_folders: tcFolders, obs_keep: _obsKeep,
+        from_tc_studio: _fromTcStudio}, getSelectedDeviceParams()))
     });
     var data = await res.json();
     if(!data.ok){
       setLog('[오류] ' + (data.error || '알 수 없는 오류'));
       _finishRunAll(false); return;
     }
+    _runAllMainSteps = data.steps.filter(function(step){ return ['analyze','generate','lint','execute'].includes(step); });
   } catch(e){
     setLog('[요청 실패] ' + e.message);
     _finishRunAll(false); return;
@@ -192,7 +197,7 @@ function _isHealLogActive(healRound){
 }
 
 function _pollRunAllStep(idx, platform){
-  var MAIN_STEPS = ['analyze','generate','lint','execute'];
+  var MAIN_STEPS = _runAllMainSteps;
   if(idx >= MAIN_STEPS.length){
     // execute 완료 후 — state에서 실패 여부 즉시 확인
     _checkNeedHeal(function(needHeal){
@@ -309,6 +314,15 @@ function _finishRunAll(success){
   _currentStep = null;
   refreshStatus(); refreshGenerated(); refreshReports();
   if(success) showGuideBanner('execute', true);
+  if(success && _fromTcStudio){
+    refreshReports().then(function(){
+      var latest = _reports.filter(function(r){ return r.name.startsWith('report_' + _runAllPlatform + '_'); })[0];
+      if(latest){
+        selectView('reports', document.querySelector('.sidebar-item[data-view="reports"]'));
+        showReport(latest.name);
+      }
+    });
+  }
 }
 
 async function runStep(step){
@@ -624,9 +638,13 @@ async function refreshTcFolders(){
     var selected = getTcFolders();
     var folders = data.folders||[];
     list.innerHTML = folders.length ? folders.map(function(f){
-      var checked = selected.length ? selected.indexOf(f)!==-1 : true;
+      var checked = selected.length ? selected.indexOf(f)!==-1 : (_tcStudioFolder ? _tcStudioFolder===f : true);
       return '<label class="tc-folder-option"><input type="checkbox" name="tc-folder" value="'+esc(f)+'" '+(checked?'checked':'')+' onchange="updateTcFolderCount()"><span>'+esc(f)+'/</span></label>';
     }).join('') : '<div class="tc-folder-empty">생성된 TC 폴더가 없습니다.</div>';
+    if(_fromTcStudio){
+      var caption=document.querySelector('#btn-run-all span:nth-child(2)');
+      if(caption) caption.textContent='generate → lint → execute';
+    }
     updateTcFolderCount();
   }catch(_){}
 }

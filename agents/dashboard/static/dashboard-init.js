@@ -1,6 +1,16 @@
 // ── 초기화 ───────────────────────────────────────────────────
 (async function init(){
-  var initialView=new URLSearchParams(location.search).get('view');
+  var initialParams=new URLSearchParams(location.search);
+  var initialView=initialParams.get('view');
+  var initialPlatform=initialParams.get('platform');
+  if(['android','ios'].includes(initialPlatform)){
+    var platformRadio=document.querySelector('input[name="platform"][value="'+initialPlatform+'"]');
+    if(platformRadio){
+      platformRadio.checked=true;
+      _initialPlatformSync=false;
+      updateAutomationStatus(initialPlatform);
+    }
+  }
   if(['dashboard','config','import','capture','pipeline','tests','reports','history'].includes(initialView)){
     selectView(initialView, document.querySelector('.sidebar-item[data-view="'+initialView+'"]'));
   }

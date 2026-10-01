@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TC 스튜디오 · App QA Dashboard</title>
+  <title>App QA Dashboard</title>
+  <style>html,body{background:#08071b}</style>
+  <link rel="prefetch" href="/" as="document">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;600;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -19,6 +21,16 @@
     <div class="header-spacer"></div>
     <span class="header-meta">APP TC STUDIO</span>
   </header>
+  <div class="studio-status-bar" aria-label="실행 상태">
+    <div class="status-item"><span class="status-dot" id="dot-appium"></span><span id="txt-appium">확인 중...</span></div>
+    <div class="status-divider"></div>
+    <div class="status-item"><span class="status-dot" id="dot-device"></span><span id="txt-device">확인 중...</span></div>
+    <div class="status-divider"></div>
+    <div class="status-item"><span id="txt-automation" class="status-badge">자동화: 확인 중...</span></div>
+    <div class="status-divider"></div>
+    <div class="status-item">파이프라인: <span class="status-badge" id="txt-step">-</span></div>
+    <div class="status-item" id="heal-row" hidden>힐링: <span id="heal-cnt"></span>회</div>
+  </div>
   <div class="body-wrap">
     <aside class="sidebar" aria-label="주 메뉴">
       <div class="sidebar-scroll">
@@ -32,8 +44,7 @@
         </div>
         <div class="sidebar-section">
           <div class="sidebar-label">TC 작성</div>
-          <a class="sidebar-item active" data-view="tc_studio" href="/tc-studio" aria-current="page"><span class="sidebar-dot"></span><span class="sidebar-name">TC 스튜디오</span></a>
-          <a class="sidebar-item" data-view="import" href="/?view=import"><span class="sidebar-dot"></span><span class="sidebar-name">Import Studio</span></a>
+          <a class="sidebar-item active" data-view="tc_studio" href="/tc-studio" aria-current="page"><span class="sidebar-dot"></span><span class="sidebar-name">TC Studio</span></a>
           <a class="sidebar-item" data-view="capture" href="/?view=capture"><span class="sidebar-dot"></span><span class="sidebar-name">Capture Studio</span></a>
         </div>
         <div class="sidebar-section">

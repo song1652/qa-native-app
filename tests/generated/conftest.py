@@ -17,6 +17,8 @@ def pytest_runtest_setup(item):
         mod.PLATFORM_MODE = device_mode
 
     if device_udid and hasattr(mod, "_get_device"):
+        if getattr(mod._get_device, "_device_override_patched", False):
+            return
         _orig = mod._get_device
 
         def _patched(platform, mode):
@@ -35,4 +37,5 @@ def pytest_runtest_setup(item):
                 return next((d for d in devs if d.get("default")), devs[0] if devs else {})
             return {}
 
+        _patched._device_override_patched = True
         mod._get_device = _patched
