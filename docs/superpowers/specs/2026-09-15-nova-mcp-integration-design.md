@@ -3,7 +3,7 @@
 > 작성일: 2026-09-15
 > 최종 업데이트: 2026-09-16 (에이전트 4종 리뷰 반영)
 > 문서 성격: Nova MCP의 구조와 인터페이스를 설명하는 설계 자료. 동작의 최종 기준은 제품 코드와 API 테스트입니다.
-> 관련 문서: `docs/ENV_SETUP_PRD.md`, `CLAUDE.md §Capture Studio`
+> 관련 문서: `docs/requirements/ENV_SETUP_PRD.md`, `CLAUDE.md §Capture Studio`
 > 디자인 목업: https://claude.ai/code/artifact/4d819f9b-382a-4f45-b3e1-720c9d9d8047
 
 ---

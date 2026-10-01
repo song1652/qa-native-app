@@ -1,7 +1,7 @@
 # TC 스튜디오 이식 — 다른 LLM에게 일 맡기는 법
 
 > 이 문서는 **사람(작업 지시자)** 이 읽고, 아래 프롬프트를 복사해 다른 LLM(코딩 에이전트)에게 붙여 넣는 용도다.
-> 작성: 2026-10-01 · 진행 상황: Phase 1~6 기능 이식 및 임시 데이터 검증 완료. 실제 Claude 호출·실제 TC 반영은 사용자 결정 대기.
+> 작성: 2026-10-01 · 2026-10-02 갱신: Phase 1~7 검증 완료. 실제 Claude 호출·실제 TC 반영을 확인했다.
 
 ## 1. 한눈에 보기
 
@@ -81,7 +81,7 @@ docs/tc-studio/TC_STUDIO_APP_PLAN.md 의 체크박스와 `git log --oneline -20`
 (3.1 공통 규칙)
 
 PLAN의 모든 체크박스가 [x]인지 확인하고, PLAN "검증 명령"을 전부 다시 실행해.
-docs/tc-studio/ 와 docs/USER_GUIDE.html, CLAUDE.md 의 링크가 실제 파일을 가리키는지 점검해.
+docs/tc-studio/ 와 docs/guides/USER_GUIDE.html, CLAUDE.md 의 링크가 실제 파일을 가리키는지 점검해.
 결과만 보고하고 push 는 하지 마.
 ```
 
@@ -115,9 +115,9 @@ LLM의 보고를 받으면 아래를 확인한다. 하나라도 아니면 그 Ph
 | 위치 | 질문 | 답 |
 |---|---|---|
 | Phase 0 · 0.1 | 작업 트리 정리 | **완료.** 삭제된 TC(`tc_capture_settings_search_input.py`)와 `-` 스크린샷은 출처를 몰라 보류 중. 손대지 말라고 답한다 |
-| Phase 6 | 기존 Import Studio를 둘지 합칠지 | 아직 미정. 사람이 결정한다(기본: 둘 다 유지) |
-| Phase 7 | 실제 `claude`로 초안 생성 시험 | 비용이 드는 호출. 허락 여부를 사람이 결정한다 |
-| Phase 7 | 실제 `testcases/`에 md 반영 | 기존 파일에 영향. 미리보기 결과를 보고 사람이 결정한다 |
+| Phase 6 | 기존 Import Studio를 둘지 합칠지 | TC Studio로 통합. 독립 메뉴 제거, 예전 주소는 가져오기 모달로 연결. 직접 변환 API는 호환용 유지 |
+| Phase 7 | 실제 `claude`로 초안 생성 시험 | 2026-10-02 사용자 지시로 진행 완료. 초안 3건 생성 |
+| Phase 7 | 실제 `testcases/`에 md 반영 | 2026-10-02 사용자 지시로 진행 완료. 신규 검증 폴더에 Markdown 3건 반영 |
 
 ## 6. 자주 생기는 실수와 막는 말
 

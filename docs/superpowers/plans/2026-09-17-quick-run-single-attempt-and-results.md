@@ -8,7 +8,7 @@
 
 **Tech Stack:** FastAPI, Python subprocess execution, pytest/pytest-rerunfailures, vanilla JavaScript, Playwright.
 
-**Spec:** `docs/EXECUTION_OBSERVABILITY_PRD.md`
+**Spec:** `docs/requirements/EXECUTION_OBSERVABILITY_PRD.md`
 
 ## Global Constraints
 

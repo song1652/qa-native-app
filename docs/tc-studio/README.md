@@ -26,11 +26,12 @@
 
 다른 LLM에게 맡길 때 쓸 프롬프트, Phase별 검토 체크리스트, 사용자 확인 지점의 답은 **[HANDOFF.md](HANDOFF.md)** 에 모두 있다.
 
-## 현재 상태 (2026-10-01 기준)
+## 현재 상태 (2026-10-02 기준)
 
 - 참고 원본: 웹 TC 스튜디오 `qa-native-fixed` main `f4e7a6b`. 사용자 설명서 `doc/guides/tc-studio/TC_AUTHORING_USER_GUIDE.md`.
 - 앱 대시보드: `http://localhost:8767` (이 저장소, FastAPI). TC 스튜디오 전용 화면: `http://localhost:8767/tc-studio`.
 - `기본양식`이 없으면 첫 접속 시 중립 `기본양식` 스위트와 `테스트케이스` 시트를 자동으로 준비한다. 기존에 가져온 스위트가 있어도 첫 진입은 `기본양식`의 `기획 정보 · TC 생성`을 연다. 기획 정보·시트·분류를 입력하면 초안 생성을 시작할 수 있다.
 - 예시 엑셀(양식 참고용일 뿐, 특정 양식에 맞추지 않는다): `~/Downloads/야핏무브_Full.xlsx`(2줄 헤더 `환경` 아래 `And | iOS`, 전용 TC는 반대쪽 `NA`), `~/Downloads/LODIS_통합테스트_230830_3차.xlsx`(1줄 헤더 `Android | iOS`).
 - 웹 원본의 알려진 버그: Android/iOS 결과를 하나로 합쳐 저장하고 내보낼 때 두 열에 같은 값을 쓴다. **이식본에서는 처음부터 플랫폼별로 저장한다**(웹은 고치지 않는다).
-- **Phase 1~6 기능 이식 및 임시 데이터 검증 완료**(2026-10-01). 실제 Claude 호출과 실제 `testcases/` 반영은 사용자 결정 대기. 삭제된 TC 1개와 `-` 스크린샷은 출처 미상으로 보류(손대지 않음).
+- **Phase 1~7 완료**. 실제 Claude 생성으로 초안 3건을 만들고 승인·Markdown 미리보기·`testcases/android/tc_studio_phase7_20261002/` 반영을 확인했다. 삭제된 TC 1개와 `-` 스크린샷은 출처 미상으로 보류(손대지 않음).
+- 별도 Import Studio 메뉴를 없앴다. 예전 `/?view=import` 주소는 TC Studio의 엑셀 가져오기 모달로 이동한다. 기존 직접 변환 API는 호환용으로 유지한다.

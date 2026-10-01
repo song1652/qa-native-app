@@ -131,7 +131,7 @@ iOS 카드     — 시뮬레이터 목록 · 부팅(비동기) · 종료 · 기�
 - 에뮬레이터/시뮬레이터는 Appium과 독립적으로 시작·종료 가능
 - 최소 보유 정책: 가상 기기(에뮬레이터/시뮬레이터) 최소 1대 유지 (삭제 시 disabled), 실기기 0대 허용
 - Capture Studio iOS 세션 활성 중 시뮬레이터 종료 차단 (Android 세션과 독립)
-- 자세한 스펙: [docs/ENV_SETUP_PRD.md](docs/ENV_SETUP_PRD.md)
+- 자세한 스펙: [docs/requirements/ENV_SETUP_PRD.md](docs/requirements/ENV_SETUP_PRD.md)
 
 ### Capture Studio
 
@@ -215,7 +215,7 @@ TC Markdown → target_ref + config/locators.json
             → 유일 후보만 registry 갱신
 ```
 
-DOM을 모르는 상태에서 locator를 추측해 코드를 확정하지 않습니다. `01_analyze.py`는 native XML과 감지된 WebView DOM을 분리해 저장하고, `06_heal.py`도 locator의 surface 안에서만 후보를 찾습니다. 자세한 정책은 [docs/LOCATOR_HEALING.md](docs/LOCATOR_HEALING.md)를 참고하세요.
+DOM을 모르는 상태에서 locator를 추측해 코드를 확정하지 않습니다. `01_analyze.py`는 native XML과 감지된 WebView DOM을 분리해 저장하고, `06_heal.py`도 locator의 surface 안에서만 후보를 찾습니다. 자세한 정책은 [docs/operations/LOCATOR_HEALING.md](docs/operations/LOCATOR_HEALING.md)를 참고하세요.
 
 ## 주요 파일
 
@@ -237,10 +237,12 @@ DOM을 모르는 상태에서 locator를 추측해 코드를 확정하지 않습
 | `scripts/locator_registry.py` | locator 정규화·registry·후보 탐색 공통 모듈 |
 | `config/locators.json` | 플랫폼별 locator source of truth |
 | `state/pipeline.json` | 단계별 상태와 UI hierarchy snapshot |
-| `docs/ENV_SETUP_PRD.md` | ENV Setup UI 제품 요구사항 (v1.0) |
-| `docs/LOCATOR_HEALING.md` | locator healing 운영 정책 |
+| `docs/requirements/ENV_SETUP_PRD.md` | ENV Setup UI 제품 요구사항 (v1.0) |
+| `docs/operations/LOCATOR_HEALING.md` | locator healing 운영 정책 |
 | `docs/superpowers/specs/2026-09-15-nova-mcp-integration-design.md` | Nova MCP 통합 설계 문서 |
 | `agents/lessons_learned.md` | 운영 중 발견된 패턴과 교훈 (Appium 환경변수, iOS 부팅 방식 등) |
+
+전체 문서 목록과 폴더별 안내는 [docs/README.md](docs/README.md)를 참고하세요.
 
 ## 산출물 및 제한사항
 

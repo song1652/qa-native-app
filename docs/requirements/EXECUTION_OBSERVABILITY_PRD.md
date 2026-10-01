@@ -6,7 +6,7 @@
 | 작성일 | 2026-09-17 |
 | 상태 | M1 구현 및 Android·iOS E2E 검증 완료 |
 | UI 목업 | [TC 실행 증거 패널 v0.3](https://claude.ai/artifact/E4JEz3FyB5cFZV9ad8oLrV) — §8 프론트엔드 3개 상태(실행 결과 · 증거 상세 · 수집 설정). 상단 `스펙 주석` 체크박스로 각 UI 요소의 PRD 근거 조항 표시 |
-| 관련 문서 | [PARALLEL_EXECUTION_PRD.md](PARALLEL_EXECUTION_PRD.md) §6-2·§6-3, [ENV_SETUP_PRD.md](ENV_SETUP_PRD.md), [LOCATOR_HEALING.md](LOCATOR_HEALING.md) |
+| 관련 문서 | [PARALLEL_EXECUTION_PRD.md](PARALLEL_EXECUTION_PRD.md) §6-2·§6-3, [ENV_SETUP_PRD.md](ENV_SETUP_PRD.md), [LOCATOR_HEALING.md](../operations/LOCATOR_HEALING.md) |
 | 선행 조건 | 없음 — 병렬 실행 PRD와 **독립적으로 착수 가능** (§9-3에서 상호 관계 정의) |
 | 변경 이력 | §15 |
 
@@ -889,7 +889,7 @@ API 에러:
 
 ```text
 state/runs/{run_id}/artifacts/  # TC 단위 영상·시스템 로그 + manifest.json
-docs/EXECUTION_OBSERVABILITY_PRD.md
+docs/requirements/EXECUTION_OBSERVABILITY_PRD.md
 ```
 
 ### 변경 3 — 신규 섹션 "TC 실행 관측성"

@@ -8,7 +8,7 @@
 - TC 스튜디오는 웹 저장소(`/Users/junghoyoung/qa-native-fixed`, 기준 `f4e7a6b`)를 **참고만 해서 이 저장소에 이식**한다. 웹 저장소는 읽기 전용 — 수정·커밋·push·서버 재시작 금지.
 - 대시보드 `http://localhost:8767`의 TC 스튜디오 메뉴는 웹 원본과 같은 독립 화면 `/tc-studio`로 이동한다. 여기에서 엑셀 TC 가져오기, 기획 자료 기반 초안 생성, 검토, 엑셀·Markdown 내보내기를 수행한다. API는 `agents/dashboard/routes/tc_studio.py`, 데이터 처리는 `scripts/_tc_*.py`, 저장소는 `state/tc_library/`다.
 - 앱 스위트의 Android/iOS 결과는 `results`에 따로 저장한다. Markdown은 `scripts/_tc_md_export.py`가 기존 `scripts/import_excel.py:_render_markdown` 형식으로 만들어 `testcases/{android,ios}/{group}/`에 쓴다.
-- 기존 Import Studio는 별도 메뉴로 유지한다. 테스트에서는 `state/tc_library/`, `testcases/`, `import/`의 실제 데이터를 사용하지 않는다.
+- 엑셀 가져오기는 TC Studio에 통합한다. 예전 `/?view=import` 주소는 TC Studio 가져오기 모달로 연결하고, 기존 `/api/import/*` 변환 API는 호환을 위해 유지한다. 테스트에서는 `state/tc_library/`, `testcases/`, `import/`의 실제 데이터를 사용하지 않는다.
 
 ## 핵심 원칙
 
@@ -42,7 +42,7 @@ testcases/ios/{group}/     → tests/generated/ios/{group}/
 
 대시보드에서 Android를 선택하면 `testcases/android`만, iOS를 선택하면 `testcases/ios`만 실행 대상으로 노출합니다. 플랫폼 루트는 생성 결과에 다시 중첩하지 않습니다.
 
-## Excel Import Studio
+## 이전 Excel 직접 변환 API (호환용)
 
 - 흐름: `파일·시트 선택 → 열 매핑 → 미리보기 → 안전한 반영 → 완료`
 - 입력 파일은 `import/*.xlsx`에 두며 원본을 수정하지 않습니다.
@@ -108,7 +108,7 @@ python scripts/02_generate.py --platform android --strict-locators
 python scripts/02_generate.py --platform ios --strict-locators
 ```
 
-상세 healing 정책은 [docs/LOCATOR_HEALING.md](docs/LOCATOR_HEALING.md)에 있습니다.
+상세 healing 정책은 [docs/operations/LOCATOR_HEALING.md](docs/operations/LOCATOR_HEALING.md)에 있습니다.
 
 ## 설정 파일
 
@@ -158,7 +158,7 @@ state/pipeline.json        # 실행 상태와 snapshot
 state/capture_session.json # Capture Studio 세션 상태
 state/runs/{run_id}/artifacts/ # TC attempt별 영상·시스템 로그 + manifest.json
 logs/                      # 단계별 로그
-docs/LOCATOR_HEALING.md    # healing 정책
+docs/operations/LOCATOR_HEALING.md    # healing 정책
 docs/CAPTURE_STUDIO_PLAN.md # Capture Studio 구현 플랜
 ```
 
@@ -179,7 +179,7 @@ git diff --check
 
 대시보드 ENV Setup 탭에서 Appium 서버와 디바이스(에뮬레이터/시뮬레이터/실기기)를 관리합니다.
 
-**PRD**: `docs/ENV_SETUP_PRD.md` (v0.8 — F1·F3·F6 코드 반영 완료 · US-3 디바이스 CRUD API)  
+**PRD**: `docs/requirements/ENV_SETUP_PRD.md` (v0.8 — F1·F3·F6 코드 반영 완료 · US-3 디바이스 CRUD API)
 **디자인 스펙**: https://claude.ai/code/artifact/55ba3c71-e480-4493-b60a-d0a2aad70fb1  
 **목업**: https://claude.ai/code/artifact/466103b7-6be2-4811-b34e-f0c088462334
 

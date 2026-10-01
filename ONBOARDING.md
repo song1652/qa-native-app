@@ -312,4 +312,4 @@ pytest -q tests --ignore=tests/generated
 | 디스크 사용량 증가 | `state/runs/`와 보존 설정 | 보존 한도를 낮추거나 대시보드에서 필요 없는 run을 삭제합니다. |
 | `collected 0 items` | 선택한 생성 테스트 폴더 | Import Studio 또는 Capture Studio로 TC를 만든 뒤 다시 실행합니다. |
 
-추가 사용법은 [README.md](README.md)와 [docs/USER_GUIDE.html](docs/USER_GUIDE.html)을 참고하세요.
+추가 사용법은 [README.md](README.md)와 [docs/guides/USER_GUIDE.html](docs/guides/USER_GUIDE.html)을 참고하세요.

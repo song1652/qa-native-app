@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 >
-> **2026-09-17 status check:** the corresponding PRD (`docs/EXECUTION_OBSERVABILITY_PRD.md`) declares M1 complete, and this repo's `state/runs/` already contains real Android/iOS manifests with valid video/screenshot evidence — but these checkboxes were never marked done. Verified retroactively (not via this plan's own RED→GREEN loop): all four referenced test files exist and pass (`tests/test_observability_collector.py`, `tests/test_observability_pipeline.py`, `tests/test_observability_api.py`, `tests/dashboard/test_observability_ui.py` — 39/39 passing together). Checked off below on that basis. Task 6's "replace the test-only probe endpoint" sub-item was **not** done — `tests/_observability_e2e.py` still defines `/api/run_test_e2e_probe`; left unchecked.
+> **2026-09-17 status check:** the corresponding PRD (`docs/requirements/EXECUTION_OBSERVABILITY_PRD.md`) declares M1 complete, and this repo's `state/runs/` already contains real Android/iOS manifests with valid video/screenshot evidence — but these checkboxes were never marked done. Verified retroactively (not via this plan's own RED→GREEN loop): all four referenced test files exist and pass (`tests/test_observability_collector.py`, `tests/test_observability_pipeline.py`, `tests/test_observability_api.py`, `tests/dashboard/test_observability_ui.py` — 39/39 passing together). Checked off below on that basis. Task 6's "replace the test-only probe endpoint" sub-item was **not** done — `tests/_observability_e2e.py` still defines `/api/run_test_e2e_probe`; left unchecked.
 
 **Goal:** Repair execution observability so generated-test attempts produce reliable, queryable video/log evidence and the Android `obs_demo` flow passes end-to-end verification.
 
@@ -92,7 +92,7 @@
 - Consumes: normalized API `attempts[]` and artifact URLs.
 - Produces: attempt selector, error explanations, log presets, manifest-based Livetail summary, ~~report artifact link~~.
 
-> **2026-09-17 outcome (superseded by direct user request, not this plan's TDD flow):** the "report artifact link" line (`관측 아티팩트: http://localhost:8000/#obs/...`) was removed from `report_html.py`'s `build_report()` — the user found it unnecessary and its port never matched the actual dashboard port (8767). In its place, `report_html.py` now embeds per-failed-case `screenshot_url`/`video_url` sourced directly from the manifest, so evidence appears inline instead of via a link. See `docs/EXECUTION_OBSERVABILITY_PRD.md` §8-3 (v0.13) for the current contract. `scripts/jira_reporter.py` was also updated to resolve screenshots from the manifest, since the legacy `tests/conftest.py` capture hook + `state/screenshots.json` it depended on were removed in the same pass (see §1-4/§3-4 of that PRD).
+> **2026-09-17 outcome (superseded by direct user request, not this plan's TDD flow):** the "report artifact link" line (`관측 아티팩트: http://localhost:8000/#obs/...`) was removed from `report_html.py`'s `build_report()` — the user found it unnecessary and its port never matched the actual dashboard port (8767). In its place, `report_html.py` now embeds per-failed-case `screenshot_url`/`video_url` sourced directly from the manifest, so evidence appears inline instead of via a link. See `docs/requirements/EXECUTION_OBSERVABILITY_PRD.md` §8-3 (v0.13) for the current contract. `scripts/jira_reporter.py` was also updated to resolve screenshots from the manifest, since the legacy `tests/conftest.py` capture hook + `state/screenshots.json` it depended on were removed in the same pass (see §1-4/§3-4 of that PRD).
 
 - [x] Add failing DOM/behavior contract tests for attempt switching, required presets, localized errors, and report link.
 - [x] Run and confirm RED.
@@ -102,7 +102,7 @@
 ### Task 6: Align documentation and replace misleading tests
 
 **Files:**
-- Modify: `docs/EXECUTION_OBSERVABILITY_PRD.md`
+- Modify: `docs/requirements/EXECUTION_OBSERVABILITY_PRD.md`
 - Modify: `CLAUDE.md`
 - Modify: `tests/_observability_e2e.py`
 

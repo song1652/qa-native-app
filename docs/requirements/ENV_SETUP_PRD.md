@@ -881,7 +881,7 @@ M2 착수 전 선행 작업. 순서대로 수행하며 각 단계 후 `python3 -
 
 ### 15-6. v0.6 블로커 해소 검증 기준 _(M2.0 완료 판정)_
 
-- [ ] **R3** — `grep -rn "emulators\|simulators" scripts/ agents/ config/ docs/ENV_SETUP_PRD.md`가 복수형 키 참조 0건 (API 경로명 `/api/env/ios/simulators`, `list_system_simulators`와 함수명 `check_ios_simulators()`는 devices.json 키가 아니므로 제외)
+- [ ] **R3** — `grep -rn "emulators\|simulators" scripts/ agents/ config/ docs/requirements/ENV_SETUP_PRD.md`가 복수형 키 참조 0건 (API 경로명 `/api/env/ios/simulators`, `list_system_simulators`와 함수명 `check_ios_simulators()`는 devices.json 키가 아니므로 제외)
 - [ ] **R3** — `devices[platform][mode]` 직접 인덱싱이 코드베이스에서 0건. 4개 소비 지점 전부 공용 리더 경유 (M2.0-3)
 - [ ] **R3** — `--mode emulator`, `--mode simulator`, `--mode real_device` 3개 값이 배열 전환 후에도 모두 동작한다
 - [ ] **R2** — `devices.json`의 `mjpegServerPort`를 8094로 바꾸면 Capture Studio Android 세션의 `mjpeg_url`이 `http://localhost:8094`로 반환된다 (하드코딩 제거 확인, M2.0-4)

@@ -114,17 +114,17 @@ kill $(lsof -tiTCP:8767 -sTCP:LISTEN); nohup python3 agents/dashboard/serve.py >
 - [x] 기존 대시보드 화면(Capture/Import/ENV 등) 회귀 없음: `tests/dashboard` 통과.
 - [x] 사용자 UI 피드백 반영: 파이프라인 화면 안의 뷰 대신 웹 원본처럼 독립된 `/tc-studio` 페이지와 헤더·사이드바·본문 배치를 사용한다.
 - [x] 기존 가져온 스위트가 있어도 웹처럼 첫 접속 시 중립 `기본양식`·`테스트케이스` 시트를 자동으로 준비하고 기획 정보 입력을 첫 화면으로 연다. 기획 텍스트와 분류를 넣으면 초안 생성 버튼이 활성화되는 브라우저 흐름을 검증한다.
-- [ ] **사용자 확인**: 기존 Import Studio(엑셀 → md 직접 변환)를 그대로 둘지, TC 스튜디오로 합칠지 묻는다. 결정 전에는 둘 다 유지.
+- [x] **사용자 결정**: 엑셀 가져오기 화면을 TC Studio로 통합한다. 독립 메뉴를 제거하고 예전 `/?view=import` 주소는 TC Studio 가져오기 모달로 연결한다. 기존 직접 변환 API는 호환용으로 유지한다.
 
 ## Phase 7 — 문서와 통합 검증
 
-- [x] APP `docs/USER_GUIDE.html`에 TC 스튜디오 절(웹 설명서 구성 참고, 앱 스위트·결과 비교·md 내보내기 포함).
+- [x] APP `docs/guides/USER_GUIDE.html`에 TC 스튜디오 절(웹 설명서 구성 참고, 앱 스위트·결과 비교·md 내보내기 포함).
 - [x] APP `CLAUDE.md` "TC 스튜디오" 절 갱신(이식 위치, 웹은 읽기 전용, md 형식 소유자).
-- [ ] 통합: 8767 재시작 → 예시 엑셀(사용자 파일, 읽기만) 가져오기 → 불일치 필터 확인 → 기획 텍스트로 초안 생성(실제 `claude`, 사용자 확인 후) → 승인 → md 미리보기. **실제 `testcases/` 반영은 사용자 확인 후.**
-- [ ] 검증 명령 전부 통과, 문서 링크 깨짐 0.
-- [ ] 결과 보고 후 push 여부를 사용자에게 묻는다.
+- [x] 통합: 8767 재시작 → `import/qa_native_app_testcases.xlsx`를 직접 매핑해 6건 가져오기 → 2줄 헤더 검증 양식에서 결과 불일치 1건 필터 확인 → 실제 `claude`로 초안 3건 생성(`job_1fbe5a0068c2`, 비용 $0.0653) → 승인 → 브라우저에서 md 3건 미리보기 및 `testcases/android/tc_studio_phase7_20261002/` 반영.
+- [x] 검증 명령 통과: `.venv/bin/python -m pytest tests/unit tests/dashboard -q` 564 passed, `python3 -m py_compile scripts/*.py`, Android/iOS `02_generate.py --strict-locators`를 사용자 산출물과 분리된 임시 사본에서 실행(각 12/8개 생성), `git diff --check`. 문서의 상대 Markdown 링크 39개와 HTML 자산 링크 371개 검사에서 깨짐 0.
+- [x] 사용자 2026-10-02 지시로 커밋·push 승인. 결과와 커밋을 최종 보고한다.
 
-현재 보류: 실제 Claude 호출과 실제 `testcases/` 반영은 `HANDOFF.md` 5장의 사용자 결정 사항이다. 기존에 수정·삭제 상태인 생성 TC를 보존하기 위해 `02_generate.py`는 임시 작업 폴더에서 Android/iOS 모두 `--strict-locators`로 실행해 생성 결과를 확인했다. 임시 디렉터리의 Markdown을 `parse_tc_blocks`로 읽는 통합 테스트도 통과했다. 전체 `git diff --check`에는 기존 사용자 파일 `state/pytest_report.xml`의 공백 경고가 남아 있으며, 이번 세 커밋 범위는 통과했다.
+실제 Claude 검증은 로컬 TC 라이브러리의 `TC_STUDIO_PHASE7_20261002` 스위트에서 수행했다. 기존 사용자 데이터와 검증용 데이터의 충돌은 없었고, 웹 원본 저장소 작업 트리는 깨끗하다. 로컬 실행 상태·로그·기기 설정은 커밋 대상에서 제외한다.
 
 ## 완료 정의
 

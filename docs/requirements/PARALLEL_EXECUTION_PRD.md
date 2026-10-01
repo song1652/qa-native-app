@@ -10,7 +10,7 @@
 | v0.3 변경 | **동일 타입 그룹 정책 확정** (§2-2) — 실기기끼리·에뮬레이터끼리만 병렬, 혼합 금지. 에뮬레이터 병렬은 영구 제외에서 **M2로 연기**(§2-3 선행 조건) |
 | v0.6 변경 | **§6-3 코드 예시 수정** (개발자 검토 반영) — 경로 재바인딩을 `main()`으로 이동, conftest는 훅 내부 동적 조회. `STATE_DIR` 동반 재바인딩 누락과 **스크린샷 PNG 경로 충돌**(F-2 신규 항목)을 함께 반영 |
 | v0.5 변경 | **Android + iOS 동시 실행 영구 제외 최종 확정** (§2-4) — 한 run 혼합·플랫폼별 독립 run 동시 진행 **모두 제외**, 별도 검토 안 함. v0.4에서 검토했던 (B) 지지안과 그에 딸린 Q-5·Q-6·전방호환 설계를 철회 |
-| 관련 문서 | [ENV_SETUP_PRD.md](ENV_SETUP_PRD.md) §16 (Phase 3 실기기), [LOCATOR_HEALING.md](LOCATOR_HEALING.md) |
+| 관련 문서 | [ENV_SETUP_PRD.md](ENV_SETUP_PRD.md) §16 (Phase 3 실기기), [LOCATOR_HEALING.md](../operations/LOCATOR_HEALING.md) |
 | 선행 조건 | ENV_SETUP_PRD M2.0 마이그레이션 완료 (`devices.json` 배열 스키마) |
 
 ---
@@ -737,7 +737,7 @@ tc_settings_search_input                 ✗               ✗            ✗   
 >
 > **병렬 실행은 동일 타입 그룹 안에서만 가능합니다.** 실기기는 실기기끼리, 에뮬레이터는 에뮬레이터끼리만 묶이며 **에뮬레이터와 실기기를 섞어서 실행할 수 없습니다.** UI는 한쪽을 선택하면 다른 쪽 섹션을 비활성화하고, API는 혼합 요청에 `400 mixed_device_mode`를 반환합니다. iOS(시뮬레이터·실기기)는 병렬 대상이 아닙니다.
 >
-> 상세: [docs/PARALLEL_EXECUTION_PRD.md](docs/PARALLEL_EXECUTION_PRD.md)
+> 상세: [실기기 병렬 실행 PRD](PARALLEL_EXECUTION_PRD.md)
 
 변경 시점: **M1 완료 후**. M0까지는 현재 문장이 사실이므로 수정하지 않습니다.
 
