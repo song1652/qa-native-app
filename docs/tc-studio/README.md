@@ -20,20 +20,11 @@
 
 1. [설계 — 무엇을 왜 이렇게 하는가](TC_STUDIO_APP_DESIGN.md): 결정, 이식 방식, 데이터 모델, 범위
 2. [실행 계획 — 작업 목록](TC_STUDIO_APP_PLAN.md): Phase별 작업, 수정 파일, 테스트, 완료 기준, 체크박스
+3. [인수인계 — 다른 LLM에게 맡기는 법](HANDOFF.md): 프롬프트, 검토 체크리스트
 
-## 새 세션에서 이렇게 시작한다
+## 일 맡기는 법
 
-```text
-docs/tc-studio/README.md, TC_STUDIO_APP_DESIGN.md, TC_STUDIO_APP_PLAN.md를 읽고
-실행 계획의 Phase 0부터 순서대로 진행해줘.
-- qa-native-fixed는 읽기만 하고 절대 수정·커밋하지 마.
-- 계획의 '사용자 확인' 항목에서는 멈추고 물어봐.
-- 끝난 항목은 PLAN 체크박스를 체크하고 커밋에 포함해줘.
-- 각 Phase가 끝나면 테스트 결과와 함께 짧게 보고하고, 다음 Phase 전에 확인받아.
-- 파이썬을 고치면 8767 앱 대시보드를 재시작해. push는 물어보고 해.
-```
-
-이어서 할 때: "PLAN 체크박스와 git log로 진행 위치를 확인하고 남은 작업부터 이어서 해줘. 규칙은 README와 PLAN의 Global Constraints대로."
+다른 LLM에게 맡길 때 쓸 프롬프트, Phase별 검토 체크리스트, 사용자 확인 지점의 답은 **[HANDOFF.md](HANDOFF.md)** 에 모두 있다.
 
 ## 현재 상태 (2026-10-01 기준)
 
@@ -41,4 +32,4 @@ docs/tc-studio/README.md, TC_STUDIO_APP_DESIGN.md, TC_STUDIO_APP_PLAN.md를 읽�
 - 앱 대시보드: `http://localhost:8767` (이 저장소, FastAPI).
 - 예시 엑셀(양식 참고용일 뿐, 특정 양식에 맞추지 않는다): `~/Downloads/야핏무브_Full.xlsx`(2줄 헤더 `환경` 아래 `And | iOS`, 전용 TC는 반대쪽 `NA`), `~/Downloads/LODIS_통합테스트_230830_3차.xlsx`(1줄 헤더 `Android | iOS`).
 - 웹 원본의 알려진 버그: Android/iOS 결과를 하나로 합쳐 저장하고 내보낼 때 두 열에 같은 값을 쓴다. **이식본에서는 처음부터 플랫폼별로 저장한다**(웹은 고치지 않는다).
-- 이 저장소 작업 트리에 정리되지 않은 변경이 있다(Phase 0).
+- **Phase 0 완료**(2026-10-01). 다음은 Phase 1. 삭제된 TC 1개와 `-` 스크린샷은 출처 미상으로 보류(손대지 않음).

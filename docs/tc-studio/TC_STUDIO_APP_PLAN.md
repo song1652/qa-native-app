@@ -1,6 +1,6 @@
 # TC 스튜디오 앱 이식 — 실행 계획
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans (또는 subagent-driven-development) to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **작업자(LLM)에게:** Task 순서대로 진행하고, 끝난 항목은 체크박스를 `- [x]`로 바꿔 커밋에 넣는다. 맡기는 방법·프롬프트는 [HANDOFF.md](HANDOFF.md).
 
 **핵심 요구:** And와 iOS 결과를 비교할 수 있으면 된다(사용자 2026-10-01). 웹 TC 스튜디오와 같은 기능 범위를 넘는 것은 만들지 않는다.
 
