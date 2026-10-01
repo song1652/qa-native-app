@@ -25,16 +25,6 @@ EXPECTED_SCRIPTS = [
     "/static/capture-inspector.js",
     "/static/capture-actions.js",
     "/static/capture-livetail.js",
-    "/static/tc-studio/api.js",
-    "/static/tc-studio/state.js",
-    "/static/tc-studio/detail.js",
-    "/static/tc-studio/library.js",
-    "/static/tc-studio/import.js",
-    "/static/tc-studio/generate.js",
-    "/static/tc-studio/connectors.js",
-    "/static/tc-studio/review.js",
-    "/static/tc-studio/export.js",
-    "/static/tc-studio/main.js",
     "/static/dashboard-init.js",
 ]
 
@@ -66,7 +56,7 @@ def test_dashboard_document_loads_external_assets_instead_of_inline_bundles():
 
     assert response.status_code == 200
     assert '<link rel="stylesheet" href="/static/dashboard.css">' in response.text
-    assert '<link rel="stylesheet" href="/static/tc-studio/tc-studio.css">' in response.text
+    assert '<link rel="stylesheet" href="/static/tc-studio/tc-studio.css">' not in response.text
     assert re.findall(r'<script src="([^"]+)"></script>', response.text) == EXPECTED_SCRIPTS
     assert "<style>" not in response.text
     assert "<script>" not in response.text

@@ -8,7 +8,6 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;600;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/dashboard.css">
-<link rel="stylesheet" href="/static/tc-studio/tc-studio.css">
 </head>
 <body class="dashboard-mode">
 
@@ -47,9 +46,9 @@
     </div>
     <div class="sidebar-section">
       <div class="sidebar-label">TC 작성</div>
-      <div class="sidebar-item" data-view="tc_studio" onclick="selectView('tc_studio',this)">
+      <a class="sidebar-item" data-view="tc_studio" href="/tc-studio" style="text-decoration:none">
         <span class="sidebar-dot"></span><span>TC 스튜디오</span>
-      </div>
+      </a>
       <div class="sidebar-item" data-view="import" onclick="selectView('import',this)">
         <span class="sidebar-dot"></span><span>Import Studio</span>
       </div>
@@ -92,7 +91,6 @@
     <div class="overview-kpi-row"><div class="overview-kpi"><span class="overview-kpi-icon">◆</span><div><div class="overview-kpi-label">Appium</div><div class="overview-kpi-value" id="overview-appium">확인 중</div></div></div><div class="overview-kpi"><span class="overview-kpi-icon">◆</span><div><div class="overview-kpi-label">Generated Tests</div><div class="overview-kpi-value" id="overview-generated">0개</div></div></div><div class="overview-kpi"><span class="overview-kpi-icon">◆</span><div><div class="overview-kpi-label">Healing</div><div class="overview-kpi-value" id="overview-healing">0회</div></div></div><div class="overview-kpi" onclick="selectView('tests',document.querySelector('.sidebar-item[data-view=tests]'))"><span class="overview-kpi-icon" style="color:var(--pass)">◆</span><div><div class="overview-kpi-label">빠른 실행</div><div class="overview-kpi-value" id="overview-quick">실행 없음</div></div></div></div>
     <div class="overview-card"><div class="overview-log-head"><span>Recent Logs</span><div class="overview-log-tabs"><button type="button" class="overview-log-tab active" data-overview-log="pipeline" onclick="setOverviewLog('pipeline')">파이프라인 실행</button><button type="button" class="overview-log-tab" data-overview-log="quick" onclick="setOverviewLog('quick')">빠른 실행</button></div><button class="log-clear" onclick="refreshOverview()">↻</button></div><div class="overview-log" id="overview-log">로그 없음</div></div>
   </div>
-  <div id="view-tc_studio" class="view-hidden"></div>
   <div class="grid">
 
   <!-- 왼쪽: 플랫폼 + 테스트 실행 -->
@@ -849,16 +847,6 @@
 <script src="/static/capture-inspector.js"></script>
 <script src="/static/capture-actions.js"></script>
 <script src="/static/capture-livetail.js"></script>
-<script src="/static/tc-studio/api.js"></script>
-<script src="/static/tc-studio/state.js"></script>
-<script src="/static/tc-studio/detail.js"></script>
-<script src="/static/tc-studio/library.js"></script>
-<script src="/static/tc-studio/import.js"></script>
-<script src="/static/tc-studio/generate.js"></script>
-<script src="/static/tc-studio/connectors.js"></script>
-<script src="/static/tc-studio/review.js"></script>
-<script src="/static/tc-studio/export.js"></script>
-<script src="/static/tc-studio/main.js"></script>
 <script src="/static/dashboard-init.js"></script>
 
 <!-- ── TC Preview Modal ─────────────────────────────────────── -->

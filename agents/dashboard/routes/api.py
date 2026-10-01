@@ -64,11 +64,15 @@ _DASHBOARD_ASSETS = {
 
 
 @router.get("/", response_class=HTMLResponse)
-@router.get("/tc-studio", response_class=HTMLResponse)
 async def index():
     # 개발 중 수정사항 즉시 반영을 위해 매 요청마다 파일 읽기
     html = (HERE / "dashboard.html").read_text(encoding="utf-8")
     return HTMLResponse(content=html)
+
+
+@router.get("/tc-studio", response_class=HTMLResponse)
+async def tc_studio_page():
+    return HTMLResponse(content=(HERE / "tc_studio.html").read_text(encoding="utf-8"))
 
 
 @router.get("/static/{asset_name}", include_in_schema=False)
@@ -87,7 +91,8 @@ async def dashboard_static_asset(asset_name: str):
 async def tc_studio_static_asset(asset_name: str):
     if asset_name not in {"api.js", "state.js", "detail.js", "library.js", "import.js",
                           "generate.js", "connectors.js", "review.js", "export.js", "main.js",
-                          "tc-studio.css"}:
+                          "standalone.js", "tc-studio.css", "standalone.css",
+                          "reference-variables.css", "reference-layout.css"}:
         return Response(status_code=404)
     path = HERE / "static" / "tc-studio" / asset_name
     return FileResponse(str(path), media_type="text/css" if asset_name.endswith(".css") else "text/javascript")

@@ -36,7 +36,7 @@ qa-native-fixed (읽기 전용, f4e7a6b)           qa-native-app (8767)
 **이식 원칙**
 - 파이썬 모듈은 **같은 파일 이름**(`scripts/_tc_*.py`)으로 가져온다. 웹과 비교·추적하기 쉽게 하기 위해서다. 웹 의존 `_paths`·`_state`는 이 저장소에 필요한 것만 담은 작은 `scripts/_paths.py`·`scripts/_state.py`로 대신한다(경로는 이 저장소 기준 `state/tc_library/`).
 - 라우트는 웹의 `ThreadingHTTPServer` 믹스인을 **FastAPI 라우터 1개**(`agents/dashboard/routes/tc_studio.py`)로 다시 쓴다. **URL 경로와 응답 모양은 웹과 같게 유지**한다(`/api/tc-library/...`). 그래야 JS와 테스트를 거의 그대로 옮길 수 있다.
-- JS·CSS는 `agents/dashboard/static/tc-studio/`로 옮기고, 앱 대시보드 사이드바 "TC 작성"에 **TC 스튜디오** 메뉴를 추가한다.
+- JS·CSS는 `agents/dashboard/static/tc-studio/`로 옮기고, 앱 대시보드 사이드바 "TC 작성"에 **TC 스튜디오** 메뉴를 추가한다. 메뉴는 웹 원본과 같은 독립된 `/tc-studio` 페이지로 이동한다. 그 페이지는 원본의 헤더·사이드바·본문 배치를 사용한다.
 - 웹 모듈 중 앱에 필요 없는 것(웹 md 형식 내보내기 `_tc_md_export.py`가 쓰는 웹 `_import_commit`·`_import_validator`)은 가져오지 않고 2.4로 대신한다.
 - 웹 테스트(`tests/unit/tc_library/`)를 함께 옮겨 이식이 맞는지 확인한다. 가짜 LLM(`fake_claude.py`)도 옮긴다.
 

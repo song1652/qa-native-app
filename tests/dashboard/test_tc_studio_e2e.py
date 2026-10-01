@@ -67,6 +67,8 @@ def _check_browser(tc_server):
         page.goto(tc_server)
         page.locator('[data-view="tc_studio"]').click()
         page.wait_for_function("document.querySelector('#grid-body tr[data-case]') !== null")
+        assert page.locator('.app-layout').count() == 0
+        assert page.locator('.body-wrap').count() == 1
         assert page.locator('table#grid').evaluate('(el) => getComputedStyle(el).display') == 'table'
         assert page.url.endswith('/tc-studio')
         assert not page.locator('.status-bar').is_visible()
@@ -94,5 +96,8 @@ def _check_browser(tc_server):
         direct.goto(f'{tc_server}/tc-studio')
         direct.wait_for_selector('#suite-select')
         assert direct.locator('[data-view="tc_studio"]').get_attribute('class').find('active') >= 0
+        direct.locator('a[href="/?view=pipeline"]').click()
+        direct.wait_for_url(f'{tc_server}/?view=pipeline')
+        assert direct.locator('#view-pipeline').is_visible()
         direct.close()
         browser.close()

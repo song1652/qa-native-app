@@ -107,7 +107,7 @@ LLM의 보고를 받으면 아래를 확인한다. 하나라도 아니면 그 Ph
 | 3 LLM | `_tc_generate.py`의 `claude` 명령에 `--restricted`, `--tools ""`, `--strict-mcp-config`, `--json-schema`가 있고 `--dangerously-skip-permissions`가 없다. 자격 증명 파일이 `.gitignore`에 있다 |
 | 4 API | 대시보드 재시작 후 `curl -s localhost:8767/api/tc-library` 가 JSON을 준다. `mismatch` 필터 테스트가 있다 |
 | 5 md | 테스트가 `tmp_path`에만 md를 쓴다. 생성 md를 `02_generate.parse_tc_blocks`가 0건이 아니게 읽는 테스트가 있다. md 형식 코드가 `import_excel._render_markdown` 하나다 |
-| 6 화면 | 브라우저에서 `http://localhost:8767` → 사이드바 "TC 작성 › TC 스튜디오"가 열린다. 앱 스위트에서 `And | iOS` 2칸과 "결과가 다른 것만" 필터가 동작한다. Capture·Import·ENV 화면이 그대로다 |
+| 6 화면 | 브라우저에서 `http://localhost:8767` → 사이드바 "TC 작성 › TC 스튜디오"를 누르면 웹 원본과 같은 독립된 `/tc-studio` 화면이 열린다. 앱 스위트에서 `And | iOS` 2칸과 "결과가 다른 것만" 필터가 동작한다. Capture·Import·ENV 화면이 그대로다 |
 | 7 마무리 | 3.4 결과에서 실패 0, 링크 깨짐 0 |
 
 ## 5. LLM이 물어볼 "사용자 확인" 지점과 미리 정한 답

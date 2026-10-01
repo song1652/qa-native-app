@@ -70,10 +70,6 @@ h1{font-size:21px;font-weight:800;letter-spacing:.2px;
 .sidebar-item.active .sidebar-dot{background:var(--accent);border-color:var(--accent);
   box-shadow:0 0 7px rgba(139,92,246,.6)}
 .app-main{flex:1;min-width:0;min-height:0;overflow-y:auto;padding:24px 32px 48px}
-body.tc-studio-mode .status-bar{display:none}
-body.tc-studio-mode .app-layout{min-height:calc(100vh - 54px)}
-body.tc-studio-mode .sidebar{height:calc(100vh - 54px)}
-body.tc-studio-mode .app-main{padding-inline:24px}
 .app-main::before{content:'Dashboard';display:none;font-size:29px;font-weight:800;margin:0 0 10px 0;
   letter-spacing:-.7px;color:#f0eff5}
 .app-main.dashboard-view::before{display:none}
@@ -538,7 +534,6 @@ button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(
   .app-layout{display:block;height:auto;overflow:visible}
   .status-bar{height:auto;min-height:46px;padding:10px 20px;gap:12px}
   .sidebar{position:static;width:100%;min-height:0;display:flex;overflow-x:auto;padding:4px}
-  body.tc-studio-mode .sidebar{height:auto}
   .app-main{overflow-y:auto;padding:20px}
   .app-main::before{font-size:24px}
   .sidebar-section{display:flex;align-items:center;border-bottom:none;padding:0}

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TC 스튜디오 · App QA Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;600;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/tc-studio/reference-variables.css">
+  <link rel="stylesheet" href="/static/tc-studio/reference-layout.css">
+  <link rel="stylesheet" href="/static/tc-studio/tc-studio.css">
+  <link rel="stylesheet" href="/static/tc-studio/standalone.css">
+</head>
+<body>
+  <header class="header">
+    <div class="live-indicator"><div class="live-dot"></div>LIVE</div>
+    <a class="header-title" href="/">QA CONTROL CENTER</a>
+    <div class="header-spacer"></div>
+    <span class="header-meta">APP TC STUDIO</span>
+  </header>
+  <div class="body-wrap">
+    <aside class="sidebar" aria-label="주 메뉴">
+      <div class="sidebar-scroll">
+        <div class="sidebar-section">
+          <div class="sidebar-label">개요</div>
+          <a class="sidebar-item" href="/?view=dashboard"><span class="sidebar-dot-spacer"></span><span class="sidebar-name">Dashboard</span></a>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-label">파이프라인</div>
+          <a class="sidebar-item" href="/?view=tests"><span class="sidebar-dot"></span><span class="sidebar-name">빠른 실행</span></a>
+          <a class="sidebar-item" href="/?view=pipeline"><span class="sidebar-dot"></span><span class="sidebar-name">파이프라인 실행</span></a>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-label">테스트 리포트</div>
+          <a class="sidebar-item" href="/?view=reports"><span class="sidebar-dot-spacer"></span><span class="sidebar-name">리포트 목록</span></a>
+          <a class="sidebar-item" href="/?view=history"><span class="sidebar-dot-spacer"></span><span class="sidebar-name">실행 히스토리</span></a>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-label">TC 작성</div>
+          <a class="sidebar-item" href="/?view=import"><span class="sidebar-dot-spacer"></span><span class="sidebar-name">Import Studio</span></a>
+          <a class="sidebar-item" href="/?view=capture"><span class="sidebar-dot-spacer"></span><span class="sidebar-name">Capture Studio</span></a>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-label">설정</div>
+          <a class="sidebar-item" href="/?view=config"><span class="sidebar-dot-spacer"></span><span class="sidebar-name">환경 설정</span></a>
+          <a class="sidebar-item active" data-view="tc_studio" href="/tc-studio" aria-current="page"><span class="sidebar-dot-spacer"></span><span class="sidebar-name">TC 스튜디오</span></a>
+        </div>
+      </div>
+    </aside>
+    <main class="content-wrap">
+      <div class="content-scroll" id="tc-studio-root"></div>
+    </main>
+  </div>
+  <script src="/static/tc-studio/api.js"></script>
+  <script src="/static/tc-studio/state.js"></script>
+  <script src="/static/tc-studio/detail.js"></script>
+  <script src="/static/tc-studio/library.js"></script>
+  <script src="/static/tc-studio/import.js"></script>
+  <script src="/static/tc-studio/generate.js"></script>
+  <script src="/static/tc-studio/connectors.js"></script>
+  <script src="/static/tc-studio/review.js"></script>
+  <script src="/static/tc-studio/export.js"></script>
+  <script src="/static/tc-studio/main.js"></script>
+  <script src="/static/tc-studio/standalone.js"></script>
+</body>
+</html>

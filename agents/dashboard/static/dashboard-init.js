@@ -1,7 +1,8 @@
 // ── 초기화 ───────────────────────────────────────────────────
 (async function init(){
-  if(location.pathname === '/tc-studio'){
-    selectView('tc_studio', document.querySelector('.sidebar-item[data-view="tc_studio"]'));
+  var initialView=new URLSearchParams(location.search).get('view');
+  if(['dashboard','config','import','capture','pipeline','tests','reports','history'].includes(initialView)){
+    selectView(initialView, document.querySelector('.sidebar-item[data-view="'+initialView+'"]'));
   }
   initReportControls();
   renderRunHistory();

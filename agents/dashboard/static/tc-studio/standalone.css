@@ -1,0 +1,3 @@
+.header-spacer { flex: 1; }
+.header-title, .sidebar-item { text-decoration: none; }
+.header-title:hover, .sidebar-item:hover { text-decoration: none; }

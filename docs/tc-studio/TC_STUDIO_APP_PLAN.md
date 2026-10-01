@@ -106,12 +106,13 @@ kill $(lsof -tiTCP:8767 -sTCP:LISTEN); nohup python3 agents/dashboard/serve.py >
 
 ## Phase 6 — 화면과 메뉴
 
-**Files:** Create `agents/dashboard/static/tc-studio/*.js`, `tc-studio.css`(웹 `static/js/tc-studio/*`, `static/css/tc-studio.css` 이식) · Modify `agents/dashboard/dashboard.html`(사이드바 "TC 작성" 첫 항목 **TC 스튜디오**, `#view-tc_studio`), `agents/dashboard/static/dashboard-shell.js`(`selectView`) · 테스트 웹 E2E(`test_tc_studio_e2e.py` 등) 중 핵심 흐름을 APP 대시보드용으로 변환
+**Files:** Create `agents/dashboard/static/tc-studio/*.js`, `tc-studio.css`(웹 `static/js/tc-studio/*`, `static/css/tc-studio.css` 이식), 전용 `agents/dashboard/tc_studio.html`과 웹 원본의 화면 틀 CSS · Modify `agents/dashboard/dashboard.html`(사이드바 "TC 작성" 첫 항목 **TC 스튜디오**가 `/tc-studio`로 이동), `agents/dashboard/routes/api.py` · 테스트 웹 E2E(`test_tc_studio_e2e.py` 등) 중 핵심 흐름을 APP 화면용으로 변환
 
 - [x] 웹 화면 4개 탭(라이브러리·기획 정보/생성·검토·내보내기)을 옮긴다. 웹 스위트 동작은 원본과 동일.
 - [x] 앱 스위트만: 결과 `And | iOS` 2칸, 전용 TC 반대쪽 회색 N/A, 필터 `플랫폼`·**`And·iOS 결과가 다른 것만`**, 상세 패널 결과 2개 + 대상 플랫폼, 일괄 변경 대상 플랫폼.
 - [x] **E2E 필수**: 2양식 픽스처 가져오기 → "결과가 다른 것만" 필터 → 불일치 행만 표시.
 - [x] 기존 대시보드 화면(Capture/Import/ENV 등) 회귀 없음: `tests/dashboard` 통과.
+- [x] 사용자 UI 피드백 반영: 파이프라인 화면 안의 뷰 대신 웹 원본처럼 독립된 `/tc-studio` 페이지와 헤더·사이드바·본문 배치를 사용한다.
 - [ ] **사용자 확인**: 기존 Import Studio(엑셀 → md 직접 변환)를 그대로 둘지, TC 스튜디오로 합칠지 묻는다. 결정 전에는 둘 다 유지.
 
 ## Phase 7 — 문서와 통합 검증

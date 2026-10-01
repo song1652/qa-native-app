@@ -161,20 +161,21 @@ function updateTcFolderCount(){
   if(el) el.textContent=selected.length ? selected.length+'개 폴더를 선택한 순서대로 직렬 실행합니다.' : '실행할 폴더를 선택하세요.';
 }
 
-var tcStudioInitialized=false;
 function selectView(view, item){
+  if(view === 'tc_studio'){
+    location.assign('/tc-studio');
+    return;
+  }
   document.querySelectorAll('.sidebar-item').forEach(function(el){
     el.classList.toggle('active', el === item);
   });
   var grid=document.querySelector('.grid');
   var pipeline=document.getElementById('view-pipeline');
   var overview=document.getElementById('view-overview');
-  var studio=document.getElementById('view-tc_studio');
   var rightViews=['tests','import','reports','history','config','capture'];
   if(!grid || !pipeline) return;
   if(overview) overview.classList.toggle('view-hidden', view !== 'dashboard');
-  if(studio) studio.classList.toggle('view-hidden', view !== 'tc_studio');
-  grid.classList.toggle('view-hidden', view === 'dashboard' || view === 'tc_studio');
+  grid.classList.toggle('view-hidden', view === 'dashboard');
   grid.classList.remove('focus-left','focus-right');
   pipeline.classList.remove('view-hidden');
   document.querySelectorAll('.right-panel > .card').forEach(function(card){
@@ -187,21 +188,11 @@ function selectView(view, item){
   document.body.classList.toggle('quick-mode', view === 'tests');
   document.body.classList.toggle('report-mode', view === 'reports');
   document.body.classList.toggle('dashboard-mode', view === 'dashboard');
-  document.body.classList.toggle('tc-studio-mode', view === 'tc_studio');
-  if(view === 'tc_studio' && location.pathname !== '/tc-studio') history.replaceState(null,'','/tc-studio');
-  else if(view !== 'tc_studio' && location.pathname === '/tc-studio') history.replaceState(null,'','/');
   if(main) main.classList.toggle('report-view', view === 'reports');
   if(main) main.classList.toggle('import-view', view === 'import');
   if(main) main.classList.toggle('capture-view', view === 'capture');
   if(main) main.classList.toggle('quick-view', view === 'tests');
   if(main) main.classList.toggle('history-view', view === 'history');
-  if(view === 'tc_studio' && !tcStudioInitialized && window.TCS){
-    tcStudioInitialized=true;
-    window.TCS.init('#view-tc_studio').catch(function(error){
-      tcStudioInitialized=false;
-      if(studio) studio.textContent='TC 스튜디오를 불러오지 못했습니다: '+error.message;
-    });
-  }
   if(view === 'dashboard') refreshOverview();
   if(view === 'tests') refreshStatus();
   if(main) main.scrollTo({top:0, behavior:'smooth'});
