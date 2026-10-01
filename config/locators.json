@@ -1,6 +1,18 @@
 {
   "schema_version": 1,
   "targets": {
+    "settings_search_bar": {
+      "android": {"strategy": "ID", "value": "com.android.settings:id/search_action_bar"}
+    },
+    "settings_search_input": {
+      "android": {"strategy": "ID", "value": "com.google.android.settings.intelligence:id/open_search_view_edit_text"}
+    },
+    "settings_back_button": {
+      "android": {"strategy": "ACCESSIBILITY_ID", "value": "뒤로"}
+    },
+    "settings_homepage_title": {
+      "android": {"strategy": "ID", "value": "com.android.settings:id/homepage_title"}
+    },
     "main_screen.homepage_title": {
       "android": {
         "strategy": "ID",

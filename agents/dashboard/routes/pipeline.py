@@ -10,6 +10,7 @@ import os
 import subprocess
 import sys
 import threading
+import uuid
 from datetime import datetime
 from pathlib import Path
 
@@ -40,6 +41,17 @@ from utils.artifact_retention import load_retention_limits, purge_old_runs  # no
 from ws import broadcast_timeline_sync  # noqa: E402
 
 router = APIRouter()
+_pipeline_batches: dict[str, dict] = {}
+_SERIAL_FOLDER_GAP_SECONDS = 12
+
+
+@router.get("/api/run_all/status/{batch_id}")
+def get_run_all_status(batch_id: str):
+    with _process_lock:
+        batch = _pipeline_batches.get(batch_id)
+        if batch is None:
+            return JSONResponse({"ok": False, "error": "unknown run"}, status_code=404)
+        return JSONResponse({"ok": True, **batch.copy()})
 
 
 @router.get("/api/devices")
@@ -175,6 +187,12 @@ def _device_execute_args(platform: str, device_mode: str, device_udid: str) -> l
 def _tc_folder_args(step: str, platform: str, folder: str) -> list[str]:
     """Scope source Markdown and generated tests to the same selected group."""
     if not folder:
+        return []
+    if folder == "__root__":
+        if step == "generate":
+            return ["--tc-dir", platform, "--tc-root-only"]
+        if step == "execute":
+            return ["--tc-root-only"]
         return []
     if step == "generate":
         return ["--tc-dir", f"{platform}/{folder}"]
@@ -387,6 +405,8 @@ async def post_run_all(request: Request):
             return JSONResponse({"ok": False, "error": f"invalid tc_folder: {tc_folder}"}, status_code=400)
     if from_tc_studio and (not tc_folders or any(not folder for folder in tc_folders)):
         return JSONResponse({"ok": False, "error": "TC Studio 폴더를 선택하세요"}, status_code=400)
+    if not tc_folders:
+        return JSONResponse({"ok": False, "error": "TC 폴더를 선택하세요"}, status_code=400)
     if is_capture_active(platform):
         return JSONResponse(
             {"ok": False, "error": "Capture Studio 세션이 실행 중입니다. 먼저 Capture Studio를 종료하세요."},
@@ -402,6 +422,12 @@ async def post_run_all(request: Request):
 
     MAX_HEAL = 3
     PIPELINE = _pipeline_steps(from_tc_studio=from_tc_studio)
+    batch_id = uuid.uuid4().hex
+    batch = {"done": False, "ok": True, "folder_index": 0,
+             "folder_count": len(tc_folders), "folder": tc_folders[0],
+             "step": "", "log": ""}
+    with _process_lock:
+        _pipeline_batches[batch_id] = batch
 
     def _spawn(step, folder="", extra=None, log_suffix="", env=None):
         script_rel, extra_args_tmpl, log_name = SCRIPT_MAP[step]
@@ -421,6 +447,8 @@ async def post_run_all(request: Request):
         script = PROJECT_ROOT / script_rel
         lname  = log_name.replace(".txt", f"{log_suffix}.txt") if log_suffix else log_name
         log_path = LOGS_DIR / lname
+        with _process_lock:
+            batch.update(step=step, log=lname)
         extra_popen: dict = {}
         if sys.platform != "win32":
             extra_popen["preexec_fn"] = os.setsid
@@ -503,7 +531,7 @@ async def post_run_all(request: Request):
             else:
                 rc, _ = _spawn(step, folder=folder)
             if rc != 0:
-                return
+                return False
         execute_ok = (
             read_state().get("execute_results", {})
             .get("summary", {}).get("failed", 0) == 0
@@ -514,7 +542,7 @@ async def post_run_all(request: Request):
             if heal_round == MAX_HEAL:
                 _execute_with_obs(log_suffix=f"_record{heal_round}")
                 _report_final_failure()
-                break
+                return False
             else:
                 _spawn("heal", folder=folder, log_suffix=f"_{heal_round}")
                 _execute_with_obs(log_suffix=f"_{heal_round}")
@@ -522,18 +550,31 @@ async def post_run_all(request: Request):
                     read_state().get("execute_results", {})
                     .get("summary", {}).get("failed", 0) == 0
                 )
+        return execute_ok
 
     def _run_selected_folders():
         import time as _time
-        for idx, folder in enumerate(tc_folders):
-            if idx > 0:
-                # 이전 Appium/UiAutomator2 세션이 완전히 종료된 후 다음 세션 시작
-                _time.sleep(12)
-            _run_pipeline(folder)
+        try:
+            for idx, folder in enumerate(tc_folders):
+                with _process_lock:
+                    batch.update(folder_index=idx, folder=folder, step="", log="")
+                if idx > 0:
+                    # 이전 Appium/UiAutomator2 세션이 완전히 종료된 후 다음 세션 시작
+                    _time.sleep(_SERIAL_FOLDER_GAP_SECONDS)
+                if not _run_pipeline(folder):
+                    with _process_lock:
+                        batch["ok"] = False
+        except Exception as exc:
+            with _process_lock:
+                batch.update(ok=False, error=str(exc))
+        finally:
+            with _process_lock:
+                batch["done"] = True
 
     threading.Thread(target=_run_selected_folders, daemon=True).start()
     return JSONResponse({
         "ok": True,
+        "batch_id": batch_id,
         "folders": tc_folders,
         "mode": "serial",
         "steps": PIPELINE + ["heal(x3)", "record"],

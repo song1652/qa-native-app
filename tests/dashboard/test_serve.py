@@ -182,3 +182,14 @@ def test_tc_folders_list_only_groups_with_cases(tmp_path, monkeypatch):
     monkeypatch.setattr(state_mod, "TESTCASES_DIR", testcases)
 
     assert list_tc_folders("android") == ["location", "settings"]
+
+
+def test_tc_folders_include_platform_root_cases(tmp_path, monkeypatch):
+    import utils.state as state_mod
+    root = tmp_path / "testcases" / "android"
+    (root / "group").mkdir(parents=True)
+    (root / "tc_root.md").write_text("", encoding="utf-8")
+    (root / "group" / "tc_child.md").write_text("", encoding="utf-8")
+    monkeypatch.setattr(state_mod, "TESTCASES_DIR", tmp_path / "testcases")
+
+    assert list_tc_folders("android") == ["__root__", "group"]

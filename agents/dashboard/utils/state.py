@@ -233,11 +233,14 @@ def list_tc_folders(platform: str | None = None) -> list[str]:
         platform_dir = TESTCASES_DIR / platform
         if not platform_dir.is_dir():
             return []
-        return sorted(
+        folders = sorted(
             folder.name for folder in platform_dir.iterdir()
             if folder.is_dir() and not folder.name.startswith(".")
             and any(folder.rglob("tc_*.md"))
         )
+        if any(platform_dir.glob("tc_*.md")):
+            folders.insert(0, "__root__")
+        return folders
     return sorted([
         d.name for d in TESTCASES_DIR.iterdir()
         if d.is_dir() and not d.name.startswith(".") and list(d.glob("tc_*.md"))

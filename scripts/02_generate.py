@@ -498,7 +498,8 @@ def _build_driver() -> webdriver.Remote:
     return webdriver.Remote(APPIUM_URL, options=options)"""
 
 
-def _build_setup_android(precondition: str, has_credentials: bool) -> str:
+def _build_setup_android(precondition: str, has_credentials: bool,
+                         launch_intent: str = "") -> str:
     guard = (
         "        _check_device_connected()\n"
     )
@@ -509,11 +510,26 @@ def _build_setup_android(precondition: str, has_credentials: bool) -> str:
             "        self._valid = test_data[\"credentials\"][\"valid\"]\n"
             "        self._invalid = test_data[\"credentials\"][\"invalid\"]\n"
         )
+    launch = (
+        (
+            "        self.driver.terminate_app(\n"
+            "            \"com.google.android.settings.intelligence\"\n"
+            "        )\n"
+            if launch_intent.startswith("com.android.settings/") else ""
+        )
+        +
+        "        self.driver.execute_script(\n"
+        "            \"mobile: startActivity\",\n"
+        f"            {{\"intent\": {launch_intent!r}}},\n"
+        "        )\n"
+        if launch_intent else ""
+    )
     return (
         "    def setup_method(self):\n"
         + guard
         + creds
         + "        self.driver = _build_driver()\n"
+        + launch
         + "        self.driver.implicitly_wait(10)\n"
         + "        self.hybrid = HybridSession(self.driver)\n"
     )
@@ -967,28 +983,32 @@ def generate_test_file(meta: dict, platform: str,
             hint_val = hints[const_name]["value"]
             hint_strategy = hints[const_name]["strategy"]
             spec = {"value": hint_val, "strategy": hint_strategy}
-            sel_lines.append(
-                f"# target_ref: {tc_slug}.{key} / healed: "
-                f"AppiumBy.{hint_strategy}"
-            )
-            sel_lines.append(f'{const_name} = {hint_val!r}')
+            sel_lines.append(f"# target_ref: {tc_slug}.{key}")
+            sel_lines.append(f"# healed: AppiumBy.{hint_strategy}")
         else:
-            sel_lines.append(
-                f"# target_ref: {tc_slug}.{key} / AppiumBy.{spec['strategy']}"
-            )
-            sel_lines.append(f'{const_name} = {spec["value"]!r}')
+            sel_lines.append(f"# target_ref: {tc_slug}.{key}")
+            sel_lines.append(f"# AppiumBy.{spec['strategy']}")
+        assignment = f'{const_name} = {spec["value"]!r}'
+        if len(assignment) > 99:
+            sel_lines.extend([f'{const_name} = (', f'    {spec["value"]!r}', ')'])
+        else:
+            sel_lines.append(assignment)
         locator_specs[key] = spec
         runtime_specs[spec["value"]] = {
             "surface": spec.get("surface", "auto"),
             "webview": spec.get("webview"),
         }
 
-    formatted_specs = pprint.pformat(
-        runtime_specs, width=68, sort_dicts=False
-    )
-    formatted_specs = formatted_specs.replace(
-        "\n", "\n" + " " * len("LOCATOR_SURFACES = ")
-    )
+    spec_lines = ["{"]
+    for value, spec in runtime_specs.items():
+        spec_lines.extend([
+            f"    {value!r}: {{",
+            f"        'surface': {spec['surface']!r},",
+            f"        'webview': {pprint.pformat(spec['webview'], width=60)},",
+            "    },",
+        ])
+    spec_lines.append("}")
+    formatted_specs = "\n".join(spec_lines)
     sel_lines.append(f"LOCATOR_SURFACES = {formatted_specs}")
 
     sel_block = "\n".join(sel_lines)
@@ -1008,7 +1028,10 @@ def generate_test_file(meta: dict, platform: str,
 
     # --- 클래스 ---
     if platform == "android":
-        setup = _build_setup_android(precondition, has_creds)
+        setup = _build_setup_android(
+            precondition, has_creds,
+            f"{app_match.group(1)}/{app_match.group(2)}" if app_match else "",
+        )
     else:
         setup = _build_setup_ios(precondition, has_creds)
 
@@ -1026,6 +1049,11 @@ def generate_test_file(meta: dict, platform: str,
         )
 
     methods_joined = "\n\n".join(numbered_methods)
+    if strict_locators and ("# TODO:" in methods_joined or "{PLACEHOLDER}" in methods_joined):
+        raise ValueError(
+            f"{tc_slug}: 변환할 수 없는 단계 또는 확인할 수 없는 기대결과가 있습니다. "
+            "TC의 동작·locator·기대결과를 구체적으로 수정하세요."
+        )
 
     class_body = (
         f"class Test{class_name}:\n"
@@ -1082,6 +1110,8 @@ def main():
         "--tc-dir", default=None,
         help="testcases/ 하위 폴더명 (미지정 시 testcases/ 전체 재귀 스캔)"
     )
+    parser.add_argument("--tc-root-only", action="store_true",
+                        help="--tc-dir 폴더 바로 아래의 TC만 생성")
     parser.add_argument(
         "--mode", default=None,
         choices=["emulator", "real_device", "simulator"],
@@ -1116,7 +1146,8 @@ def main():
         scan_root = TESTCASES_DIR
 
     # rglob으로 재귀 스캔 — 서브폴더 포함
-    md_files = sorted(scan_root.rglob("tc_*.md"))
+    md_files = sorted(scan_root.glob("tc_*.md") if args.tc_root_only
+                      else scan_root.rglob("tc_*.md"))
     if not md_files:
         print("[02_generate] WARNING: tc_*.md 파일이 없습니다.")
         return

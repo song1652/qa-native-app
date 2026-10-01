@@ -358,6 +358,8 @@ def main():
     parser.add_argument("--platform", default="android", choices=["android", "ios"])
     parser.add_argument("--tc-dir", default=None,
                         help="tests/generated/{platform}/ 하위 폴더명 (미지정 시 전체 실행)")
+    parser.add_argument("--tc-root-only", action="store_true",
+                        help="플랫폼 폴더 바로 아래의 생성 TC만 실행")
     parser.add_argument("--test-file", default=None,
                         help="tests/generated/{platform}/ 기준 단일 생성 파일 경로")
     parser.add_argument("--no-report", action="store_true")
@@ -416,11 +418,16 @@ def main():
             sys.exit(1)
         test_target = candidate
     else:
-        test_target = test_dir
+        test_target = sorted(test_dir.glob("tc_*.py")) if args.tc_root_only else test_dir
+        if not test_target:
+            print(f"[05_execute] No root tests found at {test_dir}")
+            sys.exit(1)
 
     use_json_report = _has_json_report_plugin()
     cmd = [
-        sys.executable, "-m", "pytest", str(test_target), "-v",
+        sys.executable, "-m", "pytest",
+        *([str(path) for path in test_target] if isinstance(test_target, list)
+          else [str(test_target)]), "-v",
         f"--junit-xml={JUNIT_XML}",
     ]
     if use_json_report:

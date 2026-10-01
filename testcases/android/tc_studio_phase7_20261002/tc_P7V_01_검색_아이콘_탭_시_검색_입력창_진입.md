@@ -13,7 +13,7 @@ type: structured
 - Android
 
 ## 전제조건
-- 설정 앱 첫 화면 진입 상태
+- 설정 앱(com.android.settings/.homepage.SettingsHomepageActivity)을 실행한 상태
 
 ## 테스트 케이스 1
 
@@ -21,7 +21,11 @@ type: structured
 `test_검색_아이콘_탭_시_검색_입력창_진입`
 
 ### 단계
-1. 설정 앱 첫 화면에서 검색 아이콘 탭
+1. 설정 첫 화면에서 검색창(settings_search_bar)을 탭한다
 
 ### 기대결과
-- 검색 입력창이 열린다
+- 검색 입력창(settings_search_input)이 표시된다.
+
+### 셀렉터 힌트
+- settings_search_bar: `com.android.settings:id/search_action_bar`
+- settings_search_input: `com.google.android.settings.intelligence:id/open_search_view_edit_text`

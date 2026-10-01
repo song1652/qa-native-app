@@ -28,6 +28,7 @@ def test_approved_studio_markdown_generates_runnable_android_text_checks(tmp_pat
 
     assert 'caps["appPackage"] = "com.android.settings"' in source
     assert 'caps["appActivity"] = ".homepage.SettingsHomepageActivity"' in source
+    assert 'mobile: startActivity' in source
     assert 'caps["udid"] = _uid' in source
     assert "UiScrollable" in source
     assert '"위치 사용"' in source and '"위치 서비스"' in source
@@ -40,3 +41,17 @@ def test_approved_studio_markdown_generates_runnable_android_text_checks(tmp_pat
         [sys.executable, "-m", "flake8", str(generated)], capture_output=True, text=True
     )
     assert lint.returncode == 0, lint.stdout
+
+
+def test_strict_generation_rejects_unresolved_actions_and_assertions(tmp_path):
+    import pytest
+
+    markdown = tmp_path / "tc_bad_search.md"
+    markdown.write_text(
+        "# TC: 검색\n\n## 플랫폼\n- Android\n\n## 테스트 케이스 1\n\n"
+        "### 테스트 함수명\n`test_search`\n\n### 단계\n1. 검색 아이콘 탭\n\n"
+        "### 기대결과\n- 검색창이 열린다\n", encoding="utf-8"
+    )
+    meta = generate.parse_md_file(markdown)
+    with pytest.raises(ValueError, match="변환할 수 없는 단계|확인할 수 없는 기대결과"):
+        generate.generate_test_file(meta, "android", strict_locators=True)

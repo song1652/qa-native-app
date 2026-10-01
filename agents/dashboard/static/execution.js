@@ -183,8 +183,47 @@ async function runAll(){
     _finishRunAll(false); return;
   }
 
-  // execute까지 순서대로 폴링, 이후 heal은 로그 감지로 처리
-  _pollRunAllStep(0, platform);
+  _pollRunAllBatch(data.batch_id);
+}
+
+function _pollRunAllBatch(batchId){
+  var lastLog = '';
+  var lastStage = '';
+  async function poll(){
+    if(!_runAllActive) return;
+    try{
+      var response = await fetch('/api/run_all/status/'+encodeURIComponent(batchId));
+      var status = await response.json();
+      if(!status.ok) throw new Error(status.error || '실행 상태를 읽을 수 없습니다');
+      var stage = status.step || '';
+      if(stage && stage !== lastStage){
+        if(lastStage) setStepNum(lastStage, 'done');
+        setStepNum(stage, 'running');
+        lastStage = stage;
+      }
+      if(status.log){
+        _currentLog = status.log;
+        _currentStep = stage;
+        var logResponse = await fetch('/api/run_log', {method:'POST',
+          headers:{'Content-Type':'application/json'}, body:JSON.stringify({log:status.log})});
+        var logData = await logResponse.json();
+        if(logData.ok && (status.log !== lastLog || logData.log)){
+          setLog('['+(status.folder_index+1)+'/'+status.folder_count+'] '+status.folder+' · '+stage+'\n'+logData.log);
+          lastLog = status.log;
+        }
+      }
+      if(status.done){
+        if(lastStage) setStepNum(lastStage, status.ok ? 'done' : 'failed');
+        if(status.error) setLog('[오류] '+status.error);
+        _finishRunAll(status.ok);
+        return;
+      }
+    }catch(error){
+      setLog('[상태 조회 오류] '+error.message);
+    }
+    setTimeout(poll, 1200);
+  }
+  poll();
 }
 
 function _isHealLogActive(healRound){
@@ -639,7 +678,7 @@ async function refreshTcFolders(){
     var folders = data.folders||[];
     list.innerHTML = folders.length ? folders.map(function(f){
       var checked = selected.length ? selected.indexOf(f)!==-1 : (_tcStudioFolder ? _tcStudioFolder===f : true);
-      return '<label class="tc-folder-option"><input type="checkbox" name="tc-folder" value="'+esc(f)+'" '+(checked?'checked':'')+' onchange="updateTcFolderCount()"><span>'+esc(f)+'/</span></label>';
+      return '<label class="tc-folder-option"><input type="checkbox" name="tc-folder" value="'+esc(f)+'" '+(checked?'checked':'')+' onchange="updateTcFolderCount()"><span>'+esc(f==='__root__' ? getPlatform()+' (최상위)' : f+'/')+'</span></label>';
     }).join('') : '<div class="tc-folder-empty">생성된 TC 폴더가 없습니다.</div>';
     if(_fromTcStudio){
       var caption=document.querySelector('#btn-run-all span:nth-child(2)');
