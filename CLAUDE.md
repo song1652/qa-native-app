@@ -5,7 +5,7 @@
 ## 진행 중 작업: TC 스튜디오 앱 지원
 
 - 시작 문서: [`docs/tc-studio/README.md`](docs/tc-studio/README.md) → 설계 `TC_STUDIO_APP_DESIGN.md` → 실행 계획 `TC_STUDIO_APP_PLAN.md` (Phase 0부터).
-- TC 스튜디오 코드는 웹 저장소(`/Users/junghoyoung/qa-native-fixed`)에만 둔다. 이 저장소로 복사하지 않는다.
+- TC 스튜디오는 웹 저장소(`/Users/junghoyoung/qa-native-fixed`, 기준 `f4e7a6b`)를 **참고만 해서 이 저장소에 이식**한다. 웹 저장소는 읽기 전용 — 수정·커밋·push·서버 재시작 금지.
 
 ## 핵심 원칙
 
