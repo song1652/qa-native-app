@@ -45,15 +45,15 @@ kill $(lsof -tiTCP:8767 -sTCP:LISTEN); nohup python3 agents/dashboard/serve.py >
 
 현재 미커밋 변경(2026-10-01): `config/devices.json`, `logs/*`, `state/*` 수정, `tests/generated/android/capture_studio_e2e/tc_capture_settings_search_input.py` 삭제, 이름이 `-`인 파일, `config/devices.json.lock`, `reports/screenshots/…`, `state/captures/` 등.
 
-- [ ] `git status` 목록을 보여 주고 처리 방법을 묻는다(커밋 / `.gitignore` / 되돌리기). **임의로 지우거나 되돌리지 않는다.**
-- [ ] 이름이 `-`인 파일은 내용을 보여 준 뒤 묻는다.
-- [ ] 결정대로 정리·커밋.
+- [x] `git status` 목록을 보여 주고 처리 방법을 묻는다(커밋 / `.gitignore` / 되돌리기). **임의로 지우거나 되돌리지 않는다.**
+- [x] 이름이 `-`인 파일은 내용을 보여 준 뒤 묻는다.
+- [x] 결정대로 정리·커밋. (2026-10-01: 산출물 `.gitignore`, devices.json 커밋. 삭제된 TC·`-` 스크린샷은 사용자도 출처를 몰라 손대지 않고 보류)
 
 ### Task 0.2: 이식 준비 확인
 
-- [ ] WEB이 `f4e7a6b`에 있는지, 이식 대상 파일 목록(아래 Phase별 Files)이 그 커밋에 있는지 확인.
-- [ ] APP 환경: `openpyxl`, `claude` CLI(`which claude`), FastAPI 테스트 클라이언트 사용 가능 여부.
-- [ ] WEB 테스트 픽스처(`tests/unit/tc_library/conftest.py`, `tc_fixtures.py`, `source_fixtures.py`, `connector_fixtures.py`, `fake_claude.py`)가 무엇에 의존하는지 정리해 보고.
+- [x] WEB이 `f4e7a6b`에 있는지, 이식 대상 파일 목록(아래 Phase별 Files)이 그 커밋에 있는지 확인.
+- [x] APP 환경: `openpyxl`, `claude` CLI(`which claude`), FastAPI 테스트 클라이언트 사용 가능 여부.
+- [x] WEB 테스트 픽스처(`tests/unit/tc_library/conftest.py`, `tc_fixtures.py`, `source_fixtures.py`, `connector_fixtures.py`, `fake_claude.py`)가 무엇에 의존하는지 정리해 보고.
 
 ---
 
