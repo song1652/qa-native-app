@@ -60,7 +60,7 @@
 
 | 화면 | 목업 (`mockups/…html`) | 바꿀 코드 |
 |---|---|---|
-| 공통 틀(상단 바·사이드바) | 모든 화면 공통 | `agents/dashboard/dashboard.html`(상단 바, 사이드바 :35~80), `agents/dashboard/tc_studio.html`(**사이드바 사본이 따로 있음 — 같이 고친다**), `static/dashboard-shell.js`(`selectView`, 뷰 전환만) |
+| 공통 틀(상단 바·사이드바) | 모든 화면 공통 | `agents/dashboard/dashboard.html`(상단 바, 사이드바와 `#tc-studio-root`), `static/dashboard-shell.js`(`selectView`, 뷰 전환) |
 | 토큰·공통 부품 | `Tokens`, `Components` | `static/dashboard.css`(818줄, `:root` 3~9행이 보라 테마, 직접 쓴 색 약 245곳), 새 파일 `static/tokens.css` |
 | 대시보드 | `Main` | `dashboard.html` `#view-overview`, `static/dashboard-shell.js`, `static/dashboard-init.js` |
 | 엑셀 가져오기 1~5단계 | `Import`, `Import2`~`Import5` | `dashboard.html` `#view-import`, `static/import-studio.js` |
@@ -70,7 +70,7 @@
 | 리포트 목록 | `Reports` | `dashboard.html` `#view-reports`, `static/reports.js` |
 | 실행 기록 | `History` | `dashboard.html` `#view-history`, `static/dashboard-init.js` |
 | 환경 설정 | `Env`, `EnvAppiumStates`, `EnvModals` | `dashboard.html` `#view-config`·`#env-add-modal`·`#env-appium-log-modal`·`#env-wifi-pair-modal`·`#env-wda-build-modal`, `static/environment.js`, `static/environment-devices.js` |
-| TC 스튜디오 ①~④ | `TcGenerate`, `TcGenerating`, `TcStudio`, `TcDetailPanels`, `TcReview`, `TcExport`, `TcMdPreview` | `agents/dashboard/tc_studio.html`, `static/tc-studio/*.js`(13개), `static/tc-studio/reference-variables.css`(53줄, 보라 변수), `reference-layout.css`, `tc-studio.css`, `standalone.css` |
+| TC 스튜디오 ①~④ | `TcGenerate`, `TcGenerating`, `TcStudio`, `TcDetailPanels`, `TcReview`, `TcExport`, `TcMdPreview` | `dashboard.html`의 `#tc-studio-root`, `static/tc-studio/*.js`, `static/tc-studio/tc-studio.css` |
 | TC 스튜디오 모달 | `TcImportModal`, `TcImportHistory`, `TcProfileEditor`, `TcModalsA`, `TcModalsB` | 같은 폴더의 `import.js`, `main.js`, `generate.js`, `connectors.js`, `library.js`, `detail.js`, `export.js` |
 | 리포트 HTML (새 탭) | `ReportFail`, `ReportPass` | `scripts/report_html.py`(798줄, `report_css()` :442, `case_row()` :332, `build_group_section()` :400, `report_js()` :566) — 실행이 `tests/reports/`에 만드는 독립 HTML |
 
@@ -87,13 +87,13 @@
 
 각 단계: 목업 확인 → 코드 수정 → 관련 테스트 → 서버 재시작(파이썬을 고쳤을 때) → 브라우저에서 목업과 나란히 비교 → 커밋.
 
-- [ ] **1. 토큰·글꼴 교체** — `tokens.css`를 `static/tokens.css`로 두고 `dashboard.html`·`tc_studio.html`에서 가장 먼저 불러온다. `dashboard.css` `:root`와 `tc-studio/reference-variables.css`의 옛 변수 이름을 새 변수에 연결(또는 사용처 일괄 교체). 글꼴 `<link>`를 IBM Plex Sans KR + JetBrains Mono로(지금 TC 스튜디오는 Inter·Outfit). `body` 배경 그라데이션 제거. 이 단계만으로 화면이 대략 밝아져야 한다.
-- [ ] **2. 공통 틀** — 상단 바·사이드바를 목업대로(두 HTML 모두). 메뉴 묶음·이름 변경(1절). 활성 메뉴는 `--accent-bg` 배경.
+- [ ] **1. 토큰·글꼴 교체** — `tokens.css`를 `static/tokens.css`로 두고 `dashboard.html`에서 가장 먼저 불러온다. `dashboard.css` `:root`와 `tc-studio.css`의 옛 변수 이름을 새 변수에 연결(또는 사용처 일괄 교체). 글꼴 `<link>`를 IBM Plex Sans KR + JetBrains Mono로(지금 TC 스튜디오는 Inter·Outfit). `body` 배경 그라데이션 제거. 이 단계만으로 화면이 대략 밝아져야 한다.
+- [ ] **2. 공통 틀** — 상단 바·사이드바를 목업대로(`dashboard.html` 하나). 메뉴 묶음·이름 변경(1절). 활성 메뉴는 `--accent-bg` 배경.
 - [ ] **3. 공통 부품** — 버튼·배지·입력·표·카드·세그먼트·단계 표시·알림 배너·토스트·빈 상태·불러오는 중·오류·확인 대화(`dashboard.css`). 글로우·`backdrop-filter`·빛나는 애니메이션 제거(필요한 회전·페이드만 남김). `confirm()` 사용처를 화면 안 대화창으로.
 - [ ] **4. 화면별** — 대시보드 → 파이프라인(설정·실행 중) → 빠른 실행·실행 증거·증거 오버레이 → 리포트 목록 → 실행 기록 → 엑셀 가져오기 5단계 → 화면 캡처(설정·작업 공간·미리보기·Livetail) → 환경 설정(Appium 5상태·모달 4종). 화면마다 1커밋.
-- [ ] **5. TC 스튜디오** — `reference-variables.css`·`tc-studio.css` 변수 교체 → 상단(제목·스위트·탭) → 라이브러리 → 생성 → 검토 → 내보내기 → 모달. 2~3커밋으로 나눈다.
+- [ ] **5. TC 스튜디오** — `tc-studio.css` 변수 교체 → 상단(제목·스위트·탭) → 라이브러리 → 생성 → 검토 → 내보내기 → 모달. 2~3커밋으로 나눈다.
 - [ ] **6. 리포트 HTML** — `report_html.py`의 CSS와 마크업. 3절 리포트 메모대로.
-- [ ] **7. 마무리** — 전체 테스트, `docs/USER_GUIDE.html`에 화면 캡처가 있으면 새 화면으로 교체할지 사용자에게 묻기, 남은 옛 색·이모지 검색.
+- [ ] **7. 마무리** — 전체 테스트, `docs/guides/USER_GUIDE.html`에 화면 캡처가 있으면 새 화면으로 교체할지 사용자에게 묻기, 남은 옛 색·이모지 검색.
 
 ## 5. 검증
 

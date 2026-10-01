@@ -106,13 +106,13 @@ kill $(lsof -tiTCP:8767 -sTCP:LISTEN); nohup python3 agents/dashboard/serve.py >
 
 ## Phase 6 — 화면과 메뉴
 
-**Files:** Create `agents/dashboard/static/tc-studio/*.js`, `tc-studio.css`(웹 `static/js/tc-studio/*`, `static/css/tc-studio.css` 이식), 전용 `agents/dashboard/tc_studio.html`과 웹 원본의 화면 틀 CSS · Modify `agents/dashboard/dashboard.html`(사이드바 "TC 작성" 첫 항목 **TC 스튜디오**가 `/tc-studio`로 이동), `agents/dashboard/routes/api.py` · 테스트 웹 E2E(`test_tc_studio_e2e.py` 등) 중 핵심 흐름을 APP 화면용으로 변환
+**Files:** `agents/dashboard/static/tc-studio/*.js`, `tc-studio.css`(웹 `static/js/tc-studio/*`, `static/css/tc-studio.css` 이식), `agents/dashboard/dashboard.html`의 공통 셸과 `#tc-studio-root`, `agents/dashboard/routes/api.py` · 테스트 웹 E2E(`test_tc_studio_e2e.py` 등) 중 핵심 흐름을 APP 화면용으로 변환
 
 - [x] 웹 화면 4개 탭(라이브러리·기획 정보/생성·검토·내보내기)을 옮긴다. 웹 스위트 동작은 원본과 동일.
 - [x] 앱 스위트만: 결과 `And | iOS` 2칸, 전용 TC 반대쪽 회색 N/A, 필터 `플랫폼`·**`And·iOS 결과가 다른 것만`**, 상세 패널 결과 2개 + 대상 플랫폼, 일괄 변경 대상 플랫폼.
 - [x] **E2E 필수**: 2양식 픽스처 가져오기 → "결과가 다른 것만" 필터 → 불일치 행만 표시.
 - [x] 기존 대시보드 화면(Capture/Import/ENV 등) 회귀 없음: `tests/dashboard` 통과.
-- [x] 사용자 UI 피드백 반영: 파이프라인 화면 안의 뷰 대신 웹 원본처럼 독립된 `/tc-studio` 페이지와 헤더·사이드바·본문 배치를 사용한다.
+- [x] 사용자 UI 피드백 반영: `/tc-studio` 주소와 웹 원본의 TC Studio 본문 배치를 사용한다. 상단·사이드바는 대시보드와 같은 DOM을 유지하고 `#tc-studio-root`만 표시·갱신한다.
 - [x] 기존 가져온 스위트가 있어도 웹처럼 첫 접속 시 중립 `기본양식`·`테스트케이스` 시트를 자동으로 준비하고 기획 정보 입력을 첫 화면으로 연다. 기획 텍스트와 분류를 넣으면 초안 생성 버튼이 활성화되는 브라우저 흐름을 검증한다.
 - [x] **사용자 결정**: 엑셀 가져오기 화면을 TC Studio로 통합한다. 독립 메뉴를 제거하고 예전 `/?view=import` 주소는 TC Studio 가져오기 모달로 연결한다. 기존 직접 변환 API는 호환용으로 유지한다.
 
@@ -124,7 +124,9 @@ kill $(lsof -tiTCP:8767 -sTCP:LISTEN); nohup python3 agents/dashboard/serve.py >
 - [x] 검증 명령 통과: `.venv/bin/python -m pytest tests/unit tests/dashboard -q` 564 passed, `python3 -m py_compile scripts/*.py`, Android/iOS `02_generate.py --strict-locators`를 사용자 산출물과 분리된 임시 사본에서 실행(각 12/8개 생성), `git diff --check`. 문서의 상대 Markdown 링크 39개와 HTML 자산 링크 371개 검사에서 깨짐 0.
 - [x] 사용자 2026-10-02 지시로 커밋·push 승인. 결과와 커밋을 최종 보고한다.
 
-실제 Claude 검증은 로컬 TC 라이브러리의 `TC_STUDIO_PHASE7_20261002` 스위트에서 수행했다. 기존 사용자 데이터와 검증용 데이터의 충돌은 없었고, 웹 원본 저장소 작업 트리는 깨끗하다. 로컬 실행 상태·로그·기기 설정은 커밋 대상에서 제외한다.
+실제 Claude 검증은 로컬 TC 라이브러리의 `TC_STUDIO_PHASE7_20261002` 스위트에서 수행했다. 기존 사용자 데이터와 검증용 데이터의 충돌은 없었고, 이 작업에서는 웹 원본 저장소를 수정하지 않았다. 로컬 실행 상태·로그·기기 설정은 커밋 대상에서 제외한다.
+
+내보낸 Android TC 3건은 에뮬레이터의 실제 화면 계층에서 확인한 locator로 검토·보완했다. `02_generate.py --strict-locators`와 `03_lint.py`가 통과했고, `05_execute.py --tc-dir tc_studio_phase7_20261002 --mode emulator --udid emulator-5554 --no-rerun` 결과는 **3 passed, 0 failed**였다. HTML 결과지는 로컬 `tests/reports/report_android_20261002_082355_472.html`에 생성됐다. 생성 코드에 해결되지 않은 단계나 `{PLACEHOLDER}`가 있으면 strict 생성에서 오류로 중단한다.
 
 ## 완료 정의
 

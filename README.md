@@ -78,11 +78,11 @@ python agents/dashboard/serve.py
 
 브라우저에서 <http://localhost:8767>을 엽니다. 대시보드에는 Appium 연결, Android/iOS 플랫폼, 디바이스 연결, 분석·생성·린트·실행·힐링 단계, 로그, 생성 테스트, 리포트, 실행 히스토리가 표시됩니다.
 
-### Excel Import Studio
+### TC Studio에서 Excel 가져오기
 
-`import/` 폴더의 `.xlsx` 테스트 케이스를 5단계 위저드로 가져옵니다.
+`/tc-studio`의 가져오기에서 `import/` 폴더의 `.xlsx` 테스트 케이스를 TC 라이브러리로 가져옵니다. 검토·승인 후 내보내기 탭에서 Markdown을 생성합니다.
 
-현재 Markdown 테스트 케이스를 Import Studio 형식의 Excel로 다시 만들려면 다음 명령을 사용합니다.
+현재 Markdown 테스트 케이스를 Excel로 다시 만들려면 다음 명령을 사용합니다.
 
 ```bash
 python scripts/export_testcases_excel.py
@@ -100,18 +100,17 @@ python scripts/export_testcases_excel.py
 - 열 매핑 우측에는 상태 집계만 표시하고, 다음 미리보기 단계에서 전체 TC를 상태별로 필터링해 전제조건·단계·기대결과·그룹까지 확인합니다.
 - 기본 매핑은 `TC ID=B열`, `제목=F열`, `사전 조건=G열`, `테스트 단계=H열`, `예상 결과=I열`, `우선순위=J열`입니다.
 - 필수 필드 5개가 모두 연결되어야 미리보기 단계로 이동할 수 있습니다.
-- Android/iOS를 모두 선택하면 같은 TC를 플랫폼별 Markdown으로 분리해 저장합니다.
-- 시트명이 `android` 또는 `ios`이면 해당 플랫폼에만 반영하며 `testcases/{platform}/` 바로 아래에 저장합니다.
-- 안전한 반영에서는 기존 파일을 보존하는 `skip-conflict`(기본값) 또는 덮어쓰는 `overwrite`를 선택합니다.
+- Android/iOS 대상은 라이브러리에서 검토한 뒤 플랫폼별 Markdown으로 내보냅니다.
+- 안전한 반영에서는 라이브러리의 기존 TC와 충돌하는 항목을 확인합니다. Markdown 내보내기에서는 `skip-conflict`(기본값) 또는 `overwrite`를 선택합니다.
 - 원본 Excel 파일은 변경하지 않습니다.
 
 ```text
-import/{파일}.xlsx
-  ├─ Android → testcases/android/{시트명}/tc_*.md
-  └─ iOS     → testcases/ios/{시트명}/tc_*.md
+import/{파일}.xlsx → TC Studio 라이브러리 → 검토·승인
+  ├─ Android → testcases/android/{그룹}/tc_*.md
+  └─ iOS     → testcases/ios/{그룹}/tc_*.md
 
-testcases/android/{시트명}/ → tests/generated/android/{시트명}/
-testcases/ios/{시트명}/     → tests/generated/ios/{시트명}/
+testcases/android/{그룹}/ → tests/generated/android/{그룹}/
+testcases/ios/{그룹}/     → tests/generated/ios/{그룹}/
 ```
 
 서로 다른 시트에서 같은 TC 번호를 사용해도 시트별 하위 폴더로 분리되므로 파일이 덮어써지지 않습니다. 빠른 실행은 선택한 OS의 `tests/generated/{platform}`만 조회합니다.
@@ -206,7 +205,7 @@ Jira 설정은 `qa-native-fixed`와 공유하지 않습니다. URL, 이메일, �
 
 ## 테스트 케이스와 locator 흐름
 
-테스트 케이스는 `testcases/{platform}/{group}/tc_*.md`에 작성합니다. `{platform}`은 `android` 또는 `ios`이고, Import Studio에서는 `{group}`에 Excel 시트명이 사용됩니다. 최종 실행 locator의 기준값은 `config/locators.json`에서 관리합니다.
+테스트 케이스는 `testcases/{platform}/{group}/tc_*.md`에 작성합니다. `{platform}`은 `android` 또는 `ios`이고, TC Studio에서 `{group}`을 정해 내보냅니다. 최종 실행 locator의 기준값은 `config/locators.json`에서 관리합니다.
 
 ```text
 TC Markdown → target_ref + config/locators.json

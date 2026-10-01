@@ -1,7 +1,7 @@
 // ── 초기화 ───────────────────────────────────────────────────
 (async function init(){
   var initialParams=new URLSearchParams(location.search);
-  var initialView=initialParams.get('view');
+  var initialView=location.pathname === '/tc-studio' ? 'tc_studio' : initialParams.get('view');
   var initialPlatform=initialParams.get('platform');
   if(['android','ios'].includes(initialPlatform)){
     var platformRadio=document.querySelector('input[name="platform"][value="'+initialPlatform+'"]');
@@ -11,7 +11,7 @@
       updateAutomationStatus(initialPlatform);
     }
   }
-  if(['dashboard','config','import','capture','pipeline','tests','reports','history'].includes(initialView)){
+  if(['dashboard','config','import','capture','pipeline','tests','reports','history','tc_studio'].includes(initialView)){
     selectView(initialView, document.querySelector('.sidebar-item[data-view="'+initialView+'"]'));
   }
   initReportControls();

@@ -15,20 +15,17 @@
   <link rel="stylesheet" href="/static/tc-studio/standalone.css">
 </head>
 <body>
-  <header class="header">
-    <div class="live-indicator"><div class="live-dot"></div>LIVE</div>
-    <a class="header-title" href="/">QA CONTROL CENTER</a>
-    <div class="header-spacer"></div>
-    <span class="header-meta">APP TC STUDIO</span>
+  <header class="title-row">
+    <div><a class="header-title" href="/">QA CONTROL CENTER</a></div>
   </header>
   <div class="studio-status-bar" aria-label="실행 상태">
     <div class="status-item"><span class="status-dot" id="dot-appium"></span><span id="txt-appium">확인 중...</span></div>
     <div class="status-divider"></div>
     <div class="status-item"><span class="status-dot" id="dot-device"></span><span id="txt-device">확인 중...</span></div>
     <div class="status-divider"></div>
-    <div class="status-item"><span id="txt-automation" class="status-badge">자동화: 확인 중...</span></div>
+    <div class="status-item"><span id="txt-automation" class="status-badge automation-badge">자동화: 확인 중...</span></div>
     <div class="status-divider"></div>
-    <div class="status-item">파이프라인: <span class="status-badge" id="txt-step">-</span></div>
+    <div class="status-item">파이프라인: <span class="status-badge step-badge" id="txt-step">-</span></div>
     <div class="status-item" id="heal-row" hidden>힐링: <span id="heal-cnt"></span>회</div>
   </div>
   <div class="body-wrap">

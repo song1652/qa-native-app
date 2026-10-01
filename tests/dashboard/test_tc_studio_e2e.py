@@ -81,6 +81,43 @@ def test_sidebar_items_stay_in_place_between_dashboard_and_studio(tc_server):
         pool.submit(_check_sidebar_positions, tc_server).result(timeout=60)
 
 
+def test_studio_navigation_preserves_dashboard_shell(tc_server):
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        pool.submit(_check_shared_navigation, tc_server).result(timeout=60)
+
+
+def test_legacy_import_url_opens_modal_in_shared_shell(tc_server):
+    def check():
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(headless=True)
+            page = browser.new_page()
+            page.goto(f'{tc_server}/?view=import')
+            page.locator('#import-modal').wait_for(state='visible')
+            assert '/tc-studio?import=1' in page.url
+            assert page.locator('.title-row').count() == 1
+            browser.close()
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        pool.submit(check).result(timeout=60)
+
+
+def _check_shared_navigation(tc_server):
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        page = browser.new_page()
+        page.goto(tc_server)
+        page.evaluate('window.__shellMarker = Math.random()')
+        marker = page.evaluate('window.__shellMarker')
+        page.locator('.sidebar-item[data-view="tc_studio"]').click()
+        page.wait_for_selector('#tc-studio-root .page-title')
+        assert page.url.endswith('/tc-studio')
+        assert page.evaluate('window.__shellMarker') == marker
+        assert page.locator('.title-row').count() == 1
+        page.locator('.sidebar-item[data-view="dashboard"]').click()
+        assert page.evaluate('window.__shellMarker') == marker
+        assert not page.locator('#tc-studio-root').is_visible()
+        browser.close()
+
+
 def test_tc_studio_shows_live_environment_status(tc_server):
     with ThreadPoolExecutor(max_workers=1) as pool:
         pool.submit(_check_studio_status, tc_server).result(timeout=60)
@@ -139,11 +176,11 @@ def _check_studio_status(tc_server):
         }))
         page.goto(f'{tc_server}/tc-studio')
         assert page.title() == 'App QA Dashboard'
-        assert page.locator('.sidebar-item[data-view="tc_studio"] .sidebar-name').inner_text() == 'TC Studio'
+        assert page.locator('.sidebar-item[data-view="tc_studio"]').inner_text() == 'TC Studio'
         page.wait_for_selector('.page-title')
         assert page.locator('.page-title').inner_text() == 'TC Studio'
         page.wait_for_function("document.querySelector('#txt-step')?.textContent === 'generated'")
-        assert page.locator('.studio-status-bar').is_visible()
+        assert page.locator('.status-bar').is_visible()
         assert page.locator('#txt-appium').inner_text() == 'Appium 연결됨'
         assert page.locator('#txt-device').inner_text() == 'HA1XM5MS'
         assert page.locator('#txt-automation').inner_text() == '자동화: ADB'
@@ -215,11 +252,11 @@ def _check_browser(tc_server):
         page.wait_for_function("document.querySelector('#suite-select')?.value === '기본양식'")
         page.locator('#suite-select').select_option('one')
         page.wait_for_function("document.querySelector('#grid-body tr[data-case]') !== null")
-        assert page.locator('.app-layout').count() == 0
-        assert page.locator('.body-wrap').count() == 1
+        assert page.locator('.app-layout').count() == 1
+        assert page.locator('.body-wrap').count() == 0
         assert page.locator('table#grid').evaluate('(el) => getComputedStyle(el).display') == 'table'
         assert page.url.endswith('/tc-studio')
-        assert not page.locator('.status-bar').is_visible()
+        assert page.locator('.status-bar').is_visible()
         studio_box = page.locator('.tc-studio .studio').bounding_box()
         assert abs(studio_box['x'] - 308) <= 2 and abs(studio_box['y'] - 148) <= 2
         assert page.locator('#btn-import-xlsx').bounding_box()['width'] < 160
@@ -244,8 +281,8 @@ def _check_browser(tc_server):
         direct.goto(f'{tc_server}/tc-studio')
         direct.wait_for_selector('#suite-select')
         assert direct.locator('[data-view="tc_studio"]').get_attribute('class').find('active') >= 0
-        direct.locator('a[href="/?view=pipeline"]').click()
+        direct.locator('.sidebar-item[data-view="pipeline"]').click()
         direct.wait_for_url(f'{tc_server}/?view=pipeline')
-        assert direct.locator('#view-pipeline').is_visible()
+        direct.locator('#view-pipeline').wait_for(state='visible')
         direct.close()
         browser.close()

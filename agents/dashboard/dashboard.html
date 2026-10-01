@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;600;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/dashboard.css">
+<link rel="stylesheet" href="/static/tc-studio/tc-studio.css">
 </head>
 <body class="dashboard-mode">
 
@@ -47,7 +48,7 @@
     </div>
     <div class="sidebar-section">
       <div class="sidebar-label">TC 작성</div>
-      <a class="sidebar-item" data-view="tc_studio" href="/tc-studio" style="text-decoration:none">
+      <a class="sidebar-item" data-view="tc_studio" href="/tc-studio" onclick="event.preventDefault();selectView('tc_studio',this)" style="text-decoration:none">
         <span class="sidebar-dot"></span><span>TC Studio</span>
       </a>
       <div class="sidebar-item" data-view="capture" onclick="selectView('capture',this)" id="sidebar-capture">
@@ -74,6 +75,7 @@
     </div>
   </aside>
   <main class="app-main dashboard-view">
+  <div id="tc-studio-root" class="view-hidden"></div>
   <div id="view-overview" class="overview-view">
     <div class="overview-heading-row"><div class="overview-heading">Dashboard</div><button id="overview-reset-btn" class="overview-reset" type="button" onclick="resetOverviewDashboard()">↻ 대시보드 초기화</button></div>
     <div class="overview-hero">
@@ -845,6 +847,16 @@
 <script src="/static/capture-inspector.js"></script>
 <script src="/static/capture-actions.js"></script>
 <script src="/static/capture-livetail.js"></script>
+<script src="/static/tc-studio/api.js"></script>
+<script src="/static/tc-studio/state.js"></script>
+<script src="/static/tc-studio/detail.js"></script>
+<script src="/static/tc-studio/library.js"></script>
+<script src="/static/tc-studio/import.js"></script>
+<script src="/static/tc-studio/generate.js"></script>
+<script src="/static/tc-studio/connectors.js"></script>
+<script src="/static/tc-studio/review.js"></script>
+<script src="/static/tc-studio/export.js"></script>
+<script src="/static/tc-studio/main.js"></script>
 <script src="/static/dashboard-init.js"></script>
 
 <!-- ── TC Preview Modal ─────────────────────────────────────── -->

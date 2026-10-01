@@ -74,7 +74,7 @@ async def index(request: Request):
 
 @router.get("/tc-studio", response_class=HTMLResponse)
 async def tc_studio_page():
-    return HTMLResponse(content=(HERE / "tc_studio.html").read_text(encoding="utf-8"))
+    return HTMLResponse(content=(HERE / "dashboard.html").read_text(encoding="utf-8"))
 
 
 @router.get("/static/{asset_name}", include_in_schema=False)

@@ -1,16 +1,21 @@
 .header-spacer { flex: 1; }
+.title-row{height:54px;display:flex;align-items:center;gap:14px;padding:0 24px;flex-shrink:0;background:rgba(12,10,30,.7);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-bottom:1px solid var(--border-glass);position:relative;z-index:10}
+.title-row::after{content:'';position:absolute;left:0;right:0;bottom:0;height:1px;background:linear-gradient(90deg,transparent,rgba(139,92,246,.2) 30%,rgba(167,139,250,.15) 70%,transparent)}
+.title-row::before{content:'●  LIVE';font-size:10px;font-weight:600;letter-spacing:.8px;color:var(--approved-color);background:rgba(52,211,153,.06);border:1px solid rgba(52,211,153,.12);padding:3px 10px;border-radius:16px}
+.title-row .header-title{font-size:15px;font-weight:800;letter-spacing:.2px;white-space:nowrap}
 @view-transition { navigation: auto; }
 ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0s; }
 .header-title, .sidebar-item { text-decoration: none; }
 .header-title:hover, .sidebar-item:hover { text-decoration: none; }
-.studio-status-bar { min-height:46px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;flex-shrink:0;padding:7px 24px;background:rgba(12,10,30,.62);border-bottom:1px solid var(--border-glass);position:relative;z-index:9; }
+.studio-status-bar { height:46px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;flex-shrink:0;padding:0 24px;background:rgba(12,10,30,.62);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid var(--border-glass);position:relative;z-index:9; }
 .studio-status-bar .status-item { display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-dim);white-space:nowrap; }
 .studio-status-bar .status-item[hidden] { display:none; }
 .studio-status-bar .status-divider { width:1px;height:16px;background:var(--border); }
 .studio-status-bar .status-dot { width:8px;height:8px;border-radius:50%;flex-shrink:0; }
 .studio-status-bar .status-dot.on { background:var(--approved-color);box-shadow:0 0 6px var(--approved-color); }
 .studio-status-bar .status-dot.off { background:var(--revision-color); }
-.studio-status-bar .status-badge { padding:3px 9px;border-radius:10px;color:var(--delib-accent);background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.22);font-size:11px;font-weight:600; }
+.studio-status-bar .status-badge { padding:3px 9px;border-radius:10px;color:var(--text-dim);background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.22);font-size:11px;font-weight:600; }
+.studio-status-bar .step-badge { padding:2px 9px;background:rgba(99,102,241,.15);color:var(--accent);border-color:rgba(99,102,241,.3); }
 .studio-status-bar #heal-cnt { color:var(--pending-color);font-weight:700; }
 .sidebar-scroll { padding-top: 14px; }
 .sidebar-section { padding: 8px 0 12px; }

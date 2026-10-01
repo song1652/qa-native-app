@@ -173,12 +173,12 @@ appium --address 127.0.0.1 --port 4723 \
 ### Excel 테스트 케이스 가져오기
 
 1. Excel 파일을 `import/`에 둡니다.
-2. **Import Studio**에서 파일과 시트를 선택합니다.
+2. **TC Studio → 가져오기**에서 파일과 시트를 선택합니다.
 3. TC ID, 제목, 사전 조건, 단계, 예상 결과 열을 매핑합니다.
 4. 미리보기에서 오류와 충돌을 확인합니다.
-5. 기존 파일 보존 또는 덮어쓰기 정책을 선택해 반영합니다.
+5. TC 라이브러리에 반영하고 내용을 검토·승인한 뒤 내보내기에서 기존 파일 보존 또는 덮어쓰기 정책을 선택합니다.
 
-결과는 `testcases/{platform}/{group}/tc_*.md`에 저장됩니다.
+내보낸 결과는 `testcases/{platform}/{group}/tc_*.md`에 저장됩니다.
 
 ### Capture Studio에서 TC 만들기
 
@@ -310,6 +310,6 @@ pytest -q tests --ignore=tests/generated
 | Appium이 비정상 종료됨 | ENV Setup 상태 | Appium 카드에서 다시 시작합니다. 상태 폴링이 종료된 PID를 제거합니다. |
 | 대시보드 재시작 후 상태가 이상함 | 기록 PID와 실제 프로세스 | 대시보드를 다시 시작합니다. 살아 있는 PID만 복원됩니다. |
 | 디스크 사용량 증가 | `state/runs/`와 보존 설정 | 보존 한도를 낮추거나 대시보드에서 필요 없는 run을 삭제합니다. |
-| `collected 0 items` | 선택한 생성 테스트 폴더 | Import Studio 또는 Capture Studio로 TC를 만든 뒤 다시 실행합니다. |
+| `collected 0 items` | 선택한 생성 테스트 폴더 | TC Studio에서 승인 TC를 Markdown으로 내보내거나 Capture Studio로 TC를 만든 뒤 다시 실행합니다. |
 
 추가 사용법은 [README.md](README.md)와 [docs/guides/USER_GUIDE.html](docs/guides/USER_GUIDE.html)을 참고하세요.

@@ -161,21 +161,33 @@ function updateTcFolderCount(){
   if(el) el.textContent=selected.length ? selected.length+'개 폴더를 선택한 순서대로 직렬 실행합니다.' : '실행할 폴더를 선택하세요.';
 }
 
-function selectView(view, item){
-  if(view === 'tc_studio'){
-    location.assign('/tc-studio');
+var _tcStudioMounted = false;
+function selectView(view, item, options){
+  options = options || {};
+  if(view !== 'tc_studio' && document.body.classList.contains('tc-studio-mode') &&
+      !options.skipConfirm && window.TCS_NS && TCS_NS.detail){
+    Promise.resolve(TCS_NS.detail.confirmLeave()).then(function(allowed){
+      if(allowed) selectView(view, item, {skipConfirm:true, fromHistory:options.fromHistory});
+      else if(options.fromHistory) history.pushState({}, '', '/tc-studio');
+    });
     return;
+  }
+  if(!options.fromHistory){
+    if(view === 'tc_studio' && location.pathname !== '/tc-studio') history.pushState({}, '', '/tc-studio');
+    else if(view !== 'tc_studio' && location.pathname === '/tc-studio') history.pushState({}, '', '/?view='+encodeURIComponent(view));
   }
   document.querySelectorAll('.sidebar-item').forEach(function(el){
     el.classList.toggle('active', el === item);
   });
-  var grid=document.querySelector('.grid');
+  var grid=document.querySelector('.app-main > .grid');
   var pipeline=document.getElementById('view-pipeline');
   var overview=document.getElementById('view-overview');
+  var studio=document.getElementById('tc-studio-root');
   var rightViews=['tests','import','reports','history','config','capture'];
   if(!grid || !pipeline) return;
+  if(studio) studio.classList.toggle('view-hidden', view !== 'tc_studio');
   if(overview) overview.classList.toggle('view-hidden', view !== 'dashboard');
-  grid.classList.toggle('view-hidden', view === 'dashboard');
+  grid.classList.toggle('view-hidden', view === 'dashboard' || view === 'tc_studio');
   grid.classList.remove('focus-left','focus-right');
   pipeline.classList.remove('view-hidden');
   document.querySelectorAll('.right-panel > .card').forEach(function(card){
@@ -193,10 +205,25 @@ function selectView(view, item){
   if(main) main.classList.toggle('capture-view', view === 'capture');
   if(main) main.classList.toggle('quick-view', view === 'tests');
   if(main) main.classList.toggle('history-view', view === 'history');
+  if(main) main.classList.toggle('tc-studio-view', view === 'tc_studio');
+  document.body.classList.toggle('tc-studio-mode', view === 'tc_studio');
+  if(view === 'tc_studio' && !_tcStudioMounted && window.TCS){
+    _tcStudioMounted = true;
+    TCS.init('#tc-studio-root').catch(function(error){
+      studio.textContent = 'TC Studio를 불러오지 못했습니다: '+error.message;
+      _tcStudioMounted = false;
+    });
+  }
   if(view === 'dashboard') refreshOverview();
   if(view === 'tests') refreshStatus();
   if(main) main.scrollTo({top:0, behavior:'smooth'});
 }
+
+window.addEventListener('popstate', function(){
+  var view = location.pathname === '/tc-studio' ? 'tc_studio' :
+    (new URLSearchParams(location.search).get('view') || 'dashboard');
+  selectView(view, document.querySelector('.sidebar-item[data-view="'+view+'"]'), {fromHistory:true});
+});
 
 function loadRunHistory(){
   try{return JSON.parse(localStorage.getItem('qa-native-app.run-history')||'[]');}catch(_){return [];}
