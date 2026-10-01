@@ -64,6 +64,11 @@
       <div class="panel">
         <div class="panel-head">1. 기획 정보 입력</div>
         <div class="panel-body" style="display:grid;gap:12px">
+          <div class="warnbox" id="gen-no-suite" hidden>
+            <b>TC 작성을 시작할 빈 양식이 없습니다.</b>
+            <p class="help">빈 양식을 만들면 시트·분류를 정한 뒤 아래에 기획 정보를 넣어 LLM 초안을 생성할 수 있습니다.</p>
+            <button class="btn btn-primary" type="button" id="btn-start-blank">빈 양식으로 시작</button>
+          </div>
           <p class="help" style="margin:0">PRD 파일을 올리거나 텍스트·URL·Confluence·Figma 탭에서 기획 정보를 추가하세요. 입력한 내용을 바탕으로 LLM이 TC 초안을 작성합니다.</p>
           <div class="src-tabs" role="tablist">${tabs.map((t, i) => `<button class="src-tab" role="tab" data-id="src-tab-${t.id}" data-src="${t.id}" aria-selected="${i === 0}">${esc(t.label)}</button>`).join('')}</div>
           ${tabs.map((t, i) => `<div data-srcpane="${t.id}" ${i ? 'hidden' : ''}>${t.html()}</div>`).join('')}

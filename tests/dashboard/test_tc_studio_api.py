@@ -16,6 +16,24 @@ from tests.unit.tc_library.conftest import fake_claude  # noqa: F401
 import openpyxl
 
 
+def test_blank_starter_is_explicit_and_ready_for_authoring(tmp_path, monkeypatch):
+    monkeypatch.setattr(_paths, "TC_LIBRARY_DIR", tmp_path / "library")
+    client = TestClient(app)
+    assert client.get("/api/tc-library").json()["suites"] == []
+
+    started = client.post("/api/tc-library/starter")
+    assert started.status_code == 201
+    assert started.json()["suite"] == "기본양식"
+    assert client.post("/api/tc-library/starter").status_code == 200
+    suites = client.get("/api/tc-library").json()["suites"]
+    assert len(suites) == 1
+    assert suites[0]["sheets"] == ["테스트케이스"]
+    assert suites[0]["count"] == 0
+    assert suites[0]["kind"] == "app"
+    assert client.post("/api/tc-library/기본양식/branches", json={
+        "sheet": "테스트케이스", "path": ["로그인", "", ""]}).status_code == 200
+
+
 def test_import_and_mismatch_filter_use_app_library(tmp_path, monkeypatch):
     monkeypatch.setattr(_paths, "TC_LIBRARY_DIR", tmp_path / "library")
     client = TestClient(app)

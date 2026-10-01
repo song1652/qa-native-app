@@ -89,6 +89,7 @@
     sel.innerHTML = state.suites.map((s) => `<option value="${esc(s.suite)}" ${s.suite === state.suite ? 'selected' : ''}>${esc(s.suite)} (${s.count})</option>`).join('')
       || '<option value="">스위트 없음</option>';
     sel.disabled = !state.suites.length;
+    $('#gen-no-suite', root).hidden = !!state.suites.length;
     const cur = state.suites.find((s) => s.suite === state.suite);
     $('#cnt-lib', root).textContent = cur ? cur.count : 0;
   }
@@ -283,6 +284,19 @@
     if (NS.importModal) NS.importModal.mount(root);
     $$('.step-item', root).forEach((b) => b.addEventListener('click', () => show(b.dataset.screen)));
     if (NS.importModal) $('#btn-import-xlsx', root).addEventListener('click', () => NS.importModal.open());
+    $('#btn-start-blank', root).addEventListener('click', async (event) => {
+      const button = event.currentTarget;
+      button.disabled = true;
+      try {
+        const result = await api.startBlank();
+        await NS.reloadSuites(result.suite);
+        NS.toast('빈 양식이 준비됐습니다. 기획 정보를 추가하고 시트·분류를 정하세요.', 'ok');
+      } catch (err) {
+        NS.toast(`빈 양식을 만들지 못했습니다: ${esc(err.message)}`, 'err');
+      } finally {
+        button.disabled = false;
+      }
+    });
     $('#suite-menu-btn', root).addEventListener('click', (e) => { e.stopPropagation(); toggleSuiteMenu($('#suite-menu', root).hidden); });
     document.addEventListener('click', (e) => { if (!e.target.closest('.suite-menu-wrap')) toggleSuiteMenu(false); });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') toggleSuiteMenu(false); });
@@ -307,7 +321,7 @@
     // 폴백은 불러오기 실패·스위트 없음일 때만. 불러오는 사이 사용자가 스위트를 바꿔 이 호출이 먼저 빠진 경우엔
     // 새 선택이 화면을 고른다 (여기서 라이브러리를 띄우면 새 선택이 '사용자가 탭을 눌렀다'고 보고 물러난다)
     try { await NS.reloadSuites(); } catch (err) { if (!$('.screen.active', root)) show('library', true); throw err; }
-    if (!state.suites.length && !$('.screen.active', root)) show('library', true);
+    if (!state.suites.length && !$('.screen.active', root)) show('generate', true);
   }
 
   window.TCS = { init };

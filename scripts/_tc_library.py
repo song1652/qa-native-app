@@ -42,6 +42,7 @@ class RevConflict(LibraryError):
 RESERVED_SUITES = {"import", "exports", "sources", "profiles", "jobs", "credentials", "source-diff", "trash"}
 # 처음 접속할 때 쓰는 빈 양식 스위트. 삭제할 수 없다
 DEFAULT_SUITE = "기본양식"
+STARTER_TEMPLATE = Path(__file__).resolve().parents[1] / "agents" / "dashboard" / "assets" / "TC_빈양식.xlsx"
 
 
 def suite_dir(suite: str) -> Path:
@@ -126,7 +127,7 @@ def _locked(function):
 def _writes(function):
     """스위트가 있어야 하는 쓰기. update_state가 폴더를 만들어 주므로, 삭제 직후 도착한 요청
     (생성 작업 완료·다른 탭 편집)이 지운 스위트를 빈 폴더로 되살리지 않게 막는다.
-    새 스위트를 만드는 것은 가져오기(import_cases·save_template)뿐이다."""
+    새 스위트를 만드는 것은 가져오기(import_cases·save_template)와 명시적인 빈 양식 시작뿐이다."""
     @wraps(function)
     def guarded(suite, *args, **kwargs):
         with suite_lock(suite):
@@ -160,6 +161,28 @@ def list_suites() -> list[dict]:
                        "kind": data.get("kind", "web"),
                        "protected": d.name == DEFAULT_SUITE})
     return suites
+
+
+def create_blank_starter() -> bool:
+    """Create the neutral app template only after the user chooses to start authoring."""
+    from _tc_template import analyze_workbook
+
+    with suite_lock(DEFAULT_SUITE):
+        root = suite_dir(DEFAULT_SUITE)
+        if root.exists():
+            if (root / "cases.json").exists() and (root / "template.xlsx").exists():
+                return False
+            raise LibraryError("기본 양식이 불완전합니다. 기존 파일을 확인하세요.", "STARTER_INCOMPLETE", 409)
+        try:
+            profiles = analyze_workbook(STARTER_TEMPLATE)
+            sheets = list(profiles)
+            save_template(DEFAULT_SUITE, STARTER_TEMPLATE, profiles)
+            import_cases(DEFAULT_SUITE, sheets, [], "starter")
+            update_state(_cases_path(DEFAULT_SUITE), lambda data: {**data, "kind": "app"})
+        except Exception:
+            shutil.rmtree(root, ignore_errors=True)
+            raise
+        return True
 
 
 @_locked

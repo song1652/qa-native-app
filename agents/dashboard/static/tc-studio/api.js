@@ -30,6 +30,7 @@
 
   NS.api = {
     suites: () => request('GET', '/api/tc-library'),
+    startBlank: () => request('POST', '/api/tc-library/starter'),
     deleteSuite: (suite) => request('DELETE', `${S(suite)}?confirm=${enc(suite)}`),
     trash: () => request('GET', '/api/tc-library/trash'),
     purgeTrash: (id, suite) => request('DELETE', `/api/tc-library/trash/${enc(id)}?confirm=${enc(suite)}`),

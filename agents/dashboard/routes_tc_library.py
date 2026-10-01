@@ -24,6 +24,7 @@ MAX_XLSX_BYTES = 25 * 1024 * 1024
 ROUTES: list[tuple[str, re.Pattern, str]] = [
     (m, re.compile(p + r"\Z"), h) for m, p, h in [
         ("GET", r"/api/tc-library", "_tcl_suites"),
+        ("POST", r"/api/tc-library/starter", "_tcl_starter"),
         ("POST", r"/api/tc-library/import/preview", "_tcl_import_preview"),
         ("POST", r"/api/tc-library/import", "_tcl_import_commit"),
         ("POST", r"/api/tc-library/import/plan", "_tcl_import_plan"),
@@ -108,6 +109,11 @@ class TcLibraryRoutesMixin:
     def _tcl_suites(self):
         from _tc_library import list_suites
         self._tcl_json({"ok": True, "suites": list_suites()})
+
+    def _tcl_starter(self):
+        from _tc_library import DEFAULT_SUITE, create_blank_starter
+        created = create_blank_starter()
+        self._tcl_json({"ok": True, "suite": DEFAULT_SUITE, "created": created}, 201 if created else 200)
 
     def _tcl_tree(self, suite: str):
         from _tc_library import build_tree, load_cases, load_branches

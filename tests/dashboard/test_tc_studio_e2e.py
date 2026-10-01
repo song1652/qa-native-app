@@ -60,6 +60,35 @@ def test_two_excel_formats_show_only_mismatched_app_cases(tc_server, tmp_path):
         pool.submit(_check_browser, tc_server).result(timeout=60)
 
 
+def test_empty_studio_starts_with_authoring_inputs(tc_server):
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        pool.submit(_check_empty_authoring, tc_server).result(timeout=60)
+
+
+def _check_empty_authoring(tc_server):
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        page = browser.new_page()
+        page.goto(f'{tc_server}/tc-studio')
+        page.wait_for_selector('#suite-select')
+        assert page.locator('#screen-generate').is_visible()
+        assert page.locator('#src-paste').count() == 1
+        assert page.locator('#btn-start-blank').is_visible()
+        page.locator('#btn-start-blank').click()
+        page.wait_for_function("document.querySelector('#suite-select')?.value === '기본양식'")
+        page.wait_for_function("document.querySelectorAll('#gen-target-sheet option').length === 2")
+        assert page.locator('#gen-target-sheet option').all_text_contents() == ['시트를 선택하세요', '테스트케이스']
+        page.locator('#gen-target-sheet').select_option('테스트케이스')
+        page.locator('#gen-path-l1').select_option('__new')
+        page.locator('#gen-new-l1').fill('로그인')
+        page.get_by_role('tab', name='텍스트 붙여넣기').click()
+        page.locator('#src-paste').fill('로그인 버튼을 누르면 홈 화면으로 이동한다.')
+        page.locator('#src-paste-add').click()
+        page.wait_for_function("document.querySelector('#src-n')?.textContent === '1'")
+        assert page.locator('#gen-submit').is_enabled()
+        browser.close()
+
+
 def _check_browser(tc_server):
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True)
