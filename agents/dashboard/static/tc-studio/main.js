@@ -5,6 +5,7 @@
 
   const { state, api, esc, $, $$ } = NS;
   const SUITE_KEY = 'tcs-suite';
+  const DEFAULT_SUITE = '기본양식';
   const SCREENS = [
     { id: 'generate', label: '기획 정보 · TC 생성', module: 'generateView' },
     { id: 'library', label: 'TC 라이브러리', module: 'library', count: 'cnt-lib' },
@@ -318,9 +319,17 @@
     // 첫 화면은 스위트를 읽은 뒤 한 번만 고른다 (먼저 라이브러리를 띄우면 깜빡인다).
     // 다른 메뉴에서 돌아와도 처음 들어온 것처럼 고르도록 이전 스위트를 비운다
     state.suite = '';
+    let firstSuite = '';
+    try {
+      const { suites } = await api.suites();
+      if (!suites.some((suite) => suite.suite === DEFAULT_SUITE)) await api.startBlank();
+      firstSuite = DEFAULT_SUITE;
+    } catch (err) {
+      NS.toast(`기본양식을 준비하지 못했습니다: ${esc(err.message)}`, 'err');
+    }
     // 폴백은 불러오기 실패·스위트 없음일 때만. 불러오는 사이 사용자가 스위트를 바꿔 이 호출이 먼저 빠진 경우엔
     // 새 선택이 화면을 고른다 (여기서 라이브러리를 띄우면 새 선택이 '사용자가 탭을 눌렀다'고 보고 물러난다)
-    try { await NS.reloadSuites(); } catch (err) { if (!$('.screen.active', root)) show('library', true); throw err; }
+    try { await NS.reloadSuites(firstSuite); } catch (err) { if (!$('.screen.active', root)) show('library', true); throw err; }
     if (!state.suites.length && !$('.screen.active', root)) show('generate', true);
   }
 

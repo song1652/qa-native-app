@@ -24,27 +24,27 @@
       <div class="sidebar-scroll">
         <div class="sidebar-section">
           <div class="sidebar-label">개요</div>
-          <a class="sidebar-item" href="/?view=dashboard"><span class="sidebar-dot-spacer"></span><span class="sidebar-name">Dashboard</span></a>
+          <a class="sidebar-item" data-view="dashboard" href="/?view=dashboard"><span class="sidebar-dot"></span><span class="sidebar-name">Dashboard</span></a>
         </div>
         <div class="sidebar-section">
-          <div class="sidebar-label">파이프라인</div>
-          <a class="sidebar-item" href="/?view=tests"><span class="sidebar-dot"></span><span class="sidebar-name">빠른 실행</span></a>
-          <a class="sidebar-item" href="/?view=pipeline"><span class="sidebar-dot"></span><span class="sidebar-name">파이프라인 실행</span></a>
-        </div>
-        <div class="sidebar-section">
-          <div class="sidebar-label">테스트 리포트</div>
-          <a class="sidebar-item" href="/?view=reports"><span class="sidebar-dot-spacer"></span><span class="sidebar-name">리포트 목록</span></a>
-          <a class="sidebar-item" href="/?view=history"><span class="sidebar-dot-spacer"></span><span class="sidebar-name">실행 히스토리</span></a>
+          <div class="sidebar-label">환경</div>
+          <a class="sidebar-item" data-view="config" href="/?view=config"><span class="sidebar-dot"></span><span class="sidebar-name">환경 설정</span></a>
         </div>
         <div class="sidebar-section">
           <div class="sidebar-label">TC 작성</div>
-          <a class="sidebar-item" href="/?view=import"><span class="sidebar-dot-spacer"></span><span class="sidebar-name">Import Studio</span></a>
-          <a class="sidebar-item" href="/?view=capture"><span class="sidebar-dot-spacer"></span><span class="sidebar-name">Capture Studio</span></a>
+          <a class="sidebar-item active" data-view="tc_studio" href="/tc-studio" aria-current="page"><span class="sidebar-dot"></span><span class="sidebar-name">TC 스튜디오</span></a>
+          <a class="sidebar-item" data-view="import" href="/?view=import"><span class="sidebar-dot"></span><span class="sidebar-name">Import Studio</span></a>
+          <a class="sidebar-item" data-view="capture" href="/?view=capture"><span class="sidebar-dot"></span><span class="sidebar-name">Capture Studio</span></a>
         </div>
         <div class="sidebar-section">
-          <div class="sidebar-label">설정</div>
-          <a class="sidebar-item" href="/?view=config"><span class="sidebar-dot-spacer"></span><span class="sidebar-name">환경 설정</span></a>
-          <a class="sidebar-item active" data-view="tc_studio" href="/tc-studio" aria-current="page"><span class="sidebar-dot-spacer"></span><span class="sidebar-name">TC 스튜디오</span></a>
+          <div class="sidebar-label">파이프라인</div>
+          <a class="sidebar-item" data-view="pipeline" href="/?view=pipeline"><span class="sidebar-dot"></span><span class="sidebar-name">파이프라인 실행</span></a>
+          <a class="sidebar-item" data-view="tests" href="/?view=tests"><span class="sidebar-dot"></span><span class="sidebar-name">빠른 실행</span></a>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-label">테스트 결과</div>
+          <a class="sidebar-item" data-view="reports" href="/?view=reports"><span class="sidebar-dot"></span><span class="sidebar-name">리포트 목록</span></a>
+          <a class="sidebar-item" data-view="history" href="/?view=history"><span class="sidebar-dot"></span><span class="sidebar-name">실행 히스토리</span></a>
         </div>
       </div>
     </aside>

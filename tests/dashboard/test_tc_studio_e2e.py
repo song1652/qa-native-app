@@ -15,6 +15,7 @@ from playwright.sync_api import sync_playwright
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 from tests.unit.tc_library.test_tc_platform_results import _workbook
+from _tc_model import new_case
 
 
 def _post(url: str, body: bytes, content_type: str) -> dict:
@@ -65,19 +66,66 @@ def test_empty_studio_starts_with_authoring_inputs(tc_server):
         pool.submit(_check_empty_authoring, tc_server).result(timeout=60)
 
 
+def test_existing_import_does_not_replace_default_authoring_page(tc_server):
+    import _tc_library as lib
+
+    imported = new_case(case_id='YAF_0001', sheet='혜택', path=['혜택', '', ''], feature='기존 TC')
+    lib.import_cases('야핏무브', ['혜택'], [imported], 'seed')
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        pool.submit(_check_default_with_existing, tc_server).result(timeout=60)
+    assert len(lib.load_cases('야핏무브')) == 1
+
+
+def test_sidebar_items_stay_in_place_between_dashboard_and_studio(tc_server):
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        pool.submit(_check_sidebar_positions, tc_server).result(timeout=60)
+
+
+def _check_sidebar_positions(tc_server):
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        page = browser.new_page(viewport={'width': 1440, 'height': 900})
+        page.goto(tc_server)
+        names = [item.get_attribute('data-view') for item in page.locator('.sidebar-item').all()]
+        positions = {name: page.locator(f'.sidebar-item[data-view="{name}"]').bounding_box()['y'] for name in names}
+        page.locator('.sidebar-item[data-view="tc_studio"]').click()
+        page.wait_for_selector('#screen-generate.active')
+        assert [item.get_attribute('data-view') for item in page.locator('.sidebar-item').all()] == names
+        for name, y in positions.items():
+            assert abs(page.locator(f'.sidebar-item[data-view="{name}"]').bounding_box()['y'] - y) <= 2, name
+        page.locator('.sidebar-item[data-view="pipeline"]').click()
+        page.wait_for_url(f'{tc_server}/?view=pipeline')
+        for name, y in positions.items():
+            assert abs(page.locator(f'.sidebar-item[data-view="{name}"]').bounding_box()['y'] - y) <= 2, name
+        browser.close()
+
+
+def _check_default_with_existing(tc_server):
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        page = browser.new_page()
+        page.goto(f'{tc_server}/tc-studio')
+        page.wait_for_function("document.querySelector('#suite-select')?.value === '기본양식'")
+        page.wait_for_selector('#screen-generate.active')
+        assert page.locator('#suite-select option').all_text_contents() == ['기본양식 (0)', '야핏무브 (1)']
+        browser.close()
+
+
 def _check_empty_authoring(tc_server):
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True)
         page = browser.new_page()
         page.goto(f'{tc_server}/tc-studio')
-        page.wait_for_selector('#suite-select')
+        page.wait_for_function("document.querySelector('#suite-select')?.value === '기본양식'")
         assert page.locator('#screen-generate').is_visible()
         assert page.locator('#src-paste').count() == 1
-        assert page.locator('#btn-start-blank').is_visible()
-        page.locator('#btn-start-blank').click()
-        page.wait_for_function("document.querySelector('#suite-select')?.value === '기본양식'")
+        assert page.locator('#btn-start-blank').is_hidden()
         page.wait_for_function("document.querySelectorAll('#gen-target-sheet option').length === 2")
         assert page.locator('#gen-target-sheet option').all_text_contents() == ['시트를 선택하세요', '테스트케이스']
+        page.reload()
+        page.wait_for_function("document.querySelector('#suite-select')?.value === '기본양식'")
+        page.wait_for_selector('#screen-generate.active')
+        assert page.locator('#screen-generate').is_visible()
         page.locator('#gen-target-sheet').select_option('테스트케이스')
         page.locator('#gen-path-l1').select_option('__new')
         page.locator('#gen-new-l1').fill('로그인')
@@ -95,6 +143,8 @@ def _check_browser(tc_server):
         page = browser.new_page()
         page.goto(tc_server)
         page.locator('[data-view="tc_studio"]').click()
+        page.wait_for_function("document.querySelector('#suite-select')?.value === '기본양식'")
+        page.locator('#suite-select').select_option('one')
         page.wait_for_function("document.querySelector('#grid-body tr[data-case]') !== null")
         assert page.locator('.app-layout').count() == 0
         assert page.locator('.body-wrap').count() == 1
