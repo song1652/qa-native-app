@@ -16,3 +16,5 @@ state/runs/
 state/env_session.json
 state/running_procs.json
 config/devices.json.lock
+config/confluence_config.json
+config/figma_config.json
