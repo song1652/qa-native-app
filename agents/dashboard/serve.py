@@ -33,6 +33,7 @@ from routes.import_studio import router as import_router  # noqa: E402
 from routes.mcp import router as mcp_router  # noqa: E402
 from routes.observability import router as observability_router  # noqa: E402
 from routes.pipeline import router as pipeline_router  # noqa: E402
+from routes.tc_studio import router as tc_studio_router  # noqa: E402
 
 # ── FastAPI 앱 ────────────────────────────────────────────────
 app = FastAPI(title="QA Dashboard", docs_url=None, redoc_url=None)
@@ -52,6 +53,7 @@ app.include_router(pipeline_router)
 app.include_router(import_router)
 app.include_router(capture_router)
 app.include_router(env_router)
+app.include_router(tc_studio_router)
 
 
 # ── 서버 시작 ─────────────────────────────────────────────────

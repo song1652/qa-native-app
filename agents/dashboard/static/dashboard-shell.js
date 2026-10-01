@@ -161,6 +161,7 @@ function updateTcFolderCount(){
   if(el) el.textContent=selected.length ? selected.length+'개 폴더를 선택한 순서대로 직렬 실행합니다.' : '실행할 폴더를 선택하세요.';
 }
 
+var tcStudioInitialized=false;
 function selectView(view, item){
   document.querySelectorAll('.sidebar-item').forEach(function(el){
     el.classList.toggle('active', el === item);
@@ -168,10 +169,12 @@ function selectView(view, item){
   var grid=document.querySelector('.grid');
   var pipeline=document.getElementById('view-pipeline');
   var overview=document.getElementById('view-overview');
+  var studio=document.getElementById('view-tc_studio');
   var rightViews=['tests','import','reports','history','config','capture'];
   if(!grid || !pipeline) return;
   if(overview) overview.classList.toggle('view-hidden', view !== 'dashboard');
-  grid.classList.toggle('view-hidden', view === 'dashboard');
+  if(studio) studio.classList.toggle('view-hidden', view !== 'tc_studio');
+  grid.classList.toggle('view-hidden', view === 'dashboard' || view === 'tc_studio');
   grid.classList.remove('focus-left','focus-right');
   pipeline.classList.remove('view-hidden');
   document.querySelectorAll('.right-panel > .card').forEach(function(card){
@@ -189,6 +192,13 @@ function selectView(view, item){
   if(main) main.classList.toggle('capture-view', view === 'capture');
   if(main) main.classList.toggle('quick-view', view === 'tests');
   if(main) main.classList.toggle('history-view', view === 'history');
+  if(view === 'tc_studio' && !tcStudioInitialized && window.TCS){
+    tcStudioInitialized=true;
+    window.TCS.init('#view-tc_studio').catch(function(error){
+      tcStudioInitialized=false;
+      if(studio) studio.textContent='TC 스튜디오를 불러오지 못했습니다: '+error.message;
+    });
+  }
   if(view === 'dashboard') refreshOverview();
   if(view === 'tests') refreshStatus();
   if(main) main.scrollTo({top:0, behavior:'smooth'});

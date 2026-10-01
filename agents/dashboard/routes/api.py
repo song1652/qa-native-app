@@ -82,6 +82,16 @@ async def dashboard_static_asset(asset_name: str):
     return FileResponse(str(asset_path), media_type=media_type)
 
 
+@router.get("/static/tc-studio/{asset_name}", include_in_schema=False)
+async def tc_studio_static_asset(asset_name: str):
+    if asset_name not in {"api.js", "state.js", "detail.js", "library.js", "import.js",
+                          "generate.js", "connectors.js", "review.js", "export.js", "main.js",
+                          "tc-studio.css"}:
+        return Response(status_code=404)
+    path = HERE / "static" / "tc-studio" / asset_name
+    return FileResponse(str(path), media_type="text/css" if asset_name.endswith(".css") else "text/javascript")
+
+
 @router.get("/api/state")
 async def get_state():
     return JSONResponse(read_state())
