@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>파이프라인 — 실행 중</title>
+</head>
+<body>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1F4FD1}a:hover{color:#163A9C}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid #1F4FD1;outline-offset:2px}
+</style>
+<div style="min-height: 700px; background: #F5F6F8; color: #111827; font-family: 'IBM Plex Sans KR', system-ui, sans-serif; display: flex; flex-direction: column">
+<header style="height: 56px; background: #FFFFFF; border-bottom: 1px solid #E2E5EA; display: flex; align-items: center; gap: 28px; padding: 0 24px; box-sizing: border-box">
+<div style="display: flex; align-items: center; gap: 10px">
+<div style="width: 22px; height: 22px; border-radius: 5px; background: #111827"></div>
+<span style="font-size: 15px; font-weight: 600">QA Control Center</span>
+</div>
+<div style="display: flex; align-items: center; gap: 20px; font-size: 13px; color: #4B5563">
+<span style="display: flex; align-items: center; gap: 6px"><span style="width: 8px; height: 8px; border-radius: 50%; background: #15803D; flex-shrink: 0"></span>Appium 연결됨</span>
+<span>Android · emulator-5554</span>
+<span>실기기 · Lenovo TB320FC</span>
+<span>iOS · iPhone 17</span>
+</div>
+<div style="flex-grow: 1"></div>
+<button style="height: 34px; padding: 0 16px; background: #1F4FD1; color: #FEFEFE; border: 0; border-radius: 6px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap">파이프라인 실행</button>
+</header>
+<div style="flex-grow: 1; display: grid; grid-template-columns: 232px minmax(0, 1fr)">
+<nav aria-label="주 메뉴" style="background: #FFFFFF; border-right: 1px solid #E2E5EA; padding: 16px 12px; display: flex; flex-direction: column; gap: 2px">
+<div style="font-size: 12px; color: #6B7280; padding: 8px 12px 6px">개요</div>
+<a href="Main.html" style="display: block; padding: 8px 12px; border-radius: 6px; font-size: 14px; text-decoration: none; color: #111827">대시보드</a>
+<div style="font-size: 12px; color: #6B7280; padding: 16px 12px 6px">TC 작성</div>
+<a href="TcStudio.html" style="display: block; padding: 8px 12px; border-radius: 6px; font-size: 14px; text-decoration: none; color: #111827">TC 스튜디오</a>
+<a href="Import.html" style="display: block; padding: 8px 12px; border-radius: 6px; font-size: 14px; text-decoration: none; color: #111827">엑셀 가져오기</a>
+<a href="Capture.html" style="display: block; padding: 8px 12px; border-radius: 6px; font-size: 14px; text-decoration: none; color: #111827">화면 캡처로 작성</a>
+<div style="font-size: 12px; color: #6B7280; padding: 16px 12px 6px">실행</div>
+<a href="Pipeline.html" aria-current="page" style="display: block; padding: 8px 12px; border-radius: 6px; font-size: 14px; text-decoration: none; background: #E8EEFC; color: #1F4FD1; font-weight: 600">파이프라인</a>
+<a href="QuickRun.html" style="display: block; padding: 8px 12px; border-radius: 6px; font-size: 14px; text-decoration: none; color: #111827">빠른 실행</a>
+<div style="font-size: 12px; color: #6B7280; padding: 16px 12px 6px">결과</div>
+<a href="Reports.html" style="display: block; padding: 8px 12px; border-radius: 6px; font-size: 14px; text-decoration: none; color: #111827">리포트</a>
+<a href="History.html" style="display: block; padding: 8px 12px; border-radius: 6px; font-size: 14px; text-decoration: none; color: #111827">실행 기록</a>
+<div style="flex-grow: 1"></div>
+<a href="Env.html" style="display: block; padding: 8px 12px; border-radius: 6px; font-size: 14px; text-decoration: none; color: #4B5563">환경 설정</a>
+</nav>
+<main style="padding: 28px 32px; display: flex; flex-direction: column; gap: 20px; min-width: 0">
+<div style="display: flex; align-items: flex-end; gap: 16px"><div style="flex-grow: 1"><h1 style="margin: 0; font-size: 22px; font-weight: 600">파이프라인</h1><p style="margin: 4px 0 0; font-size: 13px; color: #6B7280">실행 중에는 설정을 바꿀 수 없습니다.</p></div><button style="height: 34px; padding: 0 14px; background: #FFFFFF; color: #B91C1C; border: 1px solid #E2E5EA; border-radius: 6px; font: inherit; font-size: 14px; cursor: pointer; white-space: nowrap">실행 취소</button></div>
+<div style="display: flex; align-items: center; gap: 14px; padding: 14px 16px; background: #FFFFFF; border: 1px solid #E2E5EA; border-radius: 8px">
+<span style="font-size: 14px; font-weight: 600">Android · emulator-5554</span><span style="font-size: 13px; color: #4B5563">폴더 4개 · 증거 실패 시만</span><span style="flex-grow: 1"></span>
+<div role="progressbar" aria-valuenow="3" aria-valuemin="0" aria-valuemax="5" aria-label="진행" style="width: 240px; height: 6px; border-radius: 3px; background: #F0F2F5; overflow: hidden"><div style="width: 70%; height: 100%; background: #1F4FD1"></div></div><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #111827">3 / 5</span></div>
+<div style="display: grid; grid-template-columns: 460px minmax(0, 1fr); gap: 20px; align-items: start">
+<section style="background: #FFFFFF; border: 1px solid #E2E5EA; border-radius: 8px; overflow: hidden"><div style="padding: 14px 16px"><h2 style="margin: 0; font-size: 15px; font-weight: 600">단계</h2></div><ol style="list-style: none; margin: 0; padding: 0"><li style="display: flex; align-items: center; gap: 12px; padding: 11px 16px; border-top: 1px solid #E2E5EA; "><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #6B7280">1</span><span style="font-size: 14px; font-weight: 600">UI 분석</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #6B7280">01_analyze</span><span style="flex-grow: 1"></span><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #4B5563">12초</span><span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; white-space: nowrap; color: #15803D; background: #E6F4EA">완료</span></li><li style="display: flex; align-items: center; gap: 12px; padding: 11px 16px; border-top: 1px solid #E2E5EA; "><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #6B7280">2</span><span style="font-size: 14px; font-weight: 600">코드 생성</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #6B7280">02_generate</span><span style="flex-grow: 1"></span><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #4B5563">3초</span><span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; white-space: nowrap; color: #15803D; background: #E6F4EA">완료</span></li><li style="display: flex; align-items: center; gap: 12px; padding: 11px 16px; border-top: 1px solid #E2E5EA; "><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #6B7280">3</span><span style="font-size: 14px; font-weight: 600">린트 검사</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #6B7280">03_lint</span><span style="flex-grow: 1"></span><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #4B5563">1초</span><span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; white-space: nowrap; color: #15803D; background: #E6F4EA">완료</span></li><li style="display: flex; align-items: center; gap: 12px; padding: 11px 16px; border-top: 1px solid #E2E5EA; background: #E8EEFC"><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #6B7280">4</span><span style="font-size: 14px; font-weight: 600">테스트 실행</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #6B7280">05_execute</span><span style="flex-grow: 1"></span><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #4B5563">0:41</span><span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; white-space: nowrap; color: #1F4FD1; background: #E8EEFC">실행 중</span></li><li style="display: flex; align-items: center; gap: 12px; padding: 11px 16px; border-top: 1px solid #E2E5EA; "><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #6B7280">5</span><span style="font-size: 14px; font-weight: 600">자동 복구</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #6B7280">06_heal</span><span style="flex-grow: 1"></span><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #4B5563"></span><span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; white-space: nowrap; color: #4B5563; background: #F0F2F5">대기</span></li></ol></section>
+<section style="background: #FFFFFF; border: 1px solid #E2E5EA; border-radius: 8px; overflow: hidden"><div style="display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid #E2E5EA"><h2 style="margin: 0; font-size: 15px; font-weight: 600; flex-grow: 1">실행 로그</h2><label style="display: flex; gap: 6px; align-items: center; font-size: 13px"><input type="checkbox" checked style="width: 16px; height: 16px; margin: 0; accent-color: #1F4FD1">자동 스크롤</label></div><div style="padding: 16px"><pre style="margin: 0; padding: 12px 14px; background: #F8F9FB; border: 1px solid #E2E5EA; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.7; color: #4B5563; white-space: pre-wrap; max-height: 420px; overflow: auto">[05_execute] TC 폴더 지정: tests/generated/android/location_web_e2e_20261001
+[05_execute] Using pytest-json-report for result parsing.
+[05_execute] pytest-rerunfailures: setup 실패 시 최대 2회 재시도 (5초 대기)
+[05_execute] QA_RUN_ID=run_android_20261001_221203_201
+[05_execute] DEVICE_MODE=emulator
+[05_execute] DEVICE_UDID=emulator-5554
+[05_execute] Running: pytest tests/generated/android/location_web_e2e_20261001 -v --reruns 2 --reruns-delay 5</pre></div></section>
+</div>
+</main>
+</div>
+</div>
+</body>
+</html>

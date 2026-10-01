@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TC 미리보기</title>
+</head>
+<body>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1F4FD1}a:hover{color:#163A9C}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid #1F4FD1;outline-offset:2px}
+</style>
+<div style="min-height: 700px; background: #F5F6F8; color: #111827; font-family: 'IBM Plex Sans KR', system-ui, sans-serif">
+<div style="min-height: 700px; background: rgba(17, 24, 39, 0.45); display: flex; align-items: center; justify-content: center; padding: 40px; box-sizing: border-box"><div role="dialog" aria-modal="true" aria-label="TC 미리보기" style="width: 1000px; max-width: 100%; background: #FFFFFF; border-radius: 10px; box-shadow: 0 12px 32px rgba(17, 24, 39, 0.18); overflow: hidden"><div style="display: flex; align-items: flex-start; gap: 12px; padding: 18px 20px; border-bottom: 1px solid #E2E5EA"><div style="flex-grow: 1"><h2 style="margin: 0; font-size: 17px; font-weight: 600">TC 미리보기</h2></div><button aria-label="닫기" style="height: 34px; padding: 0 14px; background: #FFFFFF; color: #111827; border: 1px solid #E2E5EA; border-radius: 6px; font: inherit; font-size: 14px; cursor: pointer; white-space: nowrap; width: 34px; padding: 0">×</button></div><div style="padding: 20px"><div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px">
+<div><div style="font-size: 12px; color: #4B5563; margin-bottom: 6px">Markdown TC <span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #6B7280">testcases/android/settings/tc_settings_location.md</span></div><pre style="margin: 0; padding: 12px 14px; background: #F8F9FB; border: 1px solid #E2E5EA; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.7; color: #4B5563; white-space: pre-wrap"># tc_settings_location: 설정에서 위치 화면 진입
+
+## 플랫폼
+Android
+
+## TC 그룹
+settings
+
+## 단계
+1. "위치" 탭
+2. 대기 1.2초
+3. "위치 사용" 텍스트 확인
+4. 뒤로</pre></div>
+<div><div style="font-size: 12px; color: #4B5563; margin-bottom: 6px">pytest 코드 (초안) <span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #6B7280">tests/generated/android/settings/</span></div><pre style="margin: 0; padding: 12px 14px; background: #F8F9FB; border: 1px solid #E2E5EA; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.7; color: #4B5563; white-space: pre-wrap">import os
+from appium import webdriver
+
+def _build_driver():
+    ...  # devices.json의 default 기기로 세션 생성
+
+def _el(driver, by, value, timeout=10):
+    ...
+
+class TestTcSettingsLocation:
+    def test_tc_settings_location(self):
+        driver = _build_driver()
+        _el(driver, "-android uiautomator", 'new UiSelector().text("위치")').click()
+        assert _el(driver, "-android uiautomator", 'new UiSelector().text("위치 사용")')</pre></div></div>
+<p style="margin: 12px 0 0; font-size: 12px; color: #6B7280">출처: 사용자 3 · MCP 1 (mixed) · 동작 4개</p></div><div style="display: flex; align-items: center; gap: 8px; justify-content: flex-end; padding: 14px 20px; border-top: 1px solid #E2E5EA"><button style="height: 34px; padding: 0 14px; background: #FFFFFF; color: #111827; border: 1px solid #E2E5EA; border-radius: 6px; font: inherit; font-size: 14px; cursor: pointer; white-space: nowrap">닫기</button><button style="height: 34px; padding: 0 16px; background: #1F4FD1; color: #FEFEFE; border: 0; border-radius: 6px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap">저장 및 생성</button></div></div></div>
+</div>
+</body>
+</html>
