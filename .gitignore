@@ -8,3 +8,11 @@ state/pipeline.json
 config/test_data.json
 *.env
 .DS_Store
+# 실행 산출물
+logs/
+reports/screenshots/
+state/captures/
+state/runs/
+state/env_session.json
+state/running_procs.json
+config/devices.json.lock

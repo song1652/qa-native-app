@@ -10,17 +10,18 @@
         "forceAppLaunch": true,
         "shouldTerminateApp": true,
         "mjpegServerPort": 8093,
-        "mjpegScalingFactor": 75,
-        "mjpegServerScreenshotQuality": 70,
+        "mjpegServerFramerate": 60,
+        "mjpegScalingFactor": 50,
+        "mjpegServerScreenshotQuality": 50,
         "default": true
       }
     ],
     "real_device": [
       {
-        "deviceName": "Galaxy S24",
-        "platformVersion": "14.0",
+        "deviceName": "Lenovo TB320FC",
+        "platformVersion": "15.0",
         "automationName": "UiAutomator2",
-        "udid": "",
+        "udid": "HA1XM5MS",
         "wifi_ip": "",
         "default": true
       }
