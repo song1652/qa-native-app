@@ -7,6 +7,8 @@
         "automationName": "UiAutomator2",
         "avd": "Pixel_7_Android15",
         "noReset": true,
+        "skipDeviceInitialization": true,
+        "adbExecTimeout": 120000,
         "forceAppLaunch": true,
         "shouldTerminateApp": true,
         "mjpegServerPort": 8093,
@@ -35,6 +37,13 @@
         "automationName": "XCUITest",
         "udid": "E73939EF-741D-4A72-BEA7-97D31B15719A",
         "default": true
+      },
+      {
+        "deviceName": "iPhone 17",
+        "automationName": "XCUITest",
+        "udid": "A43A3114-0940-4945-8DFE-9646700AF5C4",
+        "platformVersion": "27.0",
+        "default": false
       }
     ],
     "real_device": [
