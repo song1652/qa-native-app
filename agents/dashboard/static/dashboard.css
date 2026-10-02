@@ -820,12 +820,12 @@ button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(
 .title-row{height:56px;gap:28px;background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;}
 .title-row::before,.title-row::after{display:none}
 .title-row .product-brand{gap:10px;flex-shrink:0}
-.product-mark{width:22px;height:22px;border-radius:5px;background:var(--text)}
+.product-mark{width:22px;height:22px;flex-shrink:0;color:var(--accent)}
 .title-row h1{font-size:15px;font-weight:600;letter-spacing:0;color:var(--text)}
 .status-bar{flex:1;min-width:0;height:auto;gap:16px;flex-wrap:nowrap;padding:0;background:var(--surface);border:0;}
 .si{font-size:13px;white-space:nowrap;min-width:0}.si span{overflow:hidden;text-overflow:ellipsis}
 .status-bar .sdiv{display:none}.status-bar .step-badge,.status-bar .automation-badge{background:none;border:0;border-radius:0;padding:0;font-weight:400;color:var(--text-2)}
-.dot.on{box-shadow:none}.header-run{height:36px;flex-shrink:0;padding:0 16px;border:0;border-radius:var(--radius-control);background:var(--accent);color:var(--on-accent);font:600 14px var(--font-sans);cursor:pointer;white-space:nowrap}
+.dot.on{box-shadow:none}
 .app-layout,body.dashboard-mode .app-layout,body.tc-studio-mode .app-layout,.quick-mode .app-layout,.report-mode .app-layout{height:calc(100vh - 56px);min-height:calc(100vh - 56px)}
 .sidebar{width:232px;height:calc(100vh - 56px);display:flex;flex-direction:column;background:var(--surface);padding:16px 12px;border-right:1px solid var(--border)}
 .sidebar-section{padding:0 0 12px;border:0}.sidebar-bottom{margin-top:auto;padding-bottom:0}
@@ -842,7 +842,7 @@ button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(
 @media(max-width:900px){
  .title-row{height:auto;min-height:56px;flex-wrap:wrap;padding:12px;gap:8px}
  .title-row .product-brand{margin-right:auto;gap:6px}.title-row h1{font-size:13px}.product-mark{width:16px;height:16px}
- .header-run{font-size:12px;padding:0 10px}.status-bar{order:3;flex-basis:100%;min-height:24px;padding:0;overflow:hidden}
+ .status-bar{order:3;flex-basis:100%;min-height:24px;padding:0;overflow:hidden}
  .app-layout,body.dashboard-mode .app-layout,body.tc-studio-mode .app-layout,.quick-mode .app-layout,.report-mode .app-layout{display:block;height:auto;min-height:0}
  .sidebar{position:static;width:100%;height:auto;max-width:100%;flex-direction:row;overflow-x:auto;padding:4px}
  .sidebar-section{flex-shrink:0}.sidebar-bottom{margin:0}.app-main{padding:20px;max-width:100%}

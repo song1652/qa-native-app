@@ -10,6 +10,12 @@
 - 앱 스위트의 Android/iOS 결과는 `results`에 따로 저장한다. Markdown은 `scripts/_tc_md_export.py`가 기존 `scripts/import_excel.py:_render_markdown` 형식으로 만들어 `testcases/{android,ios}/{group}/`에 쓴다.
 - 엑셀 가져오기는 TC Studio에 통합한다. 예전 `/?view=import` 주소는 TC Studio 가져오기 모달로 연결하고, 기존 `/api/import/*` 변환 API는 호환을 위해 유지한다. 테스트에서는 `state/tc_library/`, `testcases/`, `import/`의 실제 데이터를 사용하지 않는다.
 
+## 대시보드 디자인과 서버
+
+- 대시보드와 TC 스튜디오는 밝은 테마를 기준으로 유지합니다. 어두운 테마로 되돌리지 않습니다.
+- 실제 앱 서버는 이 저장소의 `main`에서 `.venv/bin/python agents/dashboard/serve.py`로 실행합니다 (포트 8767). 목업 서버와 구분합니다.
+- 공통 상단에는 파란 문서 체크 SVG 아이콘을 사용하고, 파이프라인 실행은 해당 화면 안의 버튼으로 제공합니다.
+
 ## 핵심 원칙
 
 - 외부 LLM SDK(`anthropic`, `langchain`, `openai` 등)를 제품 코드에 import하지 않습니다.
