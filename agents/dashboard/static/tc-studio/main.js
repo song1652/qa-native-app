@@ -7,8 +7,8 @@
   const SUITE_KEY = 'tcs-suite';
   const DEFAULT_SUITE = '기본양식';
   const SCREENS = [
-    { id: 'generate', label: '기획 정보 · TC 생성', module: 'generateView' },
-    { id: 'library', label: 'TC 라이브러리', module: 'library', count: 'cnt-lib' },
+    { id: 'generate', label: '기획 정보 · 생성', module: 'generateView' },
+    { id: 'library', label: '라이브러리', module: 'library', count: 'cnt-lib' },
     { id: 'review', label: '초안 검토', module: 'reviewView', count: 'cnt-review' },
     { id: 'export', label: '내보내기', module: 'exportView' },
   ];
@@ -27,7 +27,7 @@
  <div class="studio" id="studio">
   <header class="page-header">
     <div class="ph-top">
-      <h1 class="page-title">TC Studio</h1>
+      <h1 class="page-title">TC 스튜디오</h1>
       <select class="suite-select" id="suite-select" data-id="suite-select" aria-label="스위트 선택"></select>
       <div class="suite-menu-wrap">
         <button class="icon-btn suite-menu-btn" type="button" id="suite-menu-btn" data-id="suite-menu-btn" aria-label="스위트 관리" aria-haspopup="menu" aria-expanded="false">⋯</button>

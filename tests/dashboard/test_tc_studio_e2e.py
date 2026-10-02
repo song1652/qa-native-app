@@ -178,7 +178,7 @@ def _check_studio_status(tc_server):
         assert page.title() == 'App QA Dashboard'
         assert page.locator('.sidebar-item[data-view="tc_studio"]').inner_text() == 'TC 스튜디오'
         page.wait_for_selector('.page-title')
-        assert page.locator('.page-title').inner_text() == 'TC Studio'
+        assert page.locator('.page-title').inner_text() == 'TC 스튜디오'
         page.wait_for_function("document.querySelector('#txt-step')?.textContent === 'generated'")
         assert page.locator('.status-bar').is_visible()
         assert page.locator('#txt-appium').inner_text() == 'Appium 연결됨'

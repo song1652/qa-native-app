@@ -36,7 +36,7 @@
         <div class="filterbar" role="search">
           <div class="search"><input class="input" id="lib-search" data-id="lib-search" placeholder="제목, Step, Expected, UI 문구 검색  ( / )" autocomplete="off"></div>
           <select class="fselect" id="lib-filter-result" data-id="lib-filter-result" aria-label="실행 결과">
-            ${opt('', '실행 결과 전체')}${opt('none', '미실행')}${opt('pass', 'Pass')}${opt('fail', 'Fail')}${opt('not_test', 'Not Test')}${opt('na', 'N/A')}</select>
+            ${opt('', '실행 결과 전체')}${opt('none', '미실행')}${opt('pass', '통과')}${opt('fail', '실패')}${opt('not_test', '미실행')}${opt('na', 'N/A')}</select>
           <select class="fselect app-only" id="lib-filter-platform" aria-label="플랫폼">${opt('', '플랫폼 전체')}${opt('android', 'And')}${opt('ios', 'iOS')}</select>
           <button class="fchip app-only" id="lib-filter-mismatch" aria-pressed="false">And·iOS 결과가 다른 것만</button>
           <select class="fselect" id="lib-filter-status" data-id="lib-filter-status" aria-label="검토 상태">
@@ -65,21 +65,23 @@
               <th><input type="checkbox" id="grid-check-all" data-id="grid-check-all" aria-label="전체 선택"></th>
               <th></th><th class="no"><span class="xl">A</span>No.</th>
               <th><span class="xl">B</span>대분류</th><th><span class="xl">C</span>중분류</th><th><span class="xl">D</span>소분류</th>
-              <th><span class="xl">E</span>제목</th><th><span class="xl">F</span>사전 조건</th><th><span class="xl">G</span>Test Step</th>
-              <th><span class="xl">H</span>Expected Result</th><th><span class="xl">I</span>우선순위</th><th class="web-result">실행 결과</th><th class="app-result">And</th><th class="app-result">iOS</th><th><span class="xl">M</span>기타 (id · src)</th>
+              <th><span class="xl">E</span>제목</th><th><span class="xl">F</span>사전 조건</th><th><span class="xl">G</span>테스트 단계</th>
+              <th><span class="xl">H</span>기대 결과</th><th><span class="xl">I</span>우선순위</th><th class="web-result">실행 결과</th><th class="app-result">And</th><th class="app-result">iOS</th><th><span class="xl">M</span>기타 (id · src)</th>
             </tr></thead>
             <tbody id="grid-body"></tbody>
           </table>
         </div>
         <div class="bulkbar" id="bulkbar" data-id="bulk-bar" hidden>
           <b><span id="bulk-n">0</span>건 선택</b>
-          <select class="chip-select" data-id="bulk-priority" id="bulk-priority">${opt('', '우선순위…')}${NS.PRIORITIES.map((p) => opt(p, p)).join('')}</select>
           <select class="chip-select app-result" data-id="bulk-platform" id="bulk-platform">${opt('android', 'Android')}${opt('ios', 'iOS')}</select>
-          <select class="chip-select" data-id="bulk-result" id="bulk-result">${opt('', '실행 결과…')}${opt('none', '미실행')}${opt('pass', 'Pass')}${opt('fail', 'Fail')}${opt('not_test', 'Not Test')}${opt('na', 'N/A')}</select>
+          <select class="chip-select" data-id="bulk-result" id="bulk-result">${opt('', '실행 결과…')}${opt('none', '미실행')}${opt('pass', '통과')}${opt('fail', '실패')}${opt('not_test', '미실행')}${opt('na', 'N/A')}</select>
           <select class="chip-select" data-id="bulk-status" id="bulk-status">${opt('', '검토 상태…')}${opt('approved', '승인')}${opt('draft', '초안으로')}${opt('rejected', '반려')}</select>
           <button class="btn-sm" data-id="bulk-move" id="bulk-move">계층 이동…</button>
+          <details class="bulk-more"><summary aria-label="일괄 작업 더보기">⋯ 더보기</summary><div>
+          <select class="chip-select" data-id="bulk-priority" id="bulk-priority">${opt('', '우선순위…')}${NS.PRIORITIES.map((p) => opt(p, p)).join('')}</select>
           <button class="btn-sm" data-id="bulk-duplicate" id="bulk-duplicate">복제</button>
           <button class="btn btn-danger" data-id="bulk-delete" id="bulk-delete" style="padding:4px 10px;font-size:11px">삭제</button>
+          </div></details>
           <span class="spacer"></span>
           <button class="icon-btn" data-id="bulk-clear" id="bulk-clear" aria-label="선택 해제">✕</button>
         </div>
@@ -120,7 +122,7 @@
       <div class="panel-body" style="display:grid;gap:12px">
         <b id="cf-title"></b>
         <span class="muted">삭제한 케이스는 되돌리기로 복원할 수 있습니다. 엑셀 다음 내보내기부터 빠집니다.</span>
-        <div class="row"><span class="spacer"></span><button class="btn btn-ghost" id="cf-cancel" data-id="confirm-cancel">취소</button><button class="btn btn-danger" id="cf-ok" data-id="confirm-ok" style="background:var(--err);color:#fff">삭제</button></div>
+        <div class="row"><span class="spacer"></span><button class="btn btn-ghost" id="cf-cancel" data-id="confirm-cancel">취소</button><button class="btn btn-danger" id="cf-ok" data-id="confirm-ok" style="background:var(--err);color:var(--text)">삭제</button></div>
       </div>
     </div>
   </div>`;
