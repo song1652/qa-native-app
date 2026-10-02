@@ -229,8 +229,8 @@ function renderRunHistory(){
       +'<div class="history-date"><strong>'+esc(dateText)+'<br>'+esc(time)+'</strong></div>'
       +'<div><div class="history-pass" style="color:'+(ok?'var(--pass)':'var(--fail)')+'">'+entry.rate+'%</div><div class="history-progress"><span style="width:'+entry.rate+'%;background:'+(ok?'var(--pass)':'var(--fail)')+'"></span></div></div>'
       +'<div><span class="history-count">'+entry.passed+'<small> / '+entry.total+'</small></span><div style="color:var(--text3);font-size:11px;margin-top:3px">'+(entry.duration||'-')+'</div></div>'
-      +'<div><span class="history-type">'+(entry.type==='pipeline'?'파이프라인 실행':'빠른 실행')+'</span></div><div><span class="history-platform '+esc(entry.platform||'android')+'">'+(entry.platform==='ios'?'🍎 iOS':'🤖 Android')+'</span></div>'
-      +'<div class="history-groups">'+groups+'</div><div><span class="history-result" style="color:'+(ok?'var(--pass)':'var(--fail)')+';border-color:'+(ok?'var(--pass)':'var(--fail)')+'">'+(ok?'First Pass':'Failed')+'</span></div></div>';
+      +'<div><span class="history-type">'+(entry.type==='pipeline'?'파이프라인 실행':'빠른 실행')+'</span></div><div><span class="history-platform '+esc(entry.platform||'android')+'">'+(entry.platform==='ios'?'iOS':'Android')+'</span></div>'
+      +'<div class="history-groups">'+groups+'</div><div><span class="history-result" style="color:'+(ok?'var(--pass)':'var(--fail)')+';border-color:'+(ok?'var(--pass)':'var(--fail)')+'">'+(ok?'첫 시도 통과':'실패')+'</span></div></div>';
   }).join('');
   var total=entries.length, passedRate=Math.round(entries.reduce(function(sum,item){return sum+(item.rate||0);},0)/total);
   var passedFirst=entries.filter(function(item){return !item.failed&&item.rate===100;}).length;

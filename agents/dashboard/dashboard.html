@@ -281,7 +281,7 @@
     <!-- 리포트 -->
     <div class="card" id="view-reports">
       <div class="reports-view">
-        <div class="reports-title">테스트 리포트</div>
+        <div class="reports-title">리포트</div>
         <p class="reports-subtitle">생성된 실행 결과를 확인하고 필요한 리포트만 관리하세요.</p>
         <div class="report-controls">
           <input class="report-search" id="report-search-input" type="text" placeholder="리포트 이름 검색">
@@ -307,14 +307,15 @@
 
     <!-- 실행 히스토리 -->
     <div class="card history-card" id="view-history">
+      <h2 class="page-heading">실행 기록</h2><p class="page-description">실행별 통과율과 자동 복구 이력을 봅니다.</p>
       <div class="history-toolbar">
-        <button class="history-reset" type="button" onclick="resetHistory()">▣ 이력 초기화</button>
+        <button class="history-reset" type="button" onclick="resetHistory()">기록 초기화</button>
       </div>
       <div class="history-kpis">
         <div class="history-kpi"><div class="history-kpi-label">총 실행 수</div><div class="history-kpi-value" id="history-total">1</div></div>
-        <div class="history-kpi"><div class="history-kpi-label">평균 PASS RATE</div><div class="history-kpi-value pass" id="history-rate">100%</div></div>
-        <div class="history-kpi"><div class="history-kpi-label">FIRST PASS</div><div class="history-kpi-value pass" id="history-first">1<span class="history-kpi-suffix">/1</span></div></div>
-        <div class="history-kpi"><div class="history-kpi-label">총 힐링 횟수</div><div class="history-kpi-value accent" id="history-heal">0</div></div>
+        <div class="history-kpi"><div class="history-kpi-label">평균 통과율</div><div class="history-kpi-value pass" id="history-rate">100%</div></div>
+        <div class="history-kpi"><div class="history-kpi-label">첫 시도 통과</div><div class="history-kpi-value pass" id="history-first">1<span class="history-kpi-suffix">/1</span></div></div>
+        <div class="history-kpi"><div class="history-kpi-label">자동 복구</div><div class="history-kpi-value accent" id="history-heal">0</div></div>
       </div>
       <div class="history-filters">
         <span class="history-filter-label">유형</span>
@@ -331,16 +332,16 @@
         <button class="history-filter platform-filter" type="button" data-filter-kind="platform" data-filter-value="ios">iOS</button>
       </div>
       <div class="history-table">
-        <div class="history-row header"><span>날짜</span><span>PASS RATE</span><span>통과 / 전체</span><span>유형</span><span>플랫폼</span><span>그룹</span><span>결과</span></div>
+        <div class="history-row header"><span>날짜</span><span>통과율</span><span>통과 / 전체</span><span>유형</span><span>플랫폼</span><span>그룹</span><span>결과</span></div>
         <div id="history-list">
           <div class="history-row" data-history-type="quick" data-history-platform="android" data-history-groups="customer_login partner_login">
             <div class="history-date"><strong>2026-09-06<br>19:57:02</strong></div>
             <div><div class="history-pass">100%</div><div class="history-progress"><span></span></div></div>
             <div><span class="history-count">4<small> / 4</small></span><div style="color:var(--text3);font-size:11px;margin-top:3px">10s</div></div>
             <div><span class="history-type">빠른 실행</span></div>
-            <div><span class="history-platform android">🤖 Android</span></div>
+            <div><span class="history-platform android">Android</span></div>
             <div class="history-groups"><span class="history-group">customer_login</span><span class="history-group">partner_login</span></div>
-            <div><span class="history-result">First Pass</span></div>
+            <div><span class="history-result">첫 시도 통과</span></div>
           </div>
         </div>
       </div>
