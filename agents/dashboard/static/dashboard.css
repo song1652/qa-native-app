@@ -1014,3 +1014,35 @@ code,pre,.log-area,.log-panel,.overview-log{font-family:var(--font-mono)}
 #cs-setup[style*="block"]{display:grid!important}
 .cs-progress{grid-column:1/-1;list-style:none;display:flex;gap:24px;margin:0;padding:0;font-size:13px;color:var(--text-2);flex-wrap:wrap}
 .cs-progress li{display:flex;gap:8px;align-items:center;white-space:nowrap}.cs-progress b{border:1px solid var(--border-input);border-radius:50%;width:24px;height:24px;display:grid;place-items:center;font:12px var(--font-mono);background:var(--surface)}.cs-progress [aria-current] b{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+
+/* 환경 설정: 서버와 플랫폼별 기기 */
+#view-config{padding:0;border:0;background:transparent}
+.env-page-head h1{font-size:22px;font-weight:600}.env-page-head p{font-size:13px}
+.env-appium-card{padding:16px;border-radius:8px}.env-appium-icon,.env-device-icon{display:none}
+.env-appium-title h2,.env-device-heading h2{font-size:15px;font-weight:600}
+.env-appium-endpoint,.env-device-heading p{font-size:12px}
+.env-appium-badge,.env-appium-driver,.env-device-summary,.env-default-badge{border-radius:4px;font-size:12px;white-space:nowrap}
+.env-appium-note{background:var(--surface-sub);border-color:var(--border);border-radius:6px;font-size:13px}
+.env-appium-detail{border:0;border-right:1px solid var(--border);border-radius:0}.env-appium-detail:last-child{border:0}
+.env-appium-detail dt{font-size:12px;letter-spacing:0;text-transform:none}.env-appium-detail dd{font:13px var(--font-mono)}
+.env-appium-progress span{background:var(--warn)}
+.env-device-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;margin-bottom:20px;align-items:start}
+#env-android-card{grid-column:1;grid-row:1}#env-ios-card{grid-column:2;grid-row:1}
+.env-device-card,#env-android-real-card,#env-ios-real-card{margin:0!important;border-radius:8px!important;background:var(--surface)!important}
+.env-device-refresh,.env-row-action{min-height:34px;background:var(--surface);color:var(--text);border-color:var(--border);font:13px var(--font-sans);white-space:nowrap}
+.env-device-name{font-size:14px;flex-wrap:wrap}.env-device-key{font:11px var(--font-mono)}
+.env-device-add{background:var(--surface);border:1px solid var(--border);font:13px var(--font-sans);width:auto;color:var(--text)}
+.env-appium-log-output,.env-appium-log-modal-output{font:12px/1.7 var(--font-mono);background:var(--log-bg);color:var(--text-2)}
+.env-add-dialog{width:min(440px,calc(100vw - 28px))}.env-add-head strong{font-size:17px}.env-add-field label{font-size:12px}.env-add-field input,.env-add-field select{font:14px var(--font-sans);min-height:36px;border-color:var(--border-input)}
+.env-add-field input[type=checkbox]{min-height:0;width:auto}.env-add-hint{font-size:12px}
+.env-add-register{background:var(--accent)!important;color:var(--on-accent)!important}
+#env-wifi-pair-modal,#env-wda-build-modal{background:var(--backdrop)!important}
+#env-wifi-pair-modal>div,#env-wda-build-modal>div{border:1px solid var(--border);border-radius:10px!important;box-shadow:var(--shadow-modal)!important}
+@media(max-width:1100px){.env-device-grid{grid-template-columns:1fr}#env-android-card,#env-ios-card{grid-column:auto;grid-row:auto}}
+.app-main>.grid:has(#view-config:not(.view-hidden)){max-width:none}
+#env-android-real-card>div:first-child>span,#env-ios-real-card>div:first-child>span{text-transform:none!important;letter-spacing:0!important;font-size:15px!important;color:var(--text)!important}
+.env-appium-card[data-state="external"]{border-style:solid;border-color:var(--border)}
+.env-appium-badge{background:var(--surface-sub);border-color:var(--border)}
+#env-wifi-pair-modal input,#env-wda-build-modal input{background:var(--surface)!important;border-color:var(--border-input)!important;font-size:14px!important;min-height:36px}
+#env-wifi-pair-modal .btn,#env-wda-build-modal .btn{flex:none;font-size:14px!important}
+#env-wifi-pair-modal .btn:last-child,#env-wda-build-modal .btn:last-child{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}

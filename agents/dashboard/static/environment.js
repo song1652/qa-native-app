@@ -45,11 +45,11 @@ function updateEnvAppiumCard(appium) {
   if (endpoint) endpoint.textContent = 'localhost:' + port;
 
   var owner = document.getElementById('env-appium-owner');
-  var ownerText = 'stopped';
-  if (status === 'managed') ownerText = 'managed' + (appium.pid ? ' (PID ' + appium.pid + ')' : '');
-  else if (status === 'external') ownerText = 'external';
-  else if (status === 'starting') ownerText = 'starting' + (appium.pid ? ' (PID ' + appium.pid + ')' : '');
-  else if (status === 'error') ownerText = 'error';
+  var ownerText = '중지됨';
+  if (status === 'managed') ownerText = '관리 중' + (appium.pid ? ' (PID ' + appium.pid + ')' : '');
+  else if (status === 'external') ownerText = '외부 실행';
+  else if (status === 'starting') ownerText = '시작 중' + (appium.pid ? ' (PID ' + appium.pid + ')' : '');
+  else if (status === 'error') ownerText = '오류';
   if (owner) owner.textContent = ownerText;
 
   var version = document.getElementById('env-appium-version');
@@ -99,12 +99,12 @@ function updateEnvAppiumCard(appium) {
           mjpegPanel.classList.toggle('warning', !d.ok);
           mjpegPanel.textContent = d.ok
             ? '✓ 외부 Appium의 MJPEG 스트림을 확인했습니다.'
-            : '⚠ MJPEG 플래그를 확인해 주세요. Android 화면 미러링이 동작하지 않을 수 있습니다.';
+            : ' MJPEG 플래그를 확인해 주세요. Android 화면 미러링이 동작하지 않을 수 있습니다.';
         })
         .catch(function(){
           if (renderToken !== _envAppiumRenderToken) return;
           mjpegPanel.classList.add('warning');
-          mjpegPanel.textContent = '⚠ MJPEG 플래그 상태를 확인하지 못했습니다.';
+          mjpegPanel.textContent = ' MJPEG 플래그 상태를 확인하지 못했습니다.';
         });
     } else {
       mjpegPanel.style.display = 'none';

@@ -172,7 +172,7 @@ def test_managed_state_matches_mockup_information_hierarchy(appium_page):
 
     expect(appium_page.locator("#env-appium-badge")).to_have_text("실행 중")
     expect(appium_page.locator("#txt-appium")).to_have_text("Appium 연결됨")
-    expect(appium_page.locator("#env-appium-owner")).to_contain_text("managed")
+    expect(appium_page.locator("#env-appium-owner")).to_contain_text("관리 중")
     expect(appium_page.locator("#env-appium-owner")).to_contain_text("12845")
     expect(appium_page.locator("#env-appium-version")).to_have_text("Appium 3.1.2")
     expect(appium_page.locator("#env-appium-sessions")).to_have_text("2개")

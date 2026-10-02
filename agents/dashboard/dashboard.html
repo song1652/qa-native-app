@@ -358,7 +358,7 @@
       <!-- ── Appium 상태 카드 ─────────────────────────────── -->
       <section id="env-appium-card" class="env-appium-card" data-state="stopped" aria-labelledby="env-appium-heading">
         <div class="env-appium-head">
-          <div class="env-appium-icon" aria-hidden="true">🔌</div>
+          <div class="env-appium-icon" aria-hidden="true"></div>
           <div class="env-appium-title">
             <h2 id="env-appium-heading">Appium 서버</h2>
             <div id="env-appium-endpoint" class="env-appium-endpoint">localhost:4723</div>
@@ -371,10 +371,10 @@
           <div class="env-appium-detail"><dt>상태</dt><dd id="env-appium-owner">—</dd></div>
           <div class="env-appium-detail"><dt>버전</dt><dd id="env-appium-version">확인 전</dd></div>
           <div class="env-appium-detail"><dt>활성 세션</dt><dd id="env-appium-sessions">0개</dd></div>
-          <div class="env-appium-detail"><dt>업타임</dt><dd id="env-appium-uptime">—</dd></div>
+          <div class="env-appium-detail"><dt>가동 시간</dt><dd id="env-appium-uptime">—</dd></div>
         </dl>
         <div class="env-appium-driver-row" aria-label="Appium 드라이버 설치 상태">
-          <span class="env-appium-section-label">Drivers</span>
+          <span class="env-appium-section-label">드라이버</span>
           <span class="env-appium-driver" data-driver="uiautomator2">확인 중 · UiAutomator2</span>
           <span class="env-appium-driver" data-driver="xcuitest">확인 중 · XCUITest</span>
         </div>
@@ -409,10 +409,11 @@
         </div>
       </section>
 
+      <div class="env-device-grid">
       <!-- ── Android 에뮬레이터 카드 ─────────────────────────── -->
       <section id="env-android-card" class="env-device-card" aria-labelledby="env-android-heading">
         <div class="env-device-head">
-          <span class="env-device-icon" aria-hidden="true">🤖</span>
+          <span class="env-device-icon" aria-hidden="true"></span>
           <div class="env-device-heading"><h2 id="env-android-heading">Android 에뮬레이터</h2><p>설치된 AVD를 등록하고 실행합니다.</p></div>
           <span id="env-android-badge" class="env-device-summary" role="status">중지됨</span>
           <button class="env-device-refresh" type="button" aria-label="Android 에뮬레이터 새로고침" onclick="pollEnvStatus()">↻ 새로고침</button>
@@ -436,14 +437,14 @@
         </div>
         <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center">
           <button class="btn" style="flex:none;padding:4px 10px;font-size:11px" onclick="envShowAddModal('android','real_device')">＋ 추가</button>
-          <button class="btn" style="flex:none;padding:4px 10px;font-size:11px" onclick="envShowWifiPairModal()" title="Android 11+ 무선 디버깅 페어링">📡 WiFi 페어링</button>
+          <button class="btn" style="flex:none;padding:4px 10px;font-size:11px" onclick="envShowWifiPairModal()" title="Android 11+ 무선 디버깅 페어링"> WiFi 페어링</button>
         </div>
       </div>
 
       <!-- ── iOS 시뮬레이터 카드 ────────────────────────────── -->
       <section id="env-ios-card" class="env-device-card" aria-labelledby="env-ios-heading">
         <div class="env-device-head">
-          <span class="env-device-icon" aria-hidden="true">🍎</span>
+          <span class="env-device-icon" aria-hidden="true"></span>
           <div class="env-device-heading"><h2 id="env-ios-heading">iOS 시뮬레이터</h2><p>Xcode의 시뮬레이터를 등록하고 부팅합니다.</p></div>
           <span id="env-ios-badge" class="env-device-summary" role="status">중지됨</span>
           <button class="env-device-refresh" type="button" aria-label="iOS 시뮬레이터 새로고침" onclick="pollEnvStatus()">↻ 새로고침</button>
@@ -467,11 +468,12 @@
         </div>
         <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center">
           <button class="btn" style="flex:none;padding:4px 10px;font-size:11px" onclick="envShowAddModal('ios','real_device')">＋ 추가</button>
-          <button class="btn" style="flex:none;padding:4px 10px;font-size:11px" onclick="envShowWdaBuildModal()" title="WebDriverAgent 빌드 및 설치">🔨 WDA 빌드</button>
+          <button class="btn" style="flex:none;padding:4px 10px;font-size:11px" onclick="envShowWdaBuildModal()" title="WebDriverAgent 빌드 및 설치"> WDA 빌드</button>
         </div>
       </div>
 
-      <div class="card-title">컨피그 작성 가이드</div>
+      </div>
+      <div class="card-title">설정 파일 안내</div>
       <div class="guide-tabs">
         <button class="guide-tab active" onclick="switchGuide('screens',this)">screens.json</button>
         <button class="guide-tab" onclick="switchGuide('test_data',this)">test_data.json</button>
@@ -927,9 +929,9 @@
 </div>
 
 <!-- ── WiFi 페어링 모달 (Phase 3) ────────────────────────── -->
-<div id="env-wifi-pair-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;align-items:center;justify-content:center">
-  <div style="background:var(--surface);border-radius:var(--radius);padding:24px;min-width:340px;max-width:440px;box-shadow:0 8px 32px rgba(0,0,0,.4)">
-    <div style="font-weight:700;margin-bottom:6px;font-size:14px">📡 Android WiFi ADB 페어링</div>
+<div id="env-wifi-pair-modal" style="display:none;position:fixed;inset:0;background:var(--surface);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border-radius:var(--radius);padding:24px;min-width:340px;max-width:440px;box-shadow:none">
+    <div style="font-weight:700;margin-bottom:6px;font-size:14px"> Android WiFi ADB 페어링</div>
     <div style="font-size:11px;color:var(--text3);margin-bottom:14px;line-height:1.5">
       Android 11+ 기기: 설정 → 개발자 옵션 → 무선 디버깅 → "페어링 코드로 기기 페어링"을 탭하면 IP·포트·코드가 표시됩니다.
     </div>
@@ -954,9 +956,9 @@
 </div>
 
 <!-- ── WDA 빌드 모달 (Phase 3) ─────────────────────────────── -->
-<div id="env-wda-build-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;align-items:center;justify-content:center">
-  <div style="background:var(--surface);border-radius:var(--radius);padding:24px;min-width:340px;max-width:440px;box-shadow:0 8px 32px rgba(0,0,0,.4)">
-    <div style="font-weight:700;margin-bottom:6px;font-size:14px">🔨 WebDriverAgent 빌드</div>
+<div id="env-wda-build-modal" style="display:none;position:fixed;inset:0;background:var(--surface);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border-radius:var(--radius);padding:24px;min-width:340px;max-width:440px;box-shadow:none">
+    <div style="font-weight:700;margin-bottom:6px;font-size:14px"> WebDriverAgent 빌드</div>
     <div style="font-size:11px;color:var(--text3);margin-bottom:14px;line-height:1.5">
       iOS 실기기 Appium 세션에 필요한 WDA를 빌드하고 설치합니다. Xcode와 Apple Developer 계정이 필요합니다.
     </div>

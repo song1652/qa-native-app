@@ -62,7 +62,7 @@ function renderRealDevices(containerId, realDevices, platform) {
       if (dev.connected) {
         wifiBtns = '<button onclick="envAndroidRealDisconnect()" style="' + btnStyle + '">&#9986; 해제</button>';
       } else {
-        wifiBtns = '<button onclick="envAndroidRealConnect()" style="' + btnStyle + '">&#128279; WiFi</button>';
+        wifiBtns = '<button onclick="envAndroidRealConnect()" style="' + btnStyle + '">&var(--accent); WiFi</button>';
       }
     }
     var isLastReal = realDevices.length <= 1;
@@ -163,7 +163,7 @@ function envShowAddModal(platform, mode) {
   var modeLabel = {emulator:'에뮬레이터', real_device:'실기기', simulator:'시뮬레이터'}[mode] || mode;
   var platformLabel = platform === 'android' ? 'Android' : 'iOS';
   var virtualDevice = mode === 'emulator' || mode === 'simulator';
-  document.getElementById('env-add-modal-title').textContent = (platform === 'android' ? '🤖 ' : '🍎 ') + platformLabel + ' ' + modeLabel + ' 추가';
+  document.getElementById('env-add-modal-title').textContent = (platform === 'android' ? ' ' : ' ') + platformLabel + ' ' + modeLabel + ' 추가';
   document.getElementById('env-add-discovery-row').style.display = virtualDevice ? '' : 'none';
   document.getElementById('env-add-version-row').style.display = virtualDevice ? '' : 'none';
   document.getElementById('env-add-udid-row').style.display = (mode === 'simulator' || mode === 'real_device') ? '' : 'none';
@@ -348,7 +348,7 @@ function envSubmitWifiPair() {
   if (!ip || !port || !code) { alert('IP, 포트, 코드를 모두 입력하세요.'); return; }
   var r = document.getElementById('env-pair-result');
   r.style.display = 'block';
-  r.style.background = 'rgba(245,158,11,.1)'; r.style.border = '1px solid rgba(245,158,11,.3)';
+  r.style.background = 'var(--warn-bg)'; r.style.border = '1px solid var(--warn)';
   r.textContent = '페어링 중...';
   fetch('/api/env/android/real/pair', {
     method: 'POST',
@@ -357,15 +357,15 @@ function envSubmitWifiPair() {
   }).then(function(resp) { return resp.json(); })
     .then(function(d) {
       if (d.ok) {
-        r.style.background = 'rgba(34,197,94,.1)'; r.style.border = '1px solid rgba(34,197,94,.3)';
-        r.textContent = '✅ 페어링 성공: ' + (d.detail || '');
+        r.style.background = 'var(--pass-bg)'; r.style.border = '1px solid var(--pass)';
+        r.textContent = ' 페어링 성공: ' + (d.detail || '');
         setTimeout(function() { envCloseWifiPairModal(); setTimeout(pollEnvStatus, 500); }, 2000);
       } else {
-        r.style.background = 'rgba(251,113,133,.1)'; r.style.border = '1px solid rgba(251,113,133,.3)';
-        r.textContent = '❌ 페어링 실패: ' + (d.detail || d.error || '알 수 없는 오류');
+        r.style.background = 'var(--fail-bg)'; r.style.border = '1px solid var(--fail)';
+        r.textContent = ' 페어링 실패: ' + (d.detail || d.error || '알 수 없는 오류');
       }
     })
-    .catch(function() { r.textContent = '❌ 네트워크 오류'; });
+    .catch(function() { r.textContent = ' 네트워크 오류'; });
 }
 
 // ── Phase 3: iOS WDA 빌드 ────────────────────────────────────────
@@ -385,7 +385,7 @@ function envSubmitWdaBuild() {
   if (!udid || !teamId) { alert('UDID와 Team ID를 모두 입력하세요.'); return; }
   var r = document.getElementById('env-wda-result');
   r.style.display = 'block';
-  r.style.background = 'rgba(245,158,11,.1)'; r.style.border = '1px solid rgba(245,158,11,.3)';
+  r.style.background = 'var(--warn-bg)'; r.style.border = '1px solid var(--warn)';
   r.textContent = 'WDA 빌드 요청 중...';
   fetch('/api/env/ios/real/wda_build', {
     method: 'POST',
@@ -394,14 +394,14 @@ function envSubmitWdaBuild() {
   }).then(function(resp) { return resp.json(); })
     .then(function(d) {
       if (d.ok) {
-        r.style.background = 'rgba(34,197,94,.1)'; r.style.border = '1px solid rgba(34,197,94,.3)';
-        r.textContent = '✅ ' + (d.detail || 'WDA 빌드 시작됨 (PID: ' + d.pid + ')');
+        r.style.background = 'var(--pass-bg)'; r.style.border = '1px solid var(--pass)';
+        r.textContent = ' ' + (d.detail || 'WDA 빌드 시작됨 (PID: ' + d.pid + ')');
       } else {
-        r.style.background = 'rgba(251,113,133,.1)'; r.style.border = '1px solid rgba(251,113,133,.3)';
-        r.textContent = '❌ ' + (d.detail || d.error || '빌드 실패');
+        r.style.background = 'var(--fail-bg)'; r.style.border = '1px solid var(--fail)';
+        r.textContent = ' ' + (d.detail || d.error || '빌드 실패');
       }
     })
-    .catch(function() { r.textContent = '❌ 네트워크 오류'; });
+    .catch(function() { r.textContent = ' 네트워크 오류'; });
 }
 
 function updateAndroidCard(android) {
