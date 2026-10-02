@@ -46,6 +46,7 @@ from utils.system import (  # noqa: E402
 router = APIRouter()
 
 _DASHBOARD_ASSETS = {
+    "tokens.css": "text/css",
     "dashboard.css": "text/css",
     "dashboard-shell.js": "text/javascript",
     "execution.js": "text/javascript",

@@ -1,21 +1,16 @@
-/* TC 스튜디오 — design-previews/tc-authoring-studio.html <style>에서 생성 (scope_css.py). 직접 고치지 말고 목업을 고친 뒤 다시 생성한다. */
+/* TC Studio uses the dashboard design tokens; selectors preserve existing behavior. */
 .tc-studio {
-  color-scheme: dark;
-  --bg:#0B0B14; --bg2:#111120; --card:#1A1A2E; --card2:#222238; --card3:#2A2A44;
-  --line:rgba(255,255,255,.07); --line2:rgba(139,92,246,.18);
-  --accent:#8B5CF6; --accent2:#7C3AED; --accent-soft:rgba(139,92,246,.14); --accent-glow:rgba(139,92,246,.35);
-  --on-accent:#FFFFFF;
-  --text:#F0EDFF; --text2:#9B97B4; --text3:#6B6880;
-  --ok:#34D399; --ok-bg:rgba(52,211,153,.12);
-  --info:#60A5FA; --info-bg:rgba(96,165,250,.12);
-  --warn:#FBBF24; --warn-bg:rgba(251,191,36,.12);
-  --err:#F87171; --err-bg:rgba(248,113,113,.12);
-  --hl:rgba(251,191,36,.22);
-  --shadow:0 12px 40px rgba(0,0,0,.45);
-  --radius:10px; --radius-sm:6px;
-  --mono:'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
-  --sans:'Inter', 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif;
+ color-scheme:light;
+ --bg2:var(--surface); --card:var(--surface); --card2:var(--surface-sub); --card3:var(--surface-sub);
+ --line:var(--border); --line2:var(--border-input);
+ --accent2:var(--accent-hover); --accent-soft:var(--accent-bg); --accent-glow:var(--accent-bg);
+ --text2:var(--text-2); --text3:var(--text-3);
+ --ok:var(--pass); --ok-bg:var(--pass-bg); --info:var(--accent); --info-bg:var(--accent-bg);
+ --err:var(--fail); --err-bg:var(--fail-bg); --hl:var(--warn-bg);
+ --shadow:var(--shadow-modal); --radius:var(--radius-card); --radius-sm:var(--radius-control);
+ --mono:var(--font-mono); --sans:var(--font-sans);
 }
+
 .tc-studio *, .tc-studio *::before, .tc-studio *::after { box-sizing:border-box; }
 .tc-studio [hidden] { display:none !important; }
 .tc-studio .app-only, .tc-studio .app-result { display:none; }

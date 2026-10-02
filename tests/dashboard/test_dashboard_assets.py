@@ -70,3 +70,13 @@ def test_dashboard_document_loads_external_assets_instead_of_inline_bundles():
     assert re.findall(r'<script src="([^"]+)"></script>', response.text) == EXPECTED_SCRIPTS
     assert "<style>" not in response.text
     assert "<script>" not in response.text
+
+
+def test_light_theme_tokens_are_served_before_component_styles():
+    with TestClient(app) as client:
+        response = client.get("/static/tokens.css")
+        document = client.get("/").text
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/css")
+    assert "--font-sans:" in response.text
+    assert document.index('/static/tokens.css') < document.index('/static/dashboard.css')

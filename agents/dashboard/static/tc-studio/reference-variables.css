@@ -1,53 +1,13 @@
-    :root {
-      color-scheme: dark;
-
-      /* Base — deep navy-purple (OAXIS ref) */
-      --bg: #08071b;
-      --bg-gradient: radial-gradient(ellipse at 20% 0%, rgba(88, 40, 180, 0.15) 0%, transparent 50%),
-                     radial-gradient(ellipse at 80% 100%, rgba(60, 30, 140, 0.1) 0%, transparent 50%),
-                     #08071b;
-
-      /* Surface & Glass */
-      --surface: rgba(18, 16, 42, 0.55);
-      --surface-glass: rgba(22, 20, 50, 0.45);
-      --surface2: rgba(28, 24, 60, 0.5);
-
-      /* Borders — purple-tinted */
-      --border: rgba(140, 120, 220, 0.12);
-      --border-glass: rgba(140, 120, 220, 0.1);
-
-      /* Agent Accents */
-      --senior-bg: rgba(96, 165, 250, 0.08);
-      --senior-border: rgba(96, 165, 250, 0.18);
-      --senior-accent: #60a5fa;
-      --junior-bg: rgba(52, 211, 153, 0.08);
-      --junior-border: rgba(52, 211, 153, 0.18);
-      --junior-accent: #34d399;
-      --delib-bg: rgba(167, 139, 250, 0.08);
-      --delib-border: rgba(167, 139, 250, 0.18);
-      --delib-accent: #a78bfa;
-
-      /* Status */
-      --approved-bg: rgba(52, 211, 153, 0.08);
-      --approved-color: #34d399;
-      --approved-border: rgba(52, 211, 153, 0.18);
-      --revision-bg: rgba(251, 113, 133, 0.08);
-      --revision-color: #fb7185;
-      --revision-border: rgba(251, 113, 133, 0.18);
-      --pending-bg: rgba(251, 191, 36, 0.08);
-      --pending-color: #fbbf24;
-      --pending-border: rgba(251, 191, 36, 0.18);
-
-      /* Typography */
-      --text: #f0eff5;
-      --text-dim: #b8b3d0;
-
-      /* Sizing */
-      --radius: 12px;
-      --radius-lg: 16px;
-      --radius-md: 12px;
-
-      /* Accent — violet */
-      --accent: #8b5cf6;
-      --accent-glow: rgba(139, 92, 246, 0.25);
-    }
+/* Compatibility aliases for the standalone studio document. */
+:root {
+ color-scheme:light;
+ --bg-gradient:var(--bg); --surface-glass:var(--surface); --surface2:var(--surface-sub);
+ --border-glass:var(--border); --text-dim:var(--text-2);
+ --approved-bg:var(--pass-bg); --approved-color:var(--pass); --approved-border:var(--pass);
+ --revision-bg:var(--fail-bg); --revision-color:var(--fail); --revision-border:var(--fail);
+ --pending-bg:var(--warn-bg); --pending-color:var(--warn); --pending-border:var(--warn);
+ --senior-bg:var(--accent-bg); --senior-border:var(--border); --senior-accent:var(--accent);
+ --junior-bg:var(--pass-bg); --junior-border:var(--border); --junior-accent:var(--pass);
+ --delib-bg:var(--accent-bg); --delib-border:var(--border); --delib-accent:var(--accent);
+ --accent-glow:var(--accent-bg); --radius:var(--radius-card); --radius-lg:var(--radius-modal); --radius-md:var(--radius-card);
+}
