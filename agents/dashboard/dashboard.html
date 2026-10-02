@@ -640,7 +640,7 @@
           </div>
           <div>
             <label class="cs-label">실행 대상</label>
-            <select id="cs-target" class="cs-select">
+            <select id="cs-target" class="cs-select" onchange="csTargetChanged()">
               <option value="emulator">에뮬레이터 / 시뮬레이터</option>
               <option value="device">실제 디바이스</option>
             </select>
@@ -661,7 +661,7 @@
           </div>
           <div id="cs-field-device-name" style="display:none">
             <label class="cs-label">기기 이름</label>
-            <select id="cs-device-name" class="cs-select"></select>
+            <select id="cs-device-name" class="cs-select" onchange="csTargetChanged()"></select>
           </div>
           <!-- 공통 필드 -->
           <div>

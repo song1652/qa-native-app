@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import subprocess as _subprocess
+import json
 import sys
 import time as _time
 from datetime import datetime
@@ -13,19 +14,41 @@ try:
         CAPTURES_DIR,
         PROJECT_ROOT,
         clear_capture_driver,
-        get_capture_driver,
+        get_capture_driver as _get_capture_driver,
         set_capture_driver,
     )
     from utils.system import get_default_device
+    from utils.state import load_capture_session
 except ModuleNotFoundError:
     from agents.dashboard.shared import (
         CAPTURES_DIR,
         PROJECT_ROOT,
         clear_capture_driver,
-        get_capture_driver,
+        get_capture_driver as _get_capture_driver,
         set_capture_driver,
     )
     from agents.dashboard.utils.system import get_default_device
+    from agents.dashboard.utils.state import load_capture_session
+
+
+def get_capture_driver():
+    """Reject a driver whose identity differs from the saved Capture target."""
+    driver = _get_capture_driver()
+    if driver is None:
+        return None
+    session = load_capture_session()
+    udid = session.get("udid")
+    capabilities = getattr(driver, "capabilities", {}) or {}
+    actual = capabilities.get("appium:udid") or capabilities.get("udid")
+    binding = getattr(driver, "_capture_binding", None)
+    expected = (session.get("platform"), session.get("target", "emulator"), udid)
+    if not udid or (actual and actual != udid) or (binding and binding != expected):
+        return None
+    if session.get("platform") == "android" and udid.startswith("emulator-") != (session.get("target", "emulator") == "emulator"):
+        return None
+    if session.get("platform") == "ios" and binding != expected:
+        return None
+    return driver if actual == udid or binding == expected else None
 
 
 def _resolve_ios_device_name(platform: str, device_name: str) -> str:
@@ -105,38 +128,87 @@ def _friendly_appium_error(exc: Exception) -> str:
     return first_line[:200] if first_line else "알 수 없는 오류가 발생했습니다."
 
 
+def resolve_capture_device(session: dict) -> dict:
+    """Resolve a connected device of the requested kind, never an Appium default."""
+    platform = session.get("platform", "android")
+    target = session.get("target", "emulator")
+    virtual = target in ("emulator", "simulator")
+    if target not in ("emulator", "device", "real_device", "simulator") or (platform == "android" and target == "simulator"):
+        return {"ok": False, "code": "invalid_capture_target", "error": "실행 대상을 에뮬레이터/시뮬레이터 또는 실기기로 선택하세요."}
+    mode = ("emulator" if platform == "android" else "simulator") if virtual else "real_device"
+    default = get_default_device(platform, mode) or {}
+    explicit = str(session.get("udid") or "")
+    udid = explicit or str(default.get("udid") or default.get("serial") or "")
+    name = session.get("device_name") or default.get("deviceName") or ""
+    kind = ("Android 에뮬레이터" if platform == "android" else "iOS 시뮬레이터") if virtual else ("Android 실기기" if platform == "android" else "iOS 실기기")
+    unavailable = {"ok": False, "code": "capture_device_unavailable", "error": f"선택한 {kind}가 연결되어 있지 않습니다. 환경 설정에서 해당 기기를 시작하거나 연결한 뒤 다시 확인하세요. 다른 실행 대상을 사용하려면 직접 선택하세요."}
+    mismatch = {"ok": False, "code": "capture_target_mismatch", "error": f"선택한 기기가 {kind} 실행 대상과 일치하지 않습니다. 실행 대상과 기기를 다시 선택하세요."}
+    try:
+        if platform == "android":
+            if udid and udid.startswith("emulator-") != virtual:
+                return mismatch
+            output = _subprocess.run(["adb", "devices"], capture_output=True, text=True, timeout=5)
+            serials = [parts[0] for line in output.stdout.splitlines() if len(parts := line.split()) >= 2 and parts[1] == "device"]
+            candidates = [serial for serial in serials if serial.startswith("emulator-") == virtual]
+            if udid:
+                if udid not in candidates:
+                    return unavailable
+            else:
+                avd = session.get("avd") or default.get("avd")
+                if virtual and avd:
+                    candidates = [serial for serial in candidates if _subprocess.run(["adb", "-s", serial, "emu", "avd", "name"], capture_output=True, text=True, timeout=5).stdout.splitlines()[0:1] == [avd]]
+                udid = next(iter(candidates), "")
+        else:
+            output = _subprocess.run(["xcrun", "simctl", "list", "devices", "available", "--json"], capture_output=True, text=True, timeout=8)
+            simulators = [device for group in json.loads(output.stdout or "{}").get("devices", {}).values() for device in group if device.get("isAvailable", True)]
+            if virtual:
+                if not explicit and session.get("device_name") and session["device_name"] != "iPhone Simulator":
+                    selected = next((device for device in simulators if device.get("name") == session["device_name"]), None)
+                else:
+                    selected = next((device for device in simulators if device.get("udid") == udid), None) if udid else next((device for device in simulators if device.get("state") == "Booted"), None)
+                if not selected or selected.get("state") != "Booted":
+                    return unavailable
+                udid, name = selected["udid"], selected["name"]
+            else:
+                if any(device.get("udid") == udid for device in simulators):
+                    return mismatch
+                output = _subprocess.run(["xcrun", "devicectl", "list", "devices", "--quiet", "--json-output", "-"], capture_output=True, text=True, timeout=8)
+                candidates = []
+                for device in json.loads(output.stdout or "{}").get("result", {}).get("devices", []):
+                    properties = device.get("properties", {})
+                    hardware = properties.get("hardware") or device.get("hardwareProperties", {})
+                    connection = properties.get("connection") or device.get("connectionProperties", {})
+                    if hardware.get("reality") == "physical" and connection.get("state", connection.get("tunnelState")) == "connected":
+                        candidates.append((hardware.get("udid"), properties.get("state", device.get("deviceProperties", {})).get("name", "")))
+                selected = next((item for item in candidates if item[0] == udid), None) if udid else next(iter(candidates), None)
+                if not selected:
+                    return unavailable
+                udid, name = selected
+    except (OSError, ValueError, _subprocess.TimeoutExpired):
+        return unavailable
+    if not udid:
+        return unavailable
+    return {"ok": True, "udid": udid, "device_name": name or udid, "mode": mode, "device": default}
+
+
 def _do_start_android_session(session: dict) -> dict:
     """Android Emulator — UiAutomator2 + MJPEG. blocking, executor에서 실행."""
+    resolved = resolve_capture_device({**session, "platform": "android"})
+    if not resolved["ok"]:
+        return resolved
     try:
         appium_wd, RawOptions = _get_appium_import()
     except ImportError as exc:
         return {"ok": False, "error": f"appium 라이브러리 없음: {exc}"}
 
-    _target = session.get("target", "emulator")
-    # 프론트엔드 "device" → devices.json 키 "real_device" 정규화
-    _dev_key = "emulator" if _target == "emulator" else "real_device"
-    _dev = get_default_device("android", _dev_key) or {}
-
-    # target에 따라 ADB serial 결정
-    _udid = session.get("udid") or _dev.get("udid") or ""
-    if not _udid:
-        # adb devices에서 자동 탐지
-        _adb_out = _subprocess.run(["adb", "devices"], capture_output=True, text=True).stdout
-        _serials = [
-            line.split()[0] for line in _adb_out.splitlines()
-            if line.endswith("\tdevice")
-        ]
-        if _target == "emulator":
-            _udid = next((s for s in _serials if s.startswith("emulator-")), "")
-        else:
-            _udid = next((s for s in _serials if not s.startswith("emulator-")), "")
+    _dev = resolved["device"]
+    _udid = resolved["udid"]
 
     opts = RawOptions()
     opts.set_capability("platformName", "Android")
-    opts.set_capability("deviceName", _dev.get("deviceName", "Android Emulator"))
+    opts.set_capability("deviceName", resolved["device_name"])
     opts.set_capability("automationName", "UiAutomator2")
-    if _udid:
-        opts.set_capability("udid", _udid)
+    opts.set_capability("udid", _udid)
     opts.set_capability("appPackage", session.get("app_package", ""))
     opts.set_capability("appActivity", session.get("app_activity", ""))
     opts.set_capability("noReset", True)
@@ -162,6 +234,7 @@ def _do_start_android_session(session: dict) -> dict:
     except Exception as exc:
         return {"ok": False, "error": _friendly_appium_error(exc)}
 
+    driver._capture_binding = ("android", session.get("target", "emulator"), _udid)
     set_capture_driver(driver)
 
     # UiAutomator2 MJPEG 포트 포워딩 — Android 8093, iOS 9100으로 분리되어 충돌 없음
@@ -178,7 +251,7 @@ def _do_start_android_session(session: dict) -> dict:
     except Exception:
         snap_id = None
 
-    _display_name = _dev.get("deviceName") or (_udid if _udid else "Android Emulator")
+    _display_name = resolved["device_name"]
     return {
         "ok":                True,
         "appium_session_id": driver.session_id,
@@ -187,6 +260,7 @@ def _do_start_android_session(session: dict) -> dict:
         "mjpeg_port":        _actual_mjpeg_port,
         "mjpeg_url":         f"http://localhost:{_actual_mjpeg_port}",
         "device_name":       _display_name,
+        "udid":              _udid,
     }
 
 
@@ -195,6 +269,9 @@ _IOS_MJPEG_PORT = 9100  # WDA 내장 MJPEG 서버 포트 (Android 8093과 분리
 
 def _do_start_ios_session(session: dict) -> dict:
     """iOS Simulator — XCUITest + WDA MJPEG 스트리밍. blocking, executor에서 실행."""
+    resolved = resolve_capture_device({**session, "platform": "ios"})
+    if not resolved["ok"]:
+        return resolved
     try:
         appium_wd, _ = _get_appium_import()
     except ImportError as exc:
@@ -214,35 +291,13 @@ def _do_start_ios_session(session: dict) -> dict:
 
     mjpeg_port = session.get("mjpeg_port", _IOS_MJPEG_PORT)
 
-    _ios_target = session.get("target", "emulator")
-    _ios_dev_key = "simulator" if _ios_target == "emulator" else "real_device"
-    _ios_dev = get_default_device("ios", _ios_dev_key) or {}
-
-    # udid 결정: session > devices.json > devicectl 자동 탐지
-    _ios_udid = session.get("udid") or _ios_dev.get("udid") or ""
-    _ios_device_name = session.get("device_name") or _ios_dev.get("deviceName") or "iPhone Simulator"
-
-    if not _ios_udid and _ios_target != "emulator":
-        # 실기기: devicectl로 연결된 실기기 UDID 탐지
-        _dc_out = _subprocess.run(
-            ["xcrun", "devicectl", "list", "devices", "--quiet"],
-            capture_output=True, text=True
-        ).stdout
-        for _line in _dc_out.splitlines():
-            if "simulated" not in _line.lower() and len(_line.split()) >= 3:
-                _parts = _line.split()
-                for _p in _parts:
-                    if len(_p) == 36 and _p.count("-") == 4:
-                        _ios_udid = _p.rstrip("(UDID)")
-                        break
-                if _ios_udid:
-                    break
+    _ios_udid = resolved["udid"]
+    _ios_device_name = resolved["device_name"]
 
     opts.set_capability("platformName", "iOS")
     opts.set_capability("automationName", "XCUITest")
     opts.set_capability("deviceName", _ios_device_name)
-    if _ios_udid:
-        opts.set_capability("udid", _ios_udid)
+    opts.set_capability("udid", _ios_udid)
     opts.set_capability("bundleId", bundle_id)
     opts.set_capability("noReset", True)
     opts.set_capability("forceAppLaunch", True)
@@ -267,6 +322,7 @@ def _do_start_ios_session(session: dict) -> dict:
     except Exception as exc:
         return {"ok": False, "error": _friendly_appium_error(exc)}
 
+    driver._capture_binding = ("ios", session.get("target", "emulator"), _ios_udid)
     set_capture_driver(driver)
 
     # WDA 안정화 대기: 기존 세션 종료 → 새 세션 초기화 전환 기간 동안
@@ -302,6 +358,8 @@ def _do_start_ios_session(session: dict) -> dict:
         "mjpeg_port":        mjpeg_port,
         "mjpeg_url":         f"http://localhost:{mjpeg_port}",
         "screenshot_ready":  _screenshot_ready,
+        "udid":              _ios_udid,
+        "device_name":       _ios_device_name,
     }
 
 

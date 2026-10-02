@@ -43,6 +43,12 @@ def generate_test_from_actions(
     if not executable_actions:
         raise CaptureCodegenValidationError("실행 가능한 액션이 하나 이상 필요합니다")
 
+    target = session.get("target", "emulator")
+    device_mode = "real_device" if target in ("device", "real_device") else (
+        "simulator" if platform == "ios" else "emulator"
+    )
+    captured_udid = str(session.get("udid", "")).strip()
+
     slug       = tc_id.replace("-", "_")
     class_name = "".join(w.capitalize() for w in slug.split("_") if w)
     parents    = "../" * 4  # tests/generated/{platform}/{group}/tc.py → ROOT
@@ -68,7 +74,8 @@ def generate_test_from_actions(
         f"CAPTURE_TEMPLATE_VERSION = 2",
         f'CONFIG_DIR = (Path(__file__).resolve().parent / "{parents.rstrip("/")}" / "config").resolve()',
         f'APPIUM_URL  = "http://localhost:4723"',
-        f'PLATFORM_MODE = "{"emulator" if platform == "android" else "simulator"}"',
+        f'PLATFORM_MODE = {device_mode!r}',
+        f'CAPTURE_UDID = {captured_udid!r}',
         f"",
         f"def _load_json(p): return json.loads(Path(p).read_text(encoding='utf-8'))",
         f"",
@@ -95,14 +102,29 @@ def generate_test_from_actions(
         f"    _s = _load_json(CONFIG_DIR / 'devices.json').get(platform, {{}}).get(mode)",
         f"    if isinstance(_s, dict): return _s",
         f"    if isinstance(_s, list):",
+        f"        _uid = os.environ.get('DEVICE_UDID') or (CAPTURE_UDID if not os.environ.get('DEVICE_MODE') else '')",
+        f"        if _uid:",
+        f"            _match = next((d for d in _s if d.get('udid') == _uid), None)",
+        f"            if _match: return _match",
         f"        return next((d for d in _s if d.get('default')), _s[0] if _s else {{}})",
         f"    return {{}}",
         f"",
         f"def _build_driver():",
-        f"    _raw = _get_device('{platform}', PLATFORM_MODE)",
+        f"    _mode = os.environ.get('DEVICE_MODE') or PLATFORM_MODE",
+        f"    _raw = _get_device('{platform}', _mode)",
         f"    caps = {{k: v for k, v in _raw.items() if k not in _NON_APPIUM_KEYS}}",
         f"    caps['platformName'] = '{'Android' if platform == 'android' else 'iOS'}'",
         f"    caps.pop('app', None)  # 설치된 앱 사용",
+        f"    _uid = os.environ.get('DEVICE_UDID') or (CAPTURE_UDID if not os.environ.get('DEVICE_MODE') else '') or caps.get('udid', '')",
+        *([
+            f"    if _uid and (_uid.startswith('emulator-') != (_mode == 'emulator')):",
+            f"        raise RuntimeError('선택한 기기 종류와 식별자가 일치하지 않습니다.')",
+        ] if platform == "android" else []),
+        f"    if _uid:",
+        f"        caps['udid'] = _uid",
+        f"        caps.pop('avd', None)",
+        f"    elif {'not caps.get("avd") or _mode != "emulator"' if platform == 'android' else 'True'}:",
+        f"        raise RuntimeError('실행할 기기의 식별자가 없습니다. 기기를 명시적으로 선택하세요.')",
     ]
     if platform == "android":
         lines += [

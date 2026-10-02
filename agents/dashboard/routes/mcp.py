@@ -21,7 +21,8 @@ from fastapi.requests import Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from shared import PORT, get_capture_driver  # noqa: E402
+from shared import PORT  # noqa: E402
+from utils.capture_driver import get_capture_driver  # noqa: E402
 from utils.state import load_capture_session, save_capture_session  # noqa: E402
 from ws import broadcast_timeline_sync  # noqa: E402
 

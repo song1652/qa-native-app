@@ -434,9 +434,9 @@ function csForceNewSession() {
     document.getElementById('cs-workspace').style.display='none';
     document.getElementById('cs-session-badge').style.display='none';
     csInfoStripHide();
-    document.getElementById('cs-start-btn').disabled = false;
+    document.getElementById('cs-start-btn').disabled = true;
     var statusEl = document.getElementById('cs-setup-status');
-    if(statusEl){ statusEl.textContent = '새 세션을 시작할 수 있습니다.'; statusEl.style.color='var(--text3)'; }
+    if(statusEl){ statusEl.textContent = '선택한 실행 대상의 환경 확인을 눌러 새 세션을 시작하세요.'; statusEl.style.color='var(--text3)'; }
   });
 }
 
@@ -458,8 +458,8 @@ async function csEndSession() {
     document.getElementById('cs-workspace').style.display='none';
     document.getElementById('cs-session-badge').style.display='none';
     csInfoStripHide();
-    document.getElementById('cs-start-btn').disabled = false;
-    document.getElementById('cs-setup-status').textContent = '세션이 종료되었습니다.';
+    document.getElementById('cs-start-btn').disabled = true;
+    document.getElementById('cs-setup-status').textContent = '세션이 종료되었습니다. 새 세션을 시작하려면 환경 확인을 눌러 주세요.';
   });
 }
 

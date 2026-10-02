@@ -66,30 +66,57 @@ function csPlatformToggle() {
     var el = document.getElementById(id);
     if(el) el.style.display = isIos ? '' : 'none';
   });
-  // iOS 전환 시 등록된 시뮬레이터 목록을 select에 채우기
-  if(isIos) {
-    var devEl = document.getElementById('cs-device-name');
-    if(devEl) {
-      fetch('/api/env/status').then(function(r){ return r.json(); }).then(function(d){
-        var sims = (d.ios && d.ios.simulators) || [];
-        devEl.innerHTML = '';
-        if(sims.length === 0) {
-          var opt = document.createElement('option');
-          opt.value = 'iPhone Simulator';
-          opt.textContent = 'iPhone Simulator (기본값)';
-          devEl.appendChild(opt);
-        } else {
-          sims.forEach(function(s){
-            var opt = document.createElement('option');
-            opt.value = s.deviceName || s.name || '';
-            opt.textContent = (s.deviceName || s.name || '') + (s.default ? ' ' : '');
-            if(s.default) opt.selected = true;
-            devEl.appendChild(opt);
-          });
-        }
-      }).catch(function(){});
-    }
-  }
+  csTargetChanged();
+}
+
+var _csEnvGeneration = 0;
+var _csDeviceGeneration = 0;
+function csTargetMode(platform, target) {
+  return target === 'device' ? 'real_device' : (platform === 'ios' ? 'simulator' : 'emulator');
+}
+function csTargetUnavailable(platform, target) {
+  return target === 'device'
+    ? '선택한 실기기가 연결되지 않았습니다. 실기기를 연결하거나 실행 대상을 변경한 뒤 환경 확인을 눌러 주세요.'
+    : '선택한 ' + (platform === 'ios' ? '시뮬레이터' : '에뮬레이터') + '가 실행 중이 아닙니다. 환경 설정에서 가상 기기를 시작하거나 실행 대상을 변경한 뒤 환경 확인을 눌러 주세요.';
+}
+function csTargetDevices(platform, target) {
+  return fetch('/api/devices?platform=' + encodeURIComponent(platform)).then(function(r){ return r.json(); }).then(function(d){
+    if(!Array.isArray(d.devices)) throw new Error('기기 상태를 확인할 수 없습니다. 환경 확인을 다시 눌러 주세요.');
+    return d.devices.filter(function(device){ return device.mode === csTargetMode(platform, target); });
+  });
+}
+function csConnectedTarget(devices, platform) {
+  var nameEl = document.getElementById('cs-device-name');
+  var name = platform === 'ios' && nameEl ? nameEl.value : '';
+  var connected = devices.filter(function(d){ return d.connected && d.udid && (!name || d.deviceName === name); });
+  return connected.find(function(d){ return d.default; }) || connected[0];
+}
+function csTargetChanged() {
+  var generation = ++_csEnvGeneration;
+  document.getElementById('cs-start-btn').disabled = true;
+  var status = document.getElementById('cs-setup-status');
+  status.textContent = '선택한 실행 대상의 환경 확인을 눌러 주세요.';
+  status.style.color = 'var(--text3)';
+  var platform = document.getElementById('cs-platform').value;
+  var target = document.getElementById('cs-target').value;
+  var deviceGeneration = ++_csDeviceGeneration;
+  if(platform !== 'ios') return;
+  var select = document.getElementById('cs-device-name');
+  var previous = select.dataset.restoreName || select.value || '';
+  delete select.dataset.restoreName;
+  select.innerHTML = '';
+  csTargetDevices(platform, target).then(function(devices){
+    if(deviceGeneration !== _csDeviceGeneration) return;
+    devices.forEach(function(d){
+      var option = document.createElement('option');
+      option.value = d.deviceName || '';
+      option.textContent = d.deviceName || d.udid || '이름 없는 기기';
+      option.selected = d.deviceName === previous || (!previous && d.default);
+      select.appendChild(option);
+    });
+  }).catch(function(error){
+    if(generation === _csEnvGeneration) status.textContent = error.message;
+  });
 }
 
 function csInit() {
@@ -107,6 +134,10 @@ function csInit() {
         var platEl = document.getElementById('cs-platform');
         var savedPlatform = d.session.platform || 'android';
         if(platEl) platEl.value = savedPlatform;
+        var targetEl = document.getElementById('cs-target');
+        if(targetEl) targetEl.value = d.session.target || 'emulator';
+        var restoredNameEl = document.getElementById('cs-device-name');
+        if(restoredNameEl) restoredNameEl.dataset.restoreName = d.session.device_name || '';
         csPlatformToggle();
         // 폼 값 복원
         var pkgEl = document.getElementById('cs-pkg');
@@ -273,7 +304,11 @@ function csCheckEnv() {
   var platform = document.getElementById('cs-platform').value;
   var isIos = platform === 'ios';
 
+  var target = document.getElementById('cs-target').value;
+  var generation = ++_csEnvGeneration;
+  document.getElementById('cs-start-btn').disabled = true;
   var checks = [
+    csTargetDevices(platform, target).catch(function(){ return []; }),
     fetch('/api/check/appium').then(function(r){ return r.json(); }).catch(function(){ return {ok:false}; }),
   ];
   if(!isIos) {
@@ -281,24 +316,28 @@ function csCheckEnv() {
     checks.push(fetch('/api/check/mjpeg?port=' + port).then(function(r){ return r.json(); }).catch(function(){ return {ok:false}; }));
   }
 
-  Promise.all(checks).then(function(results) {
-    var appiumOk = results[0].ok;
+  return Promise.all(checks).then(function(results) {
+    if(generation !== _csEnvGeneration) return;
+    var device = csConnectedTarget(results[0], platform);
+    var appiumOk = results[1].ok;
     var msgs = [];
     if(appiumOk) msgs.push(' Appium 연결됨');
     else msgs.push(' Appium 미응답 (appium --address 127.0.0.1 --port 4723)');
 
     if(!isIos) {
       var port2 = parseInt(document.getElementById('cs-mjpeg-port').value) || 8093;
-      var mjpegOk = results[1] && results[1].ok;
+      var mjpegOk = results[2] && results[2].ok;
       if(mjpegOk) msgs.push(' MJPEG 포트 ' + port2 + ' 응답');
       else msgs.push(' MJPEG 포트 미응답 — 세션 시작 후 활성화됩니다 (--allow-insecure=uiautomator2:adb_screen_streaming 필요)');
     } else {
       msgs.push('iOS는 screenshot polling 방식 사용 (MJPEG 불필요)');
     }
 
-    statusEl.innerHTML = msgs.join('<br>');
-    statusEl.style.color = appiumOk ? 'var(--pass)' : 'var(--fail)';
-    document.getElementById('cs-start-btn').disabled = !appiumOk;
+    msgs.push(device ? '선택한 실행 대상 연결됨: ' + device.deviceName : csTargetUnavailable(platform, target));
+    statusEl.textContent = msgs.join('\n');
+    statusEl.style.whiteSpace = 'pre-line';
+    statusEl.style.color = appiumOk && device ? 'var(--pass)' : 'var(--fail)';
+    document.getElementById('cs-start-btn').disabled = !appiumOk || !device;
   });
 }
 
@@ -306,6 +345,14 @@ function csStartSession() {
   var platform = document.getElementById('cs-platform').value;
   var isIos = platform === 'ios';
   var target = document.getElementById('cs-target').value;
+  var selectionGeneration = _csEnvGeneration;
+  var selectedName = document.getElementById('cs-device-name').value;
+  function selectionUnchanged() {
+    return selectionGeneration === _csEnvGeneration
+      && platform === document.getElementById('cs-platform').value
+      && target === document.getElementById('cs-target').value
+      && (!isIos || selectedName === document.getElementById('cs-device-name').value);
+  }
   var group = document.getElementById('cs-group').value.trim();
   var mjpegPort = parseInt(document.getElementById('cs-mjpeg-port').value) || 8093;
 
@@ -334,10 +381,34 @@ function csStartSession() {
   statusEl.textContent = '세션 시작 중...';
   document.getElementById('cs-start-btn').disabled = true;
 
-  fetch('/capture/session', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify(body)
+  csTargetDevices(platform, target).then(function(devices){
+    if(!selectionUnchanged()) {
+      throw new Error('실행 대상이 변경되었습니다. 환경 확인을 다시 눌러 주세요.');
+    }
+    var device = csConnectedTarget(devices, platform);
+    if(!device) throw new Error(csTargetUnavailable(platform, target));
+    body.udid = device.udid;
+    body.device_name = device.deviceName;
+    return fetch('/capture/session', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    });
   }).then(function(r){ return r.json(); }).then(function(d){
+    if(d.ok && !selectionUnchanged()){
+      _cs.launching = false;
+      _cs.sessionId = d.session_id;
+      _cs.platform = platform;
+      document.getElementById('cs-start-btn').disabled = true;
+      statusEl.textContent = '실행 대상이 변경되어 앱 실행을 취소했습니다. 생성된 세션을 종료한 뒤 새 대상을 확인해 주세요.';
+      statusEl.style.color = 'var(--warn)';
+      var resetButton = document.createElement('button');
+      resetButton.className = 'cs-btn';
+      resetButton.textContent = '세션 종료 후 새 세션 준비';
+      resetButton.onclick = csForceNewSession;
+      statusEl.appendChild(document.createElement('br'));
+      statusEl.appendChild(resetButton);
+      return;
+    }
     if(d.ok){
       _cs.sessionId = d.session_id;
       _cs.platform = isIos ? 'ios' : 'android';
@@ -443,13 +514,13 @@ function csStartSession() {
       _cs.launching = false;
       statusEl.textContent = ' ' + (d.error || '세션 시작 실패');
       statusEl.style.color = 'var(--fail)';
-      document.getElementById('cs-start-btn').disabled = false;
+      document.getElementById('cs-start-btn').disabled = true;
     }
   }).catch(function(err){
     _cs.launching = false;
-    statusEl.textContent = ' 네트워크 오류: ' + err;
+    statusEl.textContent = err.message || String(err);
     statusEl.style.color = 'var(--fail)';
-    document.getElementById('cs-start-btn').disabled = false;
+    document.getElementById('cs-start-btn').disabled = true;
   });
 }
 

@@ -29,7 +29,6 @@ from shared import (  # noqa: E402
     PROJECT_ROOT,
     TESTCASES_DIR,
     clear_capture_driver,
-    get_capture_driver,
     set_capture_driver,
 )
 from utils.state import (  # noqa: E402
@@ -43,7 +42,7 @@ from utils.capture_codegen import (  # noqa: E402
     CaptureCodegenValidationError,
     generate_test_from_actions,
 )
-from utils.capture_streaming import iter_jpeg_frames, resolve_adb_serial  # noqa: E402
+from utils.capture_streaming import iter_jpeg_frames  # noqa: E402
 from utils.capture_validation import (  # noqa: E402
     CaptureLocatorValidationError,
     validate_locator_xml,
@@ -52,7 +51,8 @@ from utils.capture_driver import (  # noqa: E402
     IOS_MJPEG_PORT as _IOS_MJPEG_PORT,
     appium_back as _do_appium_back,
     appium_tap as _do_appium_tap,
-    resolve_ios_device_name as _resolve_ios_device_name,
+    resolve_capture_device,
+    get_capture_driver,
     start_appium_session as _do_start_appium_session,
     take_hierarchy_snapshot as _take_hierarchy_snapshot,
 )
@@ -89,8 +89,15 @@ async def capture_start_session(request: Request):
     existing   = load_capture_session()
 
     if session_id and existing.get("session_id") == session_id:
+        if any(body.get(key) and body[key] != existing.get(key) for key in ("platform", "target", "udid")):
+            return JSONResponse({"ok": False, "code": "capture_target_mismatch", "error": "기존 Capture 세션은 선택했던 기기에 연결되어 있습니다. 세션을 종료한 뒤 새 실행 대상을 선택하세요."}, status_code=409)
+        resolved = await asyncio.to_thread(resolve_capture_device, existing)
+        if not resolved["ok"]:
+            return JSONResponse(resolved, status_code=409)
         save_capture_session({
             **existing,
+            "udid": resolved["udid"],
+            "device_name": resolved["device_name"],
             "active": True,
             "last_activity_at": datetime.now().isoformat(),
         })
@@ -105,6 +112,11 @@ async def capture_start_session(request: Request):
             reconnect_resp["mjpeg_url"] = f"http://localhost:{existing.get('mjpeg_port', 8093)}"
         return JSONResponse(reconnect_resp)
 
+    if is_capture_active():
+        return JSONResponse({"ok": False, "code": "capture_session_active", "error": "기존 Capture 세션을 종료한 뒤 새 실행 대상으로 시작하세요."}, status_code=409)
+    resolved = await asyncio.to_thread(resolve_capture_device, body)
+    if not resolved["ok"]:
+        return JSONResponse(resolved, status_code=400 if resolved.get("code") == "invalid_capture_target" else 409)
     import uuid
     new_session_id = str(uuid.uuid4())
     # iOS: WDA 내장 MJPEG 포트 9100 / Android: 8093 (body 값 우선)
@@ -118,7 +130,9 @@ async def capture_start_session(request: Request):
         "app_package":       body.get("app_package", ""),
         "app_activity":      body.get("app_activity", ""),
         "bundle_id":         body.get("bundle_id", ""),
-        "device_name":       _resolve_ios_device_name(platform, body.get("device_name", "")),
+        "device_name":       resolved["device_name"],
+        "udid":              resolved["udid"],
+        "avd":               body.get("avd", ""),
         "tc_group":          body.get("tc_group", ""),
         "mjpeg_port":        mjpeg_port,
         "screenshot_mode":   screenshot_mode,
@@ -589,10 +603,19 @@ async def capture_launch(request: Request):
     try:
         loop   = asyncio.get_event_loop()
         result = await loop.run_in_executor(None, _do_start_appium_session, session)
-        if result.get("ok") and result.get("device_name"):
+        if result.get("ok") and result.get("udid"):
             updated = load_capture_session()
-            save_capture_session({**updated, "device_name": result["device_name"]})
-        return JSONResponse(result, status_code=200 if result["ok"] else 500)
+            if not updated.get("active") or any(updated.get(key) != session.get(key) for key in ("session_id", "platform", "target", "udid")):
+                driver = clear_capture_driver()
+                if driver is not None:
+                    try:
+                        await asyncio.to_thread(driver.quit)
+                    except Exception:
+                        pass
+                return JSONResponse({"ok": False, "code": "capture_target_mismatch", "error": "Capture 세션이 변경되어 이전 앱 실행을 취소했습니다. 실행 대상을 다시 확인하세요."}, status_code=409)
+            save_capture_session({**updated, "device_name": result["device_name"], "udid": result["udid"]})
+        status = 200 if result["ok"] else (409 if result.get("code", "").startswith("capture_") else 500)
+        return JSONResponse(result, status_code=status)
     finally:
         _capture_launch_lock.release()
 
@@ -817,15 +840,20 @@ async def capture_validate_locator(request: Request):
 @router.get("/capture/stream/{platform}")
 async def capture_stream(platform: str, request: Request):
     """ffmpeg 기반 고속 MJPEG 스트리밍 — Android(adb screenrecord) / iOS(AVFoundation)."""
+    session = load_capture_session()
+    if not session.get("active") or session.get("platform") != platform:
+        return JSONResponse({"ok": False, "code": "capture_target_mismatch", "error": "활성 Capture 세션의 실행 대상과 일치하지 않습니다."}, status_code=409)
+    resolved = await asyncio.to_thread(resolve_capture_device, session)
+    if not resolved["ok"]:
+        return JSONResponse(resolved, status_code=409)
+    if platform == "ios" and resolved["mode"] == "real_device":
+        return JSONResponse({"ok": False, "error": "iOS 실기기는 WDA MJPEG 스트림을 사용하세요."}, status_code=409)
 
     async def generate():
         procs: list = []
         try:
             if platform == "android":
-                serial = resolve_adb_serial(load_capture_session())
-                adb_cmd = ["adb"]
-                if serial and not serial.startswith("emulator"):
-                    adb_cmd += ["-s", serial]
+                adb_cmd = ["adb", "-s", resolved["udid"]]
                 adb_cmd += ["exec-out", "screenrecord", "--output-format=h264", "--bit-rate=2M", "-"]
 
                 adb_proc = _subprocess.Popen(
@@ -858,7 +886,7 @@ async def capture_stream(platform: str, request: Request):
                         ret = await loop.run_in_executor(
                             None,
                             lambda: _subprocess.run(
-                                ["xcrun", "simctl", "io", "booted", "screenshot",
+                                ["xcrun", "simctl", "io", resolved["udid"], "screenshot",
                                  "--type", "jpeg", tmp.name],
                                 capture_output=True
                             ).returncode

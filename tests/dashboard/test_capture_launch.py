@@ -226,3 +226,116 @@ def test_generated_listing_marks_scalar_device_schema_as_stale(tmp_path):
 
     assert listing[0]["stale_count"] == 1
     assert listing[0]["stale_files"] == ["settings/tc_old.py"]
+
+
+def test_capture_start_unavailable_does_not_write_session_or_artifacts(tmp_path):
+    failure = {'ok': False, 'code': 'capture_device_unavailable', 'error': 'Start selected emulator'}
+    with (
+        patch.object(capture, 'is_pipeline_active', return_value=False),
+        patch.object(capture, 'is_capture_active', return_value=False),
+        patch.object(capture, 'load_capture_session', return_value={}),
+        patch.object(capture, 'resolve_capture_device', return_value=failure),
+        patch.object(capture, 'save_capture_session') as save,
+        patch.object(capture, 'CAPTURES_DIR', tmp_path),
+    ):
+        response = _run_async(capture.capture_start_session(_JsonRequest({'platform': 'android', 'target': 'emulator'})))
+    assert response.status_code == 409
+    save.assert_not_called()
+    assert not list(tmp_path.iterdir())
+
+
+def test_capture_reconnect_rejects_changed_target_without_mutating_session():
+    session = {'session_id': 'capture-1', 'platform': 'android', 'target': 'emulator', 'udid': 'emulator-5554'}
+    with (
+        patch.object(capture, 'is_pipeline_active', return_value=False),
+        patch.object(capture, 'load_capture_session', return_value=session),
+        patch.object(capture, 'resolve_capture_device') as resolve,
+        patch.object(capture, 'save_capture_session') as save,
+    ):
+        response = _run_async(capture.capture_start_session(_JsonRequest({'session_id': 'capture-1', 'platform': 'android', 'target': 'device', 'udid': 'PHONE'})))
+    assert response.status_code == 409
+    assert json.loads(response.body)['code'] == 'capture_target_mismatch'
+    resolve.assert_not_called()
+    save.assert_not_called()
+
+
+def test_capture_start_persists_exact_identity(tmp_path):
+    resolved = {'ok': True, 'udid': 'emulator-5556', 'device_name': 'Selected AVD'}
+    with (
+        patch.object(capture, 'is_pipeline_active', return_value=False),
+        patch.object(capture, 'is_capture_active', return_value=False),
+        patch.object(capture, 'load_capture_session', return_value={}),
+        patch.object(capture, 'resolve_capture_device', return_value=resolved),
+        patch.object(capture, 'save_capture_session') as save,
+        patch.object(capture, 'get_capture_driver', return_value=None),
+        patch.object(capture, 'CAPTURES_DIR', tmp_path / 'captures'),
+        patch.object(capture, 'PROJECT_ROOT', tmp_path),
+    ):
+        response = _run_async(capture.capture_start_session(_JsonRequest({'platform': 'android', 'target': 'emulator', 'udid': 'emulator-5556'})))
+    assert response.status_code == 200
+    assert save.call_args.args[0]['udid'] == 'emulator-5556'
+    assert save.call_args.args[0]['device_name'] == 'Selected AVD'
+
+
+def test_capture_stream_unavailable_never_spawns_device_process():
+    with (
+        patch.object(capture, 'load_capture_session', return_value={'active': True, 'platform': 'android', 'target': 'emulator'}),
+        patch.object(capture, 'resolve_capture_device', return_value={'ok': False, 'code': 'capture_device_unavailable', 'error': 'Unavailable'}),
+        patch.object(capture._subprocess, 'Popen') as spawn,
+    ):
+        response = _run_async(capture.capture_stream('android', _Request()))
+    assert response.status_code == 409
+    spawn.assert_not_called()
+
+
+def test_capture_android_stream_always_binds_selected_emulator():
+    from types import SimpleNamespace
+    class DisconnectedRequest:
+        async def is_disconnected(self):
+            return True
+    async def scenario():
+        response = await capture.capture_stream('android', DisconnectedRequest())
+        async for _ in response.body_iterator:
+            pass
+    process = SimpleNamespace(stdout=None, kill=lambda: None, wait=lambda **_: None)
+    with (
+        patch.object(capture, 'load_capture_session', return_value={'active': True, 'platform': 'android', 'target': 'emulator', 'udid': 'emulator-5556'}),
+        patch.object(capture, 'resolve_capture_device', return_value={'ok': True, 'udid': 'emulator-5556', 'mode': 'emulator'}),
+        patch.object(capture._subprocess, 'Popen', return_value=process) as spawn,
+        patch.object(capture, 'iter_jpeg_frames', return_value=iter([])),
+    ):
+        _run_async(scenario())
+    assert spawn.call_args_list[0].args[0][:5] == ['adb', '-s', 'emulator-5556', 'exec-out', 'screenrecord']
+
+
+def test_delayed_capture_launch_cannot_rebind_superseding_session():
+    from unittest.mock import Mock
+    session = {'session_id': 'capture-1', 'platform': 'android', 'target': 'emulator', 'udid': 'emulator-5554', 'active': True}
+    replacement = {**session, 'session_id': 'capture-2', 'target': 'device', 'udid': 'PHONE'}
+    driver = Mock()
+    with (
+        patch.object(capture, 'is_capture_active', return_value=True),
+        patch.object(capture, 'load_capture_session', side_effect=[session, replacement]),
+        patch.object(capture, '_do_start_appium_session', return_value={'ok': True, 'udid': 'emulator-5554', 'device_name': 'Old AVD'}),
+        patch.object(capture, 'save_capture_session') as save,
+        patch.object(capture, 'clear_capture_driver', return_value=driver),
+    ):
+        response = _run_async(capture.capture_launch(_Request()))
+    assert response.status_code == 409
+    save.assert_not_called()
+    driver.quit.assert_called_once()
+
+
+def test_new_capture_start_does_not_overwrite_active_session():
+    with (
+        patch.object(capture, 'is_pipeline_active', return_value=False),
+        patch.object(capture, 'is_capture_active', return_value=True),
+        patch.object(capture, 'load_capture_session', return_value={'session_id': 'old', 'target': 'emulator'}),
+        patch.object(capture, 'resolve_capture_device') as resolve,
+        patch.object(capture, 'save_capture_session') as save,
+    ):
+        response = _run_async(capture.capture_start_session(_JsonRequest({'platform': 'android', 'target': 'device', 'udid': 'PHONE'})))
+    assert response.status_code == 409
+    assert json.loads(response.body)['code'] == 'capture_session_active'
+    resolve.assert_not_called()
+    save.assert_not_called()
