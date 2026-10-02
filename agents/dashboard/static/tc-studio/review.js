@@ -66,7 +66,10 @@
     suiteDrafts = jobInfo ? (await api.list(state.suite, { status: 'draft', limit: 1 })).total : 0;
     const ids = [...new Set(drafts.flatMap((d) => (d.draft_meta.duplicates || []).map((h) => h.case_id)))];
     targets = {};
-    await Promise.all(ids.map(async (id) => { targets[id] = (await api.getCase(state.suite, id)).case; }));
+    await Promise.all(ids.map(async (id) => {
+      try { targets[id] = (await api.getCase(state.suite, id)).case; }
+      catch (err) { if (err.status !== 404) throw err; targets[id] = null; }
+    }));
     focus = Math.min(focus, Math.max(drafts.length - 1, 0));
     render();
     // 이 작업의 초안을 모두 승인·반려했으면 생성 화면을 처음 양식으로 되돌린다
@@ -92,9 +95,9 @@
         <dt>기대 결과</dt><dd>${esc(d.expected)}${d.bullets.map((b) => `\n- ${esc(b.text)}${b.verified ? '' : ' <span class="tag warn">추정</span>'}`).join('')}</dd>
         <dt>우선순위</dt><dd>${esc(d.priority) || '—'}</dd></dl>
       ${errors.length ? `<ul class="checks">${errors.map((x) => `<li><span class="bad">✕</span>${esc(x.message)}</li>`).join('')}</ul>` : ''}
-      ${dup && target ? `<div class="dupbox" data-id="dup-resolution"><b>기존 케이스와 비슷합니다 · ${dup.case_id} (${Math.round(dup.similarity * 100)}%)</b>
-        <div class="cmp"><div><span class="label">기존</span><div style="white-space:pre-wrap">${esc(target.expected)}</div></div><div><span class="label">초안</span><div style="white-space:pre-wrap">${esc(d.expected)}</div></div></div>
-        <div class="seg" role="group" aria-label="중복 처리"><button data-id="dup-update" data-v="update">기존 케이스 갱신</button><button data-id="dup-skip" data-v="skip">건너뛰기</button><button data-id="dup-add" data-v="add">새로 추가</button></div></div>` : ''}
+      ${dup ? `<div class="dupbox" data-id="dup-resolution"><b>기존 케이스와 비슷합니다 · ${dup.case_id} (${Math.round(dup.similarity * 100)}%)</b>
+        ${target ? `<div class="cmp"><div><span class="label">기존</span><div style="white-space:pre-wrap">${esc(target.expected)}</div></div><div><span class="label">초안</span><div style="white-space:pre-wrap">${esc(d.expected)}</div></div></div>` : '<p class="help">기존 케이스가 삭제되었습니다. 건너뛰기 또는 새로 추가를 선택하세요.</p>'}
+        <div class="seg" role="group" aria-label="중복 처리">${target ? '<button data-id="dup-update" data-v="update">기존 케이스 갱신</button>' : ''}<button data-id="dup-skip" data-v="skip">건너뛰기</button><button data-id="dup-add" data-v="add">새로 추가</button></div></div>` : ''}
       <div class="row">
         <button class="btn btn-success" data-id="draft-approve" ${blocked || !pending(d) ? 'disabled' : ''} title="${blocked || '승인 (A)'}" style="padding:5px 12px">승인</button>
         <button class="btn btn-danger" data-id="draft-reject" ${!pending(d) ? 'disabled' : ''} style="padding:5px 12px">반려</button>
@@ -177,7 +180,7 @@
     const dup = d.draft_meta.duplicates[0];
     const target = targets[dup.case_id];
     try {
-      await api.resolveDuplicate(state.suite, d.case_id, { rev: d.rev, action, target_case_id: dup.case_id, target_rev: target.rev });
+      await api.resolveDuplicate(state.suite, d.case_id, { rev: d.rev, action, target_case_id: dup.case_id, target_rev: target ? target.rev : 0 });
       toast({ update: `${dup.case_id}를 초안 내용으로 갱신했습니다`, skip: '초안을 반려했습니다', add: '중복이 아닌 것으로 표시했습니다' }[action], 'ok');
       await load();
       await NS.refreshCounts();

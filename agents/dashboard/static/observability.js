@@ -154,7 +154,7 @@ function _evTabBody(){
     }
   } else if(_evState.tab==='log'){
     if(kept&&attempt.syslog){
-      var appPreset=manifest.app_id?'<button type="button" class="ev-lvl" onclick="_evPreset(decodeURIComponent(\''+encodeURIComponent(manifest.app_id)+'\'))">앱</button>':'';
+      var appPreset=manifest.app_id?'<button type="button" class="ev-lvl" onclick="_evPreset(decodeURIComponent(\''+encodeURIComponent(manifest.app_id).replace(/'/g,'%27')+'\'))">앱</button>':'';
       body.innerHTML='<div class="ev-log-toolbar">'
         +'<input type="text" class="ev-log-search" id="ev-log-q" placeholder="로그 검색" oninput="_evLogFilter()">'
         +'<button type="button" class="ev-lvl active" data-l="ALL" onclick="_evLogLvl(this,\'ALL\')">전체</button>'
@@ -289,7 +289,9 @@ function _obsEntryStatus(entry){
   var priorFailed=attempts.slice(0,-1).some(function(a){return a.outcome==='failed'||a.outcome==='error';});
   if(latest.outcome==='passed'&&priorFailed) return {key:'flaky',label:'FLAKY'};
   if(latest.outcome==='failed'||latest.outcome==='error') return {key:'fail',label:'실패'};
-  return {key:'pass',label:'통과'};
+  if(latest.outcome==='skipped') return {key:'skipped',label:'건너뜀'};
+  if(latest.outcome==='passed') return {key:'pass',label:'통과'};
+  return {key:'unknown',label:'결과 없음'};
 }
 
 function _obsAttemptUrl(kind,runId,nodeid,attempt){
@@ -346,8 +348,13 @@ function _obsRenderWorkspace(runId,manifest,nodeid){
   _obsWorkspace.manifest=manifest;
   if(!sameRun){_obsWorkspace.caseFilter='all';_obsWorkspace.casePage=1;}
   _obsWorkspace.nodeid=nodeid||(sameRun&&_obsWorkspace.nodeid)||_obsDefaultNode(manifest);
+  var allEntries=manifest.entries||[];
+  var filteredEntries=allEntries.filter(function(item){return _obsEntryMatchesCaseFilter(item,_obsWorkspace.caseFilter);});
+  if(!filteredEntries.some(function(item){return item.nodeid===_obsWorkspace.nodeid;})){
+    _obsWorkspace.nodeid=(filteredEntries[0]||{}).nodeid||null;
+    _obsWorkspace.attempt=null;
+  }
   var entry=(manifest.entries||[]).find(function(item){return item.nodeid===_obsWorkspace.nodeid;});
-  if(!entry){_obsWorkspace.nodeid=_obsDefaultNode(manifest);entry=(manifest.entries||[]).find(function(item){return item.nodeid===_obsWorkspace.nodeid;});}
   var attempts=entry?_obsEntryAttempts(entry):[];
   if(!sameRun||_obsWorkspace.attempt===null||!attempts.some(function(a){return (a.n||1)===_obsWorkspace.attempt;})){
     _obsWorkspace.attempt=attempts.length?(attempts[attempts.length-1].n||attempts.length):null;
@@ -355,8 +362,6 @@ function _obsRenderWorkspace(runId,manifest,nodeid){
   var latestEntries=(manifest.entries||[]).map(_obsLatestAttempt);
   var failed=latestEntries.filter(function(a){return a.outcome==='failed'||a.outcome==='error';}).length;
   var passed=latestEntries.filter(function(a){return a.outcome==='passed';}).length;
-  var allEntries=manifest.entries||[];
-  var filteredEntries=allEntries.filter(function(item){return _obsEntryMatchesCaseFilter(item,_obsWorkspace.caseFilter);});
   var casePageCount=Math.max(1,Math.ceil(filteredEntries.length/_obsCasePageSize));
   if(!sameRun){
     var selectedIndex=filteredEntries.findIndex(function(item){return item.nodeid===_obsWorkspace.nodeid;});
@@ -376,7 +381,7 @@ function _obsRenderWorkspace(runId,manifest,nodeid){
     var selected=item.nodeid===_obsWorkspace.nodeid;
     var video=latest.kept&&latest.video, log=latest.kept&&latest.syslog, shot=latest.kept&&latest.screenshot;
     var rowStatusClass=status.key==='fail'?'failed':status.key;
-    return '<button type="button" class="obs-run-case is-'+rowStatusClass+(selected?' is-selected':'')+'" data-nodeid="'+esc(item.nodeid||'')+'" onclick="_obsSelectCase(decodeURIComponent(\''+encodeURIComponent(item.nodeid||'')+'\'))">'
+    return '<button type="button" class="obs-run-case is-'+rowStatusClass+(selected?' is-selected':'')+'" data-nodeid="'+esc(item.nodeid||'')+'" onclick="_obsSelectCase(decodeURIComponent(\''+encodeURIComponent(item.nodeid||'').replace(/'/g,'%27')+'\'))">'
       +'<span class="obs-case-dot"></span><span class="obs-case-copy"><span class="obs-case-name">'+esc(_obsShortNode(item.nodeid))+'</span>'
       +'<span class="obs-case-meta"><span>· '+itemAttempts.length+'회 시도</span><span class="obs-case-artifacts">'
       +'<i class="obs-case-artifact '+(video?'on':'')+'">▶</i><i class="obs-case-artifact '+(log?'on':'')+'">▤</i><i class="obs-case-artifact '+(shot?'on':'')+'">▣</i></span></span></span>'
@@ -499,7 +504,8 @@ function _obsSetInlineLogPreset(preset){
 function _obsPaintEvidence(){
   var host=document.getElementById('obs-evidence-content');
   var manifest=_obsWorkspace.manifest||{}, runId=_obsWorkspace.runId, nodeid=_obsWorkspace.nodeid;
-  if(!host||!nodeid) return;
+  if(!host) return;
+  if(!nodeid){host.innerHTML='<div class="obs-evidence-empty">해당하는 TC 결과가 없습니다.</div>';return;}
   var entry=(manifest.entries||[]).find(function(item){return item.nodeid===nodeid;})||{};
   var attempts=_obsEntryAttempts(entry);
   var attempt=attempts.find(function(a){return (a.n||1)===_obsWorkspace.attempt;})||attempts[attempts.length-1]||{};
@@ -639,19 +645,24 @@ async function _obsResolveLatestRunId(platform){
 }
 
 async function _obsRenderCompletedQuickRun(platform, refresh){
+  var openingUrl=location.href;
   var root=document.getElementById('quick-generated-result');
   var runId=await _obsResolveLatestRunId(platform);
+  if(location.href!==openingUrl) return false;
   if(!runId){
     if(root) root.innerHTML='<section class="obs-run-workspace obs-workspace-error"><div class="obs-evidence-empty">실행 아티팩트를 찾지 못했습니다. 잠시 후 다시 확인하세요.</div></section>';
     return false;
   }
-  try{history.replaceState(null,'','#obs/'+encodeURIComponent(runId));}catch(_){}
+  if(location.pathname==='/' && new URLSearchParams(location.search).get('view')==='tests'){
+    try{history.replaceState(null,'','#obs/'+encodeURIComponent(runId));}catch(_){}
+  }
   await _obsInjectEvidenceButtons(runId, refresh);
   return !!document.querySelector('.obs-run-workspace[data-run-id="'+runId+'"]');
 }
 
 async function _obsInjectEvidenceButtons(runId, refresh){
   if(!runId) return;
+  var openingUrl=location.href;
   var pinnedHash=window.location.hash||'';
   if(pinnedHash.indexOf('#obs/')===0){
     try{
@@ -665,11 +676,15 @@ async function _obsInjectEvidenceButtons(runId, refresh){
     var res=await fetch('/api/run_artifacts/'+encodeURIComponent(runId));
     if(!res.ok) return;
     var manifest=await res.json();
+    if(location.href!==openingUrl) return;
     _obsRenderWorkspace(runId,manifest);
   }catch(_){}
 }
 
 async function _obsOpenHash(){
+  var view=new URLSearchParams(location.search).get('view');
+  if(location.pathname!=='/' || (view && view!=='tests')) return;
+  var openingUrl=location.href;
   var hash=window.location.hash||'';
   if(hash.indexOf('#obs/')!==0) return;
   var runId='';
@@ -679,6 +694,7 @@ async function _obsOpenHash(){
     var res=await fetch('/api/run_artifacts/'+encodeURIComponent(runId));
     if(!res.ok) return;
     var manifest=await res.json();
+    if(location.href!==openingUrl) return;
     var entries=manifest.entries||[];
     var entry=entries.find(function(e){
       var attempts=(e.attempts&&e.attempts.length)?e.attempts:[e];

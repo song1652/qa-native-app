@@ -117,6 +117,7 @@ function envSelectDiscoveredDevice() {
 }
 
 function loadEnvVirtualDevices(platform) {
+  var context = _envAddCtx;
   var select = document.getElementById('env-add-device-select');
   var register = document.getElementById('env-add-register');
   select.innerHTML = '<option value="">불러오는 중...</option>';
@@ -128,6 +129,7 @@ function loadEnvVirtualDevices(platform) {
   fetch(url)
     .then(function(response) { return response.json().then(function(data) { return {response:response, data:data}; }); })
     .then(function(result) {
+      if (context !== _envAddCtx || document.getElementById('env-add-modal').style.display === 'none') return;
       if (!result.response.ok || result.data.ok === false) throw new Error(result.data.message || result.data.error || '목록을 불러오지 못했습니다.');
       _envAddCtx.devices = platform === 'android' ? (result.data.avds || []) : (result.data.simulators || []);
       if (!_envAddCtx.devices.length) {
@@ -153,6 +155,7 @@ function loadEnvVirtualDevices(platform) {
       select.focus();
     })
     .catch(function(error) {
+      if (context !== _envAddCtx || document.getElementById('env-add-modal').style.display === 'none') return;
       _envAddCtx.devices = [];
       select.innerHTML = '<option value="">목록 불러오기 실패</option>';
       showEnvAddError(error.message || '목록을 불러오지 못했습니다.');
@@ -198,6 +201,7 @@ function envCloseAddModal() {
 }
 
 async function envSubmitAddDevice() {
+  var context = _envAddCtx;
   var platform = _envAddCtx.platform;
   var mode = _envAddCtx.mode;
   var body = {
@@ -222,10 +226,12 @@ async function envSubmitAddDevice() {
       method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body),
     });
     var data = await response.json();
+    if (context !== _envAddCtx || document.getElementById('env-add-modal').style.display === 'none') return;
     if (!response.ok || data.ok === false) throw new Error(envUserErrorMessage(data, '등록하지 못했습니다.'));
     envCloseAddModal();
     setTimeout(pollEnvStatus, 200);
   } catch (error) {
+    if (context !== _envAddCtx || document.getElementById('env-add-modal').style.display === 'none') return;
     showEnvAddError(error.message || '대시보드 서버에 연결할 수 없습니다.');
     register.disabled = false;
   }
@@ -331,7 +337,12 @@ function envAndroidRealDisconnect() {
 }
 
 // ── Phase 3: WiFi 페어링 ─────────────────────────────────────────
+var _envWifiGeneration = 0;
+var _envWifiBusy = false;
 function envShowWifiPairModal() {
+  ++_envWifiGeneration;
+  _envWifiBusy = false;
+  document.querySelector('#env-wifi-pair-modal button[onclick="envSubmitWifiPair()"]').disabled = false;
   document.getElementById('env-pair-ip').value = '';
   document.getElementById('env-pair-port').value = '';
   document.getElementById('env-pair-code').value = '';
@@ -341,14 +352,20 @@ function envShowWifiPairModal() {
   document.getElementById('env-wifi-pair-modal').showModal();
 }
 function envCloseWifiPairModal() {
+  ++_envWifiGeneration;
   document.getElementById('env-wifi-pair-modal').close();
   document.getElementById('env-wifi-pair-modal').style.display = 'none';
 }
 function envSubmitWifiPair() {
+  if (_envWifiBusy) return;
   var ip = document.getElementById('env-pair-ip').value.trim();
   var port = document.getElementById('env-pair-port').value.trim();
   var code = document.getElementById('env-pair-code').value.trim();
   if (!ip || !port || !code) { alert('IP, 포트, 코드를 모두 입력하세요.'); return; }
+  var generation = ++_envWifiGeneration;
+  _envWifiBusy = true;
+  var submit = document.querySelector('#env-wifi-pair-modal button[onclick="envSubmitWifiPair()"]');
+  submit.disabled = true;
   var r = document.getElementById('env-pair-result');
   r.style.display = 'block';
   r.style.background = 'var(--warn-bg)'; r.style.border = '1px solid var(--warn)';
@@ -359,20 +376,28 @@ function envSubmitWifiPair() {
     body: JSON.stringify({ip: ip, port: port, code: code})
   }).then(function(resp) { return resp.json(); })
     .then(function(d) {
+      if (generation !== _envWifiGeneration) return;
+      _envWifiBusy = false;
+      submit.disabled = false;
       if (d.ok) {
         r.style.background = 'var(--pass-bg)'; r.style.border = '1px solid var(--pass)';
         r.textContent = ' 페어링 성공: ' + (d.detail || '');
-        setTimeout(function() { envCloseWifiPairModal(); setTimeout(pollEnvStatus, 500); }, 2000);
+        setTimeout(function() { if (generation === _envWifiGeneration) envCloseWifiPairModal(); setTimeout(pollEnvStatus, 500); }, 2000);
       } else {
         r.style.background = 'var(--fail-bg)'; r.style.border = '1px solid var(--fail)';
         r.textContent = ' 페어링 실패: ' + (d.detail || d.error || '알 수 없는 오류');
       }
     })
-    .catch(function() { r.textContent = ' 네트워크 오류'; });
+    .catch(function() { if (generation !== _envWifiGeneration) return; _envWifiBusy = false; submit.disabled = false; r.textContent = ' 네트워크 오류'; });
 }
 
 // ── Phase 3: iOS WDA 빌드 ────────────────────────────────────────
+var _envWdaGeneration = 0;
+var _envWdaBusy = false;
 function envShowWdaBuildModal() {
+  ++_envWdaGeneration;
+  _envWdaBusy = false;
+  document.querySelector('#env-wda-build-modal button[onclick="envSubmitWdaBuild()"]').disabled = false;
   document.getElementById('env-wda-udid').value = '';
   document.getElementById('env-wda-teamid').value = '';
   var r = document.getElementById('env-wda-result');
@@ -381,13 +406,19 @@ function envShowWdaBuildModal() {
   document.getElementById('env-wda-build-modal').showModal();
 }
 function envCloseWdaBuildModal() {
+  ++_envWdaGeneration;
   document.getElementById('env-wda-build-modal').close();
   document.getElementById('env-wda-build-modal').style.display = 'none';
 }
 function envSubmitWdaBuild() {
+  if (_envWdaBusy) return;
   var udid = document.getElementById('env-wda-udid').value.trim();
   var teamId = document.getElementById('env-wda-teamid').value.trim();
   if (!udid || !teamId) { alert('UDID와 Team ID를 모두 입력하세요.'); return; }
+  var generation = ++_envWdaGeneration;
+  _envWdaBusy = true;
+  var submit = document.querySelector('#env-wda-build-modal button[onclick="envSubmitWdaBuild()"]');
+  submit.disabled = true;
   var r = document.getElementById('env-wda-result');
   r.style.display = 'block';
   r.style.background = 'var(--warn-bg)'; r.style.border = '1px solid var(--warn)';
@@ -398,6 +429,9 @@ function envSubmitWdaBuild() {
     body: JSON.stringify({udid: udid, team_id: teamId})
   }).then(function(resp) { return resp.json(); })
     .then(function(d) {
+      if (generation !== _envWdaGeneration) return;
+      _envWdaBusy = false;
+      submit.disabled = false;
       if (d.ok) {
         r.style.background = 'var(--pass-bg)'; r.style.border = '1px solid var(--pass)';
         r.textContent = ' ' + (d.detail || 'WDA 빌드 시작됨 (PID: ' + d.pid + ')');
@@ -406,7 +440,7 @@ function envSubmitWdaBuild() {
         r.textContent = ' ' + (d.detail || d.error || '빌드 실패');
       }
     })
-    .catch(function() { r.textContent = ' 네트워크 오류'; });
+    .catch(function() { if (generation !== _envWdaGeneration) return; _envWdaBusy = false; submit.disabled = false; r.textContent = ' 네트워크 오류'; });
 }
 
 function updateAndroidCard(android) {

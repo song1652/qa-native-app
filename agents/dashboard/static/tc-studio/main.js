@@ -280,9 +280,51 @@
     NS.toast(`요청을 처리하지 못했습니다: ${esc((e.reason && e.reason.message) || e.reason)}`, 'err');
   });
 
+  let dialogObserver = null, dialogOpener = null, activeDialog = null;
+  const dialogControls = (modal) => [...modal.querySelectorAll('button,input,select,textarea,a[href],[tabindex="0"]')]
+    .filter(el => !el.disabled && el.getClientRects().length);
+  function dialogKeys(e) {
+    if (!activeDialog) return;
+    if (e.key === 'Escape') {
+      e.preventDefault(); e.stopPropagation();
+      const close = activeDialog.querySelector('[id$="-close"],[id$="-cancel"]');
+      if (close) close.click();
+    } else if (e.key === 'Tab') {
+      const controls = dialogControls(activeDialog);
+      const first = controls[0], last = controls.at(-1);
+      if (!first) { e.preventDefault(); return; }
+      if (e.shiftKey && (document.activeElement === first || !activeDialog.contains(document.activeElement))) {
+        e.preventDefault(); last.focus();
+      } else if (!e.shiftKey && (document.activeElement === last || !activeDialog.contains(document.activeElement))) {
+        e.preventDefault(); first.focus();
+      }
+    }
+  }
+  function watchDialogs() {
+    if (dialogObserver) dialogObserver.disconnect();
+    activeDialog = dialogOpener = null;
+    root.removeEventListener('keydown', dialogKeys);
+    root.addEventListener('keydown', dialogKeys);
+    dialogObserver = new MutationObserver(() => {
+      const modal = root.querySelector('.scrim:not([hidden])');
+      if (modal === activeDialog) return;
+      if (modal) {
+        dialogOpener = document.activeElement;
+        activeDialog = modal;
+        if (!modal.contains(document.activeElement)) dialogControls(modal)[0]?.focus();
+      } else {
+        activeDialog = null;
+        if (dialogOpener && dialogOpener.isConnected) dialogOpener.focus();
+        dialogOpener = null;
+      }
+    });
+    dialogObserver.observe(root, {attributes:true, subtree:true, attributeFilter:['hidden']});
+  }
+
   async function init(selector) {
     root = document.querySelector(selector);
     root.innerHTML = shellHtml();
+    watchDialogs();
     available().forEach((s) => NS[s.module].mount(root));
     if (NS.importModal) NS.importModal.mount(root);
     $$('.step-item', root).forEach((b) => b.addEventListener('click', () => show(b.dataset.screen)));

@@ -193,7 +193,13 @@
     btn.disabled = true;
     $('#xlsx-checks', root).innerHTML = '<li class="faint">사본에 쓰고 다시 여는 중…</li>';
     try {
-      lastExport = await api.exportXlsx(state.suite, payload());
+      const checkedPayload = payload(), checkedSuite = state.suite;
+      const result = await api.exportXlsx(checkedSuite, checkedPayload);
+      if (checkedSuite !== state.suite || JSON.stringify(checkedPayload) !== JSON.stringify(payload())) {
+        resetCheck('입력 내용이 바뀌었습니다. 검사를 다시 실행하세요');
+        return;
+      }
+      lastExport = result;
       $('#xlsx-checks', root).innerHTML = lastExport.checks.map((c) =>
         `<li><span class="${c.level === 'ok' ? 'ok' : 'bad'}">${c.level === 'ok' ? '✓' : '✕'}</span>${esc(c.message)}</li>`).join('');
       $('#xlsx-filename', root).textContent = lastExport.filename;
@@ -212,6 +218,7 @@
     root = r;
     $$('input[name="xscope"]', root).forEach((i) => i.addEventListener('change', () => { syncSheets(); resetCheck('범위가 바뀌었습니다. 검사를 다시 실행하세요'); }));
     $('#xlsx-sheets', root).addEventListener('change', () => { syncSheets(); resetCheck('범위가 바뀌었습니다. 검사를 다시 실행하세요'); });
+    $('#xlsx-history-note', root).addEventListener('input', () => resetCheck('History 내용이 바뀌었습니다. 검사를 다시 실행하세요'));
     $('#xlsx-run-check', root).addEventListener('click', runCheck);
     $('#md-preview', root).addEventListener('click', async () => {
       try {

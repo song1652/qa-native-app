@@ -56,3 +56,13 @@ def test_invalid_strategy_and_malformed_xml_raise_typed_errors():
         validate_locator_xml("<broken>", "android", "text", "value")
     assert xml_error.value.status_code == 500
     assert xml_error.value.message.startswith("XML 파싱 오류:")
+
+
+def test_ios_generated_predicate_candidate_validates_selected_type_and_label():
+    result = validate_locator_xml(IOS_XML, 'ios', 'predicate string', 'type == "XCUIElementTypeButton" AND label == "Settings"')
+    assert result['unique'] and result['match_count'] == 1
+
+
+def test_ios_accessibility_falls_back_to_label_only_without_name():
+    result = validate_locator_xml('<AppiumAUT><XCUIElementTypeButton label="Settings"/></AppiumAUT>', 'ios', 'accessibility-id', 'Settings')
+    assert result['unique']

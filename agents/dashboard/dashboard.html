@@ -92,7 +92,7 @@
       <div class="overview-side">
         <section class="overview-card"><div class="overview-section-head"><h3>파이프라인 상태</h3></div><dl class="overview-environment"><div><dt>파이프라인</dt><dd id="overview-pipeline-status">정보 없음</dd></div><div><dt>빠른 실행</dt><dd id="overview-quick-status">실행 없음</dd></div><div><dt>최근 리포트</dt><dd id="overview-report-status">정보 없음</dd></div></dl></section>
         <section class="overview-card overview-env-card"><div class="overview-section-head"><h3>환경</h3></div><dl class="overview-environment"><div><dt>Appium 서버</dt><dd id="overview-appium">확인 중</dd></div><div><dt>Android 에뮬레이터</dt><dd id="overview-android-emulator">확인 중</dd></div><div><dt>Android 실기기</dt><dd id="overview-android-real">확인 중</dd></div><div><dt>iOS 시뮬레이터</dt><dd id="overview-ios">확인 중</dd></div></dl></section>
-        <section class="overview-card"><div class="overview-log-head"><h3>최근 로그</h3><div class="overview-log-tabs"><button type="button" class="overview-log-tab active" data-overview-log="pipeline" onclick="setOverviewLog('pipeline')">파이프라인</button><button type="button" class="overview-log-tab" data-overview-log="quick" onclick="setOverviewLog('quick')">빠른 실행</button></div><button class="log-clear" aria-label="로그 새로고침" onclick="refreshOverview()">↻</button></div><div class="overview-log" id="overview-log">로그 없음</div></section>
+        <section class="overview-card"><div class="overview-log-head"><h3>최근 로그</h3><div class="overview-log-tabs"><button type="button" class="overview-log-tab active" data-overview-log="pipeline" onclick="setOverviewLog('pipeline')">파이프라인</button><button type="button" class="overview-log-tab" data-overview-log="quick" onclick="setOverviewLog('quick')">빠른 실행</button></div><button id="overview-log-refresh" class="log-clear" aria-label="로그 새로고침" title="로그 새로고침" onclick="refreshOverview()">↻</button></div><div class="overview-log" id="overview-log">로그 없음</div><p id="overview-log-refresh-status" class="overview-log-refresh-status" role="status"></p></section>
       </div>
     </div>
     <svg class="view-hidden" aria-hidden="true"><circle id="overview-donut-fill" stroke-dasharray="0 302"></circle><g id="areaGrad"></g></svg>
@@ -326,8 +326,6 @@
         <button class="history-filter platform-filter" type="button" data-filter-kind="platform" data-filter-value="android">Android</button>
         <button class="history-filter platform-filter" type="button" data-filter-kind="platform" data-filter-value="ios">iOS</button>
 <span class="history-filter-label">그룹</span><details class="history-group-menu"><summary>전체 그룹</summary><div>        <button class="history-filter group active" type="button" data-filter-kind="group" data-filter-value="all">전체 그룹</button>
-        <button class="history-filter group" type="button" data-filter-kind="group" data-filter-value="customer_login">customer_login</button>
-        <button class="history-filter group" type="button" data-filter-kind="group" data-filter-value="partner_login">partner_login</button>
 </div></details>      </div>
       <div class="history-table">
         <div class="history-row header"><span>실행 시각</span><span>통과율</span><span>통과 / 전체</span><span>소요</span><span>유형</span><span>플랫폼</span><span>그룹</span><span>결과</span></div>

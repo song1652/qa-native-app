@@ -45,6 +45,8 @@ var STEP_ORDER = ['analyze','generate','lint','execute','heal'];
 var STEP_LABEL = {analyze:'분석',generate:'생성',lint:'린트',execute:'실행',heal:'힐링'};
 var _stepState = {analyze:'idle',generate:'idle',lint:'idle',execute:'idle',heal:'idle'};
 var _overviewLogMode='pipeline';
+var _overviewRefreshId=0;
+var _overviewRefreshMode=null;
 
 function getPlatform(){
   return document.querySelector('input[name="platform"]:checked').value;
@@ -169,9 +171,21 @@ function renderOverviewData(data){
 
 }
 async function refreshOverview(){
+  var logMode=_overviewLogMode;
+  if(_overviewRefreshMode===logMode)return;
+  _overviewRefreshMode=logMode;
+  var refreshId=++_overviewRefreshId;
+  var refreshButton=document.getElementById('overview-log-refresh');
+  var refreshStatus=document.getElementById('overview-log-refresh-status');
+  if(refreshButton){refreshButton.disabled=true;refreshButton.setAttribute('aria-busy','true');}
+  if(refreshStatus)refreshStatus.textContent='로그 갱신 중…';
   try{
-    var pipelineLogRequest=_overviewLogMode==='pipeline'
-      ? fetch('/api/run_log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({log:_currentLog||'run_execute.txt'})}).then(function(r){return r.json();}).catch(function(){return {}; })
+    var pipelineLogRequest=logMode==='pipeline'
+      ? fetch('/api/run_log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({log:_currentLog||'run_execute.txt'})}).then(async function(r){
+          var data=await r.json();
+          if(!r.ok||!data.ok)throw new Error('파이프라인 로그를 읽지 못했습니다.');
+          return data;
+        }).catch(function(error){return {error:error.message};})
       : Promise.resolve({});
     var results=await Promise.all([
       fetch('/api/state').then(function(r){return r.json();}).catch(function(){return {}; }),
@@ -179,6 +193,7 @@ async function refreshOverview(){
       fetch('/api/generated').then(function(r){return r.json();}).catch(function(){return []; }),
       pipelineLogRequest
     ]);
+    if(refreshId!==_overviewRefreshId)return;
     var state=results[0]||{}, status=results[1]||{}, generated=results[2]||[], log=results[3]||{};
     var summary=(state.execute_results||{}).summary||{};
     var total=summary.total||0, passed=summary.passed||0, failed=summary.failed||0;
@@ -191,13 +206,11 @@ async function refreshOverview(){
       });
       ['android','ios'].forEach(function(platform){
         var raw=localStorage.getItem('qa-native-app.quick-active.'+platform); if(!raw)return;
-        var item=JSON.parse(raw); if(item)quickActive=item;
+        var item=JSON.parse(raw); if(item&&(!quickActive||(item.startedAt||'')>(quickActive.startedAt||'')))quickActive=item;
       });
     }catch(_){ }
     if(quickActive){
       quickSummary={platform:quickActive.platform,total:quickActive.total||0,passed:quickActive.passed||0,failed:quickActive.failed||0,rate:quickActive.total?Math.round((quickActive.passed||0)/quickActive.total*100):0,executedAt:quickActive.startedAt||''};
-      _overviewLogMode='quick';
-      document.querySelectorAll('.overview-log-tab').forEach(function(button){button.classList.toggle('active',button.dataset.overviewLog==='quick');});
     }
     if(quickSummary){ total=quickSummary.total||0; passed=quickSummary.passed||0; failed=quickSummary.failed||0; }
     var rate=total?Math.round(passed/total*100):0;
@@ -216,20 +229,48 @@ async function refreshOverview(){
     if(donut) donut.setAttribute('stroke-dasharray',(302*rate/100)+' 302');
     var ctxTimeStr=quickSummary&&quickSummary.executedAt?new Date(quickSummary.executedAt).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}):'';
     set('overview-context',quickSummary && (!summary.total || (quickSummary.executedAt||'')>(state.updated_at||'')) ? '빠른 실행 · '+ctxTimeStr : (total?'최근 '+(state.platform==='ios'?'iOS':'Android')+' 실행':'최근 실행 없음'));
-    var overviewLog='';
-    if(_overviewLogMode==='pipeline'){
+    var overviewLog='', logError=log.error||'', cachedLog=false;
+    if(logMode==='pipeline'){
       overviewLog=log.log||'';
     }else{
+      var quickPlatform=quickSummary&&quickSummary.platform?quickSummary.platform:'android';
+      var quickLogName='';
       try{
-        var quickPlatform=quickSummary&&quickSummary.platform?quickSummary.platform:'android';
         overviewLog=localStorage.getItem((quickActive?'qa-native-app.quick-live-log.':'qa-native-app.quick-log.')+quickPlatform)||'';
-      }catch(_){overviewLog='';}
+        quickLogName=localStorage.getItem('qa-native-app.quick-log-name.'+quickPlatform)||'';
+        // Older completed runs predate the saved server log filename.
+        if(!quickLogName&&!quickActive&&quickSummary){
+          var previous=loadRunHistory().find(function(item){return item.type==='quick'&&item.platform===quickPlatform;});
+          if(previous&&previous.groups&&previous.groups.length){
+            quickLogName='run_test_'+quickPlatform+'_'+previous.groups[previous.groups.length-1].replace(/\//g,'_')+'.txt';
+          }
+        }
+      }catch(_){ }
+      if(quickLogName){
+        try{
+          var response=await fetch('/api/run_log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({log:quickLogName})});
+          var latest=await response.json();
+          if(!response.ok||!latest.ok)throw new Error('빠른 실행 로그를 읽지 못했습니다.');
+          overviewLog=latest.log||'';
+        }catch(error){logError=error.message;}
+      }else{cachedLog=!!overviewLog;}
     }
-    set('overview-log',overviewLog||'로그 없음');
+    if(refreshId!==_overviewRefreshId)return;
+    if(!logError)set('overview-log',overviewLog||'로그 없음');
+    if(refreshStatus)refreshStatus.textContent=logError
+      ? '로그 갱신 실패 · 다시 시도해 주세요.'
+      : cachedLog?'저장된 로그 · 서버 로그 정보 없음'
+      : logMode==='quick'&&!quickLogName?'조회할 빠른 실행 로그 없음'
+      : '로그 갱신 완료 · '+new Date().toLocaleTimeString('ko-KR',{hour12:false});
     _overviewData={state:state,status:status,generated:generated,quickSummary:quickActive?Object.assign({},quickSummary,{status:'running'}):quickSummary};
     renderOverviewData(_overviewData);
   }catch(_){
-    // Dashboard remains usable when an optional status/log endpoint is unavailable.
+    if(refreshId===_overviewRefreshId&&refreshStatus)refreshStatus.textContent='로그 갱신 실패 · 다시 시도해 주세요.';
+  }finally{
+    if(refreshId===_overviewRefreshId){
+      _overviewRefreshMode=null;
+      if(refreshButton){refreshButton.disabled=false;refreshButton.removeAttribute('aria-busy');}
+    }
   }
 }
 function toggleAllTcFolders(checked){
@@ -275,6 +316,7 @@ function selectView(view, item, options){
     viewUrl.pathname=view === 'tc_studio'?'/tc-studio':'/';
     if(view === 'dashboard'||view === 'tc_studio') viewUrl.searchParams.delete('view');
     else viewUrl.searchParams.set('view',view);
+    if(view !== 'tests' && viewUrl.hash.indexOf('#obs/')===0) viewUrl.hash='';
     var nextUrl=viewUrl.pathname+viewUrl.search+viewUrl.hash;
     if(nextUrl!==location.pathname+location.search+location.hash) history.pushState({}, '', nextUrl);
   }
@@ -336,6 +378,21 @@ function loadRunHistory(){
 function renderRunHistory(){
   var entries=loadRunHistory(), list=document.getElementById('history-list');
   if(!list)return;
+  var groupMenu=document.querySelector('.history-group-menu');
+  if(groupMenu){
+    var selected=groupMenu.querySelector('.history-filter.active');
+    var selectedGroup=selected?selected.dataset.filterValue:'all';
+    var groups=Array.from(new Set(entries.flatMap(function(entry){return entry.groups||[];})));
+    if(!groups.includes(selectedGroup))selectedGroup='all';
+    var options=groupMenu.querySelector('div');options.replaceChildren();
+    ['all'].concat(groups.filter(function(group){return group!=='all';})).forEach(function(group){
+      var button=document.createElement('button');button.type='button';
+      button.className='history-filter group'+(group===selectedGroup?' active':'');
+      button.dataset.filterKind='group';button.dataset.filterValue=group;
+      button.textContent=group==='all'?'전체 그룹':group;options.appendChild(button);
+    });
+    groupMenu.querySelector('summary').textContent=selectedGroup==='all'?'전체 그룹':selectedGroup;
+  }
   list.innerHTML=entries.map(function(entry){
     var date=new Date(entry.executedAt||Date.now()), dateText=date.toLocaleDateString('ko-KR').replace(/\. /g,'-').replace(/\.$/,'');
     var time=date.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
@@ -354,6 +411,7 @@ function renderRunHistory(){
   document.getElementById('history-rate').textContent=passedRate+'%';
   document.getElementById('history-first').innerHTML=passedFirst+'<span class="history-kpi-suffix">/'+total+'</span>';
   document.getElementById('history-heal').textContent=entries.reduce(function(sum,item){return sum+(item.healCount||0);},0);
+  applyHistoryFilters();
 }
 function recordRunHistory(entry){
   var entries=loadRunHistory(); entries.unshift(entry); entries=entries.slice(0,50);
@@ -363,13 +421,22 @@ function recordRunHistory(entry){
 
 async function resetHistory(){
   if(!await dashboardConfirm('실행 히스토리를 초기화할까요?')) return;
-  document.getElementById('history-total').textContent='0';
-  document.getElementById('history-rate').textContent='0%';
-  document.getElementById('history-first').innerHTML='0<span class="history-kpi-suffix">/0</span>';
-  document.getElementById('history-heal').textContent='0';
-  document.getElementById('history-list').innerHTML='<div class="history-empty">실행 이력이 없습니다.</div>';
   try{localStorage.removeItem('qa-native-app.run-history');}catch(_){ }
   document.querySelectorAll('.history-filter').forEach(function(btn){btn.classList.toggle('active',btn.dataset.filterValue==='all');});
+  renderRunHistory();
+}
+
+function applyHistoryFilters(){
+    document.querySelectorAll('.history-row:not(.header)').forEach(function(row){
+      var typeBtn=document.querySelector('.history-filter[data-filter-kind="type"].active');
+      var groupBtn=document.querySelector('.history-filter[data-filter-kind="group"].active');
+      var platformBtn=document.querySelector('.history-filter[data-filter-kind="platform"].active');
+      var groups=Array.from(row.querySelectorAll('.history-group')).map(function(group){return group.textContent;});
+      var visible=(!typeBtn||typeBtn.dataset.filterValue==='all'||row.dataset.historyType===typeBtn.dataset.filterValue)
+        &&(!groupBtn||groupBtn.dataset.filterValue==='all'||groups.indexOf(groupBtn.dataset.filterValue)!==-1)
+        &&(!platformBtn||platformBtn.dataset.filterValue==='all'||row.dataset.historyPlatform===platformBtn.dataset.filterValue);
+      row.style.display=visible?'':'none';
+    });
 }
 
 document.addEventListener('click', function(e){
@@ -379,16 +446,7 @@ document.addEventListener('click', function(e){
     e.target.parentElement.querySelectorAll(selector).forEach(function(btn){btn.classList.remove('active');});
     e.target.classList.add('active');
     var groupMenu=e.target.closest('.history-group-menu');if(groupMenu){groupMenu.querySelector('summary').textContent=e.target.textContent;groupMenu.open=false;}
-    document.querySelectorAll('.history-row:not(.header)').forEach(function(row){
-      var typeBtn=document.querySelector('.history-filter[data-filter-kind="type"].active');
-      var groupBtn=document.querySelector('.history-filter[data-filter-kind="group"].active');
-      var platformBtn=document.querySelector('.history-filter[data-filter-kind="platform"].active');
-      var groups=(row.dataset.historyGroups||'').split(' ');
-      var visible=(!typeBtn||typeBtn.dataset.filterValue==='all'||row.dataset.historyType===typeBtn.dataset.filterValue)
-        &&(!groupBtn||groupBtn.dataset.filterValue==='all'||groups.indexOf(groupBtn.dataset.filterValue)!==-1)
-        &&(!platformBtn||platformBtn.dataset.filterValue==='all'||row.dataset.historyPlatform===platformBtn.dataset.filterValue);
-      row.style.display=visible?'':'none';
-    });
+    applyHistoryFilters();
   }
 });
 
@@ -476,6 +534,7 @@ async function resetOverviewDashboard(){
       ['android','ios'].forEach(function(platform){
         localStorage.removeItem('qa-native-app.quick-summary.'+platform);
         localStorage.removeItem('qa-native-app.quick-log.'+platform);
+        localStorage.removeItem('qa-native-app.quick-log-name.'+platform);
         localStorage.removeItem('qa-native-app.quick-active.'+platform);
         localStorage.removeItem('qa-native-app.quick-live-log.'+platform);
       });

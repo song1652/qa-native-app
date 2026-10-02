@@ -148,10 +148,14 @@ function updateEnvAppiumCard(appium) {
 
   // Android/iOS 파이프라인 버튼 게이팅
   var appiumReady = (status === 'managed' || status === 'external');
-  ['btn-run-all','btn-analyze','btn-generate','btn-lint','btn-execute','btn-heal'].forEach(function(id) {
+  ['btn-run-all','btn-analyze','btn-execute','btn-heal'].forEach(function(id) {
     var el = document.getElementById(id);
-    if (el && !el.classList.contains('running')) {
-      el.disabled = !appiumReady;
+    if (el && !el.classList.contains('running') && !el.classList.contains('loading')
+        && !(typeof _runAllActive !== 'undefined' && _runAllActive)) {
+      var step = id.replace('btn-', '');
+      var prerequisite = typeof _prereq !== 'undefined' && _prereq[step];
+      var locked = prerequisite && typeof _stepState !== 'undefined' && _stepState[prerequisite] !== 'done';
+      el.disabled = !appiumReady || !!locked;
     }
   });
 }

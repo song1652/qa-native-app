@@ -15,7 +15,7 @@ function renderReports(){
   document.getElementById('report-prev').disabled=_reportPage<=1; document.getElementById('report-next').disabled=_reportPage>=pages;
   var all=document.getElementById('report-select-all'); all.checked=!!filtered.length && filtered.every(function(r){return _reportSelected.has(r.name);}); all.indeterminate=filtered.some(function(r){return _reportSelected.has(r.name);})&&!all.checked;
 }
-async function refreshReports(){try{var res=await fetch('/api/reports');_reports=await res.json();renderReports();}catch(_){} }
+async function refreshReports(){try{var res=await fetch('/api/reports');if(!res.ok)throw new Error('리포트 목록 조회 실패');var reports=await res.json();if(!Array.isArray(reports))throw new Error('리포트 목록 형식 오류');_reports=reports;var names=new Set(_reports.map(function(r){return r.name;}));_reportSelected.forEach(function(name){if(!names.has(name))_reportSelected.delete(name);});renderReports();}catch(_){} }
 function toggleReportSelection(name,checked){if(checked)_reportSelected.add(name);else _reportSelected.delete(name);renderReports();}
 function openReportFromRow(event,row){
   if(!row) return;

@@ -1,26 +1,30 @@
 
 function csSendBack() {
-  fetch('/capture/back', {
-    method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({session_id: _cs.sessionId, context: _cs.context})
-  }).then(function(r){ return r.json(); }).then(function(d){
-    if (!d.ok) csStatusMsg('Back 실패: ' + (d.error||''));
-  }).catch(function(err){ csStatusMsg('Back 오류: ' + err); });
+  csAddDirectStep('back');
 }
 
 async function csClearActions() {
+  if (_cs.clearing) return;
   if(!await dashboardConfirm('Action Timeline을 초기화하시겠습니까?')) return;
-  _cs.actions = [];
-  csRenderTimeline();
-  // 서버 session["actions"]와 actions.json도 동기화
+  _cs.clearing = true;
+  var count = _cs.actions.length;
   var sid = _cs.sessionId;
-  if (sid) {
-    fetch('/capture/clear_actions', {method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({session_id: sid})
-    }).then(function(r){ return r.json(); }).then(function(d){
-      if (!d.ok) csStatusMsg(' 서버 초기화 실패: ' + (d.error || ''));
-    }).catch(function(e){ csStatusMsg(' 서버 동기화 오류: ' + e); });
+  try {
+    if (sid) {
+      var response = await fetch('/capture/clear_actions', {method:'POST',
+        headers:{'Content-Type':'application/json'}, body: JSON.stringify({session_id: sid})});
+      var data = await response.json();
+      if (!data.ok) throw new Error(data.error || '초기화 실패');
+    }
+    if (_cs.sessionId === sid) {
+      _cs.actions.splice(0, count);
+      _cs.actions.forEach(function(action, index){ action.index = index + 1; });
+      csRenderTimeline();
+    }
+  } catch (error) {
+    csStatusMsg(' 서버 초기화 실패: ' + error.message);
+  } finally {
+    _cs.clearing = false;
   }
 }
 
@@ -28,7 +32,7 @@ async function csClearActions() {
 function csAddDirectStep(type) {
   var step;
   if (type === 'back') {
-    step = { type: 'back', label: 'Back 버튼', step: 'Back 버튼을 누른다', expected: '' };
+    step = { index: _cs.actions.length + 1, action: 'back', type: 'back', label: 'Back 버튼', step: 'Back 버튼을 누른다', expected: '' };
     _cs.actions.push(step);
     csRenderTimeline();
     csStatusMsg(step.label + ' 스텝이 추가되었습니다.');
@@ -37,12 +41,14 @@ function csAddDirectStep(type) {
     if(sid) fetch('/capture/back', {method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({session_id:sid})
-    }).then(function(){ setTimeout(function(){ csRefreshHierarchy(); }, 1200); })
-      .catch(function(){});
+    }).then(function(response){ return response.json(); }).then(function(data){
+      if (!data.ok) csStatusMsg('Back 실패: ' + (data.error || ''));
+      else setTimeout(function(){ csRefreshHierarchy(); }, 1200);
+    }).catch(function(error){ csStatusMsg('Back 오류: ' + error); });
   } else if (type === 'scroll_down' || type === 'scroll_up') {
     var dir = (type === 'scroll_up') ? 'up' : 'down';
     var label = dir === 'up' ? '위로 스크롤' : '아래로 스크롤';
-    step = { type: type, label: label,
+    step = { index: _cs.actions.length + 1, action: type, type: type, label: label,
              step: '화면을 ' + (dir === 'up' ? '위' : '아래') + '로 스크롤한다', expected: '' };
     _cs.actions.push(step);
     csRenderTimeline();
@@ -72,7 +78,7 @@ function csAddDirectStep(type) {
     var secNum = parseFloat(sec);
     if (isNaN(secNum) || secNum <= 0) { alert('올바른 숫자를 입력하세요 (예: 1, 2.5)'); return; }
     secNum = Math.min(secNum, 60); // 최대 60초
-    step = { action: 'wait', type: 'wait', wait_seconds: secNum,
+    step = { index: _cs.actions.length + 1, action: 'wait', type: 'wait', wait_seconds: secNum,
              label: secNum + '초 대기', step: secNum + '초 대기한다', expected: '' };
     _cs.actions.push(step);
     csRenderTimeline();
@@ -86,15 +92,18 @@ function csActionStepText(a) {
   // Human-readable step draft (Phase 5)
   switch(a.action) {
     case 'tap':
-      if (a.target_ref) return '"' + a.target_ref + '" 탭';
+      if (a.target_ref || a.label) return '"' + (a.target_ref || a.label) + '" 탭';
       if (a.device_x !== undefined) return '좌표 (' + a.device_x + ', ' + a.device_y + ') 탭';
       return '화면 탭';
     case 'input':
-      var val = a.is_secret ? '***' : ('"' + (a.value||'') + '"');
+      var val = a.is_secret ? '***' : ('"' + (a.input_text !== undefined ? a.input_text : (a.value||'')) + '"');
       if (a.target_ref) return '"' + a.target_ref + '"에 ' + val + ' 입력';
       return val + ' 입력';
     case 'back':
       return '뒤로가기 (Back)';
+    case 'scroll_down': return '아래로 스크롤';
+    case 'scroll_up': return '위로 스크롤';
+    case 'wait': return (a.wait_seconds || 1) + '초 대기';
     case 'context_switch':
       return (a.to_context === 'webview' ? 'WebView 전환' : 'Native 전환');
     case 'assertion':
@@ -181,14 +190,17 @@ function csPreviewTC() {
   ];
   _cs.actions.forEach(function(a, i) {
     pyLines.push('        # Step ' + (i+1) + ': ' + csActionStepText(a));
+    var strategy = a.strategy || a.locator_strategy;
+    var locator = a.strategy ? a.value : a.locator_value;
+    if (strategy && locator) pyLines.push('        # Locator: ' + strategy + ' = ' + JSON.stringify(locator));
     if (a.action === 'tap') {
-      if (a.locator_strategy && a.locator_value) {
-        pyLines.push('        self.driver.find_element(AppiumBy.' + a.locator_strategy.toUpperCase().replace(/-/g,'_') + ', "' + a.locator_value + '").click()');
+      if (strategy && locator) {
+        pyLines.push('        # self.driver.find_element(..., ' + JSON.stringify(locator) + ').click()');
       } else if (a.device_x !== undefined) {
         pyLines.push('        self.driver.tap([(' + a.device_x + ', ' + a.device_y + ')])');
       }
     } else if (a.action === 'input') {
-      pyLines.push('        # self.driver.find_element(...).send_keys("' + (a.is_secret ? '***' : (a.value||'')) + '")');
+      pyLines.push('        # self.driver.find_element(...).send_keys(' + JSON.stringify(a.is_secret ? '***' : (a.input_text !== undefined ? a.input_text : (a.value||''))) + ')');
     } else if (a.action === 'back') {
       pyLines.push('        self.driver.back()');
     } else if (a.action === 'scroll_down') {

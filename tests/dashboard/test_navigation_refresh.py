@@ -161,3 +161,91 @@ def test_report_actions_and_selection_remain_separate(navigation_page):
     assert page.locator('.report-actions a').get_attribute('target') == '_blank'
     page.locator('.report-item input').uncheck()
     assert page.locator('#report-delete-selected').is_disabled()
+
+
+def test_leaving_evidence_clears_run_hash_and_preserves_history_navigation(navigation_page):
+    page = navigation_page
+    page.route('**/api/reports', lambda route: route.fulfill(json=[]))
+    page.evaluate("history.replaceState({},'', '/?view=tests#obs/run_android_20261002_114701_780')")
+    page.locator('[data-view=reports]').click()
+    assert page.evaluate('location.hash') == ''
+    assert '?view=reports' in page.url
+    page.go_back()
+    assert page.evaluate('location.hash') == '#obs/run_android_20261002_114701_780'
+
+
+def test_late_evidence_load_does_not_pin_a_different_menu(navigation_page):
+    page = navigation_page
+    page.add_script_tag(path=str(STATIC / 'observability.js'))
+    page.evaluate("""() => {
+      history.replaceState({},'', '/?view=tests');
+      window._obsResolveLatestRunId=()=>new Promise(resolve=>window.finishRun=resolve);
+      window._obsInjectEvidenceButtons=async()=>{};
+      window.pendingEvidence=_obsRenderCompletedQuickRun('android');
+      history.pushState({},'', '/?view=reports');
+    }""")
+    page.evaluate("async()=>{finishRun('run_android_20261002_114701_780');await pendingEvidence;}")
+    assert page.evaluate('location.hash') == ''
+
+
+def test_saved_other_menu_with_old_evidence_hash_stays_on_that_menu(navigation_page):
+    page = navigation_page
+    page.add_script_tag(path=str(STATIC / 'observability.js'))
+    page.evaluate("""() => {
+      history.replaceState({},'', '/?view=reports#obs/run_android_20261002_114701_780');
+      window.hashRequests=[];
+      window.fetch=async url=>{hashRequests.push(url);return {ok:false};};
+    }""")
+    page.evaluate('_obsOpenHash()')
+    assert page.evaluate('hashRequests') == []
+
+
+def test_late_hash_manifest_does_not_reopen_quick_execution(navigation_page):
+    page = navigation_page
+    page.add_script_tag(path=str(STATIC / 'observability.js'))
+    page.evaluate("""() => {
+      history.replaceState({},'', '/#obs/run_android_20261002_114701_780');
+      window.fetch=()=>new Promise(resolve=>window.finishManifest=resolve);
+      window.reopened=false;
+      window.selectView=()=>{reopened=true;};
+      window.pendingHash=_obsOpenHash();
+      history.pushState({},'', '/?view=reports');
+    }""")
+    page.evaluate("""async () => {
+      finishManifest({ok:true,json:async()=>({entries:[{
+        nodeid:'test_case',outcome:'passed',kept:true,screenshot:'screen.png'
+      }]})});
+      await pendingHash;
+    }""")
+    assert page.evaluate('reopened') is False
+
+
+def test_late_latest_run_preserves_newly_selected_historical_run(navigation_page):
+    page = navigation_page
+    page.add_script_tag(path=str(STATIC / 'observability.js'))
+    page.evaluate("""() => {
+      history.replaceState({},'', '/?view=tests');
+      window._obsResolveLatestRunId=()=>new Promise(resolve=>window.finishLatest=resolve);
+      window.renderedRun=null;
+      window._obsInjectEvidenceButtons=async run=>{renderedRun=run;};
+      window.pendingLatest=_obsRenderCompletedQuickRun('android');
+      history.pushState({},'', '/?view=tests#obs/run_android_20260930_114701_780');
+    }""")
+    page.evaluate("async()=>{finishLatest('run_android_20261002_114701_780');await pendingLatest;}")
+    assert page.evaluate('location.hash') == '#obs/run_android_20260930_114701_780'
+    assert page.evaluate('renderedRun') is None
+
+
+def test_late_workspace_preserves_newly_selected_historical_run(navigation_page):
+    page = navigation_page
+    page.add_script_tag(path=str(STATIC / 'observability.js'))
+    page.evaluate("""() => {
+      history.replaceState({},'', '/?view=tests#obs/run_android_20261002_114701_780');
+      window.fetch=()=>new Promise(resolve=>window.finishWorkspace=resolve);
+      window.renderedRun=null;
+      window._obsRenderWorkspace=run=>{renderedRun=run;};
+      window.pendingWorkspace=_obsInjectEvidenceButtons('run_android_20261002_114701_780',true);
+      history.pushState({},'', '/?view=tests#obs/run_android_20260930_114701_780');
+    }""")
+    page.evaluate("async()=>{finishWorkspace({ok:true,json:async()=>({entries:[]})});await pendingWorkspace;}")
+    assert page.evaluate('renderedRun') is None

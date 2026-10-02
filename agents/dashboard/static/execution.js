@@ -225,11 +225,12 @@ function _pollRunAllBatch(batchId){
     try{
       var response = await fetch('/api/run_all/status/'+encodeURIComponent(batchId));
       var status = await response.json();
-      if(!status.ok) throw new Error(status.error || '실행 상태를 읽을 수 없습니다');
+      if(!response.ok || typeof status.done!=='boolean') throw new Error(status.error || '실행 상태를 읽을 수 없습니다');
       var stage = status.step || '';
       if(stage && stage !== lastStage){
-        if(lastStage) setStepNum(lastStage, 'done');
+        if(lastStage){setStepNum(lastStage, 'done');document.getElementById('cancel-'+lastStage)?.classList.remove('visible');}
         setStepNum(stage, 'running');
+        document.getElementById('cancel-'+stage)?.classList.add('visible');
         lastStage = stage;
       }
       if(status.log){
@@ -352,6 +353,7 @@ function _pollSingleLog(logName, step, onDone){
 }
 
 function _finishRunAll(success){
+  _runAllSteps.forEach(function(step){document.getElementById('cancel-'+step)?.classList.remove('visible');});
   if(!_runAllHistoryRecorded){
     _runAllHistoryRecorded=true;
     fetch('/api/state').then(function(r){return r.json();}).then(function(st){
@@ -414,7 +416,7 @@ async function runStep(step){
     var res = await fetch('/api/run',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(Object.assign({step, platform, tc_folder: tcFolder}, getSelectedDeviceParams(platform)))
+      body:JSON.stringify(Object.assign({step, platform, tc_folder: tcFolder, obs_keep: _obsKeep}, getSelectedDeviceParams(platform)))
     });
     var data = await res.json();
     if(!data.ok){
@@ -547,7 +549,7 @@ function hideFails(){
   document.getElementById('fail-summary').classList.remove('visible');
   document.getElementById('fail-list').innerHTML='';
 }
-function esc(s){ var d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+function esc(s){ var d=document.createElement('div'); d.textContent=s; return d.innerHTML.replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
 function showGuideBanner(step, success){
   var banner = document.getElementById('guide-banner');

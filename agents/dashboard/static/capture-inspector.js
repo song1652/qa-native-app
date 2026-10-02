@@ -91,10 +91,10 @@ function csRenderLocatorCards(attrs) {
   var isIos = !attrs['class'] && (attrs['type'] || attrs['name'] !== undefined);
 
   if (isIos) {
-    // iOS XCUITest locator 전략 — label 우선(사람이 읽는 텍스트), name fallback
+    // iOS XCUITest locator 전략 — name 식별자 우선, label fallback
     var labelVal = attrs['label'] || '';
     var nameVal  = attrs['name']  || '';
-    var accId = labelVal || nameVal;
+    var accId = nameVal || labelVal;
     if (accId)
       cards.push({ strategy: 'accessibility-id', stars: 5, value: accId });
     var typeVal = attrs['type'] || '';
@@ -113,7 +113,7 @@ function csRenderLocatorCards(attrs) {
     if (attrs['text'] && attrs['text'].trim())
       cards.push({ strategy: 'text', stars: 3, value: attrs['text'] });
     if (attrs['class']) {
-      var xpath = '//' + attrs['class'].replace(/\./g, '/');
+      var xpath = '//*[@class="' + attrs['class'] + '"]';
       cards.push({ strategy: 'xpath', stars: 1, value: xpath });
     }
   }
@@ -124,17 +124,18 @@ function csRenderLocatorCards(attrs) {
     var badge = c.stars >= 4 ? 'stable' : (c.stars >= 3 ? 'medium' : 'low');
     var badgeLabel = c.stars >= 4 ? '안정' : (c.stars >= 3 ? '보통' : '낮음');
     var rec = c.stars === maxStars;
-    var strategyEsc = esc(c.strategy).replace(/'/g,'\\\'');
-    var valueEsc = esc(c.value).replace(/'/g,'\\\'');
-    var alreadyApproved = _cs.approvedLocators.some(function(l){ return l.strategy === c.strategy && l.value === c.value; });
+    var args = JSON.stringify(c.strategy) + ',' + JSON.stringify(c.value);
+    var validateCall = esc('csValidateLocator(' + args + ',this)').replace(/"/g, '&quot;');
+    var approveCall = esc('csApproveLocator(' + args + ',' + c.stars + ',this)').replace(/"/g, '&quot;');
+    var alreadyApproved = _cs.approvedLocators.some(function(l){ return l.strategy === c.strategy && l.value === c.value && l.nodeKey === JSON.stringify(_cs.selectedNodeAttrs); });
     var approveBtn = alreadyApproved
       ? '<button class="cs-btn" style="padding:1px 7px;font-size:10px;line-height:1.4;opacity:.5;cursor:default" disabled>승인됨 ✓</button>'
-      : '<button class="cs-btn" style="padding:1px 7px;font-size:10px;line-height:1.4;color:var(--pass);border-color:var(--pass)" onclick="csApproveLocator(\'' + strategyEsc + '\',\'' + valueEsc + '\',' + c.stars + ',this)">승인 ✓</button>';
+      : '<button class="cs-btn" style="padding:1px 7px;font-size:10px;line-height:1.4;color:var(--pass);border-color:var(--pass)" onclick="' + approveCall + '">승인 ✓</button>';
     return '<div class="cs-loc-card' + (rec ? ' recommended' : '') + '">'
       + '<div class="cs-loc-strategy" style="display:flex;align-items:center;justify-content:space-between">'
       + '<span>' + esc(c.strategy) + ' <span class="cs-loc-badge ' + badge + '">' + badgeLabel + '</span></span>'
       + '<span style="display:flex;gap:4px">'
-      + '<button class="cs-btn" style="padding:1px 7px;font-size:10px;line-height:1.4" onclick="csValidateLocator(\'' + strategyEsc + '\',\'' + valueEsc + '\',this)">검증</button>'
+      + '<button class="cs-btn" style="padding:1px 7px;font-size:10px;line-height:1.4" onclick="' + validateCall + '">검증</button>'
       + approveBtn
       + '</span>'
       + '</div>'
@@ -146,9 +147,11 @@ function csRenderLocatorCards(attrs) {
 }
 
 function csApproveLocator(strategy, value, rating, btn) {
-  var already = _cs.approvedLocators.some(function(l){ return l.strategy === strategy && l.value === value; });
+  var already = _cs.approvedLocators.some(function(l){ return l.strategy === strategy && l.value === value && l.nodeKey === JSON.stringify(_cs.selectedNodeAttrs); });
   if (!already) {
-    _cs.approvedLocators.push({ strategy: strategy, value: value, rating: rating });
+    var locator = { strategy: strategy, value: value, rating: rating };
+    if (_cs.selectedNodeAttrs) locator.nodeKey = JSON.stringify(_cs.selectedNodeAttrs);
+    _cs.approvedLocators.push(locator);
   }
   btn.textContent = '승인됨 ✓';
   btn.disabled = true;
@@ -285,7 +288,7 @@ function csSelectTreeNode(headerEl, skipScroll) {
 
 // 선택된 노드에서 가장 좋은 locator 추출
 // 미러 화면에 선택 요소 하이라이트 박스 표시 (Appium Inspector 스타일)
-// hover 시 미러 파란색 하이라이트 (선택 보라색과 별도)
+// hover 시 미러 하이라이트 (선택 표시와 별도)
 function csHoverNode(headerEl, boundsStr) {
   if (!boundsStr) return;
   var hov = document.getElementById('cs-hover-highlight');
@@ -372,17 +375,18 @@ function csHighlightElementOnMirror(boundsStr, label) {
 function _csBestLocator() {
   var attrs = _cs.selectedNodeAttrs;
   if (!attrs) return null;
-  // 승인된 locator 우선
-  if (_cs.approvedLocators.length > 0) {
-    var a = _cs.approvedLocators[0];
+  // 선택 요소에서 승인된 locator 우선
+  var a = _cs.approvedLocators.find(function(locator) {
+    return locator.nodeKey === JSON.stringify(attrs);
+  });
+  if (a) {
     return {strategy: a.strategy, value: a.value};
   }
   var isIos = !attrs['class'] && (attrs['type'] || attrs['name'] !== undefined);
   if (isIos) {
-    // iOS: label(사람이 읽는 텍스트) > name(번들ID) > predicate > xpath
-    // label 우선: XCUITest ACCESSIBILITY_ID는 label/name 모두 매칭하고,
-    // label을 쓰면 화면 밖 요소도 자동 스크롤하여 탭 가능
-    var accId = attrs['label'] || attrs['name'] || '';
+    // iOS: name 식별자 > label > xpath
+    // XML 검증과 같은 식별자 우선순위를 사용한다.
+    var accId = attrs['name'] || attrs['label'] || '';
     if (accId) return {strategy: 'accessibility-id', value: accId};
     if (attrs['type']) return {strategy: 'xpath', value: '//' + attrs['type']};
   } else {

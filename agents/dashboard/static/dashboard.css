@@ -1263,3 +1263,5 @@ button,th,[role=tab]{white-space:nowrap}
 }
 
 .overview-chart-legend>span{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;font-weight:600;white-space:nowrap}.overview-chart-legend>span::before{content:"";width:7px;height:7px;flex-shrink:0;border-radius:50%;background:currentColor}.overview-chart-legend .warn::before,.overview-chart-point.warn circle{background:var(--warn-indicator);fill:var(--warn-indicator)}
+
+.overview-log-refresh-status{margin:8px 0 0;color:var(--text-3);font-size:12px;min-height:18px}

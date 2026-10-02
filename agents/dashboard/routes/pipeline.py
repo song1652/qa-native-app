@@ -37,6 +37,7 @@ from utils.state import (  # noqa: E402
     save_state,
 )
 from utils.artifact_retention import load_retention_limits, purge_old_runs  # noqa: E402
+from utils.system import get_android_avd_name  # noqa: E402
 from ws import broadcast_timeline_sync  # noqa: E402
 
 router = APIRouter()
@@ -68,7 +69,7 @@ async def get_devices(platform: str = "android"):
     if platform == "android":
         # adb로 연결된 serial 목록
         try:
-            r = subprocess.run([ADB_BIN, "devices"], capture_output=True, text=True)
+            r = subprocess.run([ADB_BIN, "devices"], capture_output=True, text=True, timeout=8)
             connected_serials: set[str] = set()
             for ln in r.stdout.splitlines()[1:]:
                 parts = ln.split()
@@ -78,8 +79,15 @@ async def get_devices(platform: str = "android"):
             connected_serials = set()
 
         # 에뮬레이터
+        emulator_names = {
+            serial: get_android_avd_name(serial)
+            for serial in sorted(connected_serials) if serial.startswith("emulator-")
+        }
         for dev in cfg.get("android", {}).get("emulator", []):
-            serial = next((s for s in connected_serials if s.startswith("emulator-")), "")
+            avd = str(dev.get("avd") or "").strip()
+            configured_serial = str(dev.get("udid") or dev.get("serial") or "").strip()
+            serial = next((s for s, name in emulator_names.items()
+                           if (name == avd if avd else s == configured_serial)), "")
             result.append({
                 "mode": "emulator",
                 "deviceName": dev.get("deviceName", "Android Emulator"),
@@ -92,9 +100,7 @@ async def get_devices(platform: str = "android"):
         # 실기기
         for dev in cfg.get("android", {}).get("real_device", []):
             udid = dev.get("udid", "")
-            connected = udid in connected_serials if udid else bool(
-                next((s for s in connected_serials if not s.startswith("emulator-")), "")
-            )
+            connected = bool(udid and not udid.startswith("emulator-") and udid in connected_serials)
             result.append({
                 "mode": "real_device",
                 "deviceName": dev.get("deviceName", ""),
@@ -108,7 +114,7 @@ async def get_devices(platform: str = "android"):
         # 부팅된 시뮬레이터 UDID
         try:
             r = subprocess.run(["xcrun", "simctl", "list", "devices", "booted", "--json"],
-                               capture_output=True, text=True)
+                               capture_output=True, text=True, timeout=8)
             import json as _j
             booted = set()
             for devs in _j.loads(r.stdout).get("devices", {}).values():
@@ -128,13 +134,31 @@ async def get_devices(platform: str = "android"):
                 "connected": uid in booted,
                 "default": dev.get("default", False),
             })
-        for dev in cfg.get("ios", {}).get("real_device", []):
+        physical = set()
+        real_devices = cfg.get("ios", {}).get("real_device", [])
+        if any(dev.get("udid") for dev in real_devices):
+            try:
+                discovery = subprocess.run(
+                    ["xcrun", "devicectl", "list", "devices", "--quiet", "--json-output", "-"],
+                    capture_output=True, text=True, timeout=8,
+                )
+                if discovery.returncode == 0:
+                    for device in _json.loads(discovery.stdout).get("result", {}).get("devices", []):
+                        properties = device.get("properties", {})
+                        hardware = properties.get("hardware") or device.get("hardwareProperties", {})
+                        connection = properties.get("connection") or device.get("connectionProperties", {})
+                        if hardware.get("reality") == "physical" and connection.get("state", connection.get("tunnelState")) == "connected":
+                            if hardware.get("udid"):
+                                physical.add(hardware["udid"])
+            except Exception:
+                pass
+        for dev in real_devices:
             result.append({
                 "mode": "real_device",
                 "deviceName": dev.get("deviceName", ""),
                 "udid": dev.get("udid", ""),
                 "platformVersion": dev.get("platformVersion", ""),
-                "connected": False,
+                "connected": bool(dev.get("udid") and dev["udid"] in physical),
                 "default": dev.get("default", False),
             })
 
@@ -422,7 +446,7 @@ async def post_run_all(request: Request):
     MAX_HEAL = 3
     PIPELINE = _pipeline_steps(from_tc_studio=from_tc_studio)
     batch_id = uuid.uuid4().hex
-    batch = {"done": False, "ok": True, "folder_index": 0,
+    batch = {"done": False, "ok": True, "cancelled": False, "folder_index": 0,
              "folder_count": len(tc_folders), "folder": tc_folders[0],
              "step": "", "log": ""}
     with _process_lock:
@@ -451,16 +475,18 @@ async def post_run_all(request: Request):
         extra_popen: dict = {}
         if sys.platform != "win32":
             extra_popen["preexec_fn"] = os.setsid
-        with open(log_path, "w", encoding="utf-8") as lf:
-            proc = subprocess.Popen(
-                [PYTHON_BIN, "-u", str(script)] + extra_args,
-                cwd=str(PROJECT_ROOT),
-                stdout=lf,
-                stderr=subprocess.STDOUT,
-                env=env,
-                **extra_popen,
-            )
         with _process_lock:
+            if batch["cancelled"]:
+                raise RuntimeError("파이프라인이 취소되었습니다.")
+            with open(log_path, "w", encoding="utf-8") as lf:
+                proc = subprocess.Popen(
+                    [PYTHON_BIN, "-u", str(script)] + extra_args,
+                    cwd=str(PROJECT_ROOT),
+                    stdout=lf,
+                    stderr=subprocess.STDOUT,
+                    env=env,
+                    **extra_popen,
+                )
             _running[step] = proc
             _test_runs[lname] = {"key": step, "done": False, "returncode": None}
             save_running_pids()
@@ -556,7 +582,12 @@ async def post_run_all(request: Request):
         try:
             for idx, folder in enumerate(tc_folders):
                 with _process_lock:
-                    batch.update(folder_index=idx, folder=folder, step="", log="")
+                    if batch["cancelled"]:
+                        batch["ok"] = False
+                        break
+                    # Retain the last visible step while waiting between folders,
+                    # so its cancel control still addresses this active batch.
+                    batch.update(folder_index=idx, folder=folder, log="")
                 if idx > 0:
                     # 이전 Appium/UiAutomator2 세션이 완전히 종료된 후 다음 세션 시작
                     _time.sleep(_SERIAL_FOLDER_GAP_SECONDS)
@@ -713,6 +744,11 @@ async def post_cancel(request: Request):
     step = body.get("step", "")
     with _process_lock:
         proc = _running.get(step)
+        cancelled_batch = False
+        for batch in _pipeline_batches.values():
+            if not batch.get("done") and batch.get("step") == step:
+                batch.update(cancelled=True, ok=False)
+                cancelled_batch = True
     if proc and proc.poll() is None:
         try:
             if sys.platform == "win32":
@@ -721,6 +757,8 @@ async def post_cancel(request: Request):
                 os.killpg(os.getpgid(proc.pid), 15)
         except Exception:
             proc.terminate()
+        return JSONResponse({"ok": True, "message": f"{step} 취소됨"})
+    if cancelled_batch:
         return JSONResponse({"ok": True, "message": f"{step} 취소됨"})
     return JSONResponse({"ok": False, "error": "실행 중인 프로세스 없음"}, status_code=404)
 
@@ -762,6 +800,9 @@ async def post_run_log(request: Request):
 @router.post("/api/reset")
 async def post_reset():
     with _process_lock:
+        for batch in _pipeline_batches.values():
+            if not batch.get("done"):
+                batch.update(cancelled=True, ok=False)
         for step, proc in list(_running.items()):
             if proc.poll() is None:
                 proc.terminate()

@@ -79,3 +79,32 @@ def test_light_theme_tokens_are_served_before_component_styles():
     assert response.headers["content-type"].startswith("text/css")
     assert "--font-sans:" in response.text
     assert document.index('/static/tokens.css') < document.index('/static/dashboard.css')
+
+
+def test_dashboard_control_handlers_are_loaded(page):
+    """Every static button/input handler resolves after the shipped scripts load."""
+    document = (DASHBOARD / 'dashboard.html').read_text()
+    document = re.sub(r'<script\b[^>]*>.*?</script>', '', document, flags=re.S)
+    document = re.sub(r'<link\b[^>]*>', '', document)
+    page.route('http://control-bindings.test/', lambda route: route.fulfill(body=document, content_type='text/html'))
+    page.goto('http://control-bindings.test/')
+    # No startup polling, device access, or real WebSocket connections.
+    page.evaluate("""() => {
+      window.WebSocket=class {static OPEN=1;static CONNECTING=0;constructor(){this.readyState=0;}close(){}};
+      window.fetch=async()=>({ok:true,json:async()=>({})});
+    }""")
+    errors=[]
+    page.on('pageerror', lambda error: errors.append(str(error)))
+    for script in EXPECTED_SCRIPTS:
+        if script.endswith('dashboard-init.js'):
+            continue
+        page.add_script_tag(path=str(DASHBOARD / script.lstrip('/')))
+    handlers=page.locator('*').evaluate_all("""elements=>elements.flatMap(element=>
+      [...element.attributes].filter(a=>a.name.startsWith('on')).map(a=>a.value))""")
+    names=set()
+    for handler in handlers:
+        names.update(re.findall(r'(?<![.\w])([A-Za-z_$]\w*)\s*\(', handler))
+    names.difference_update({'if','function'})
+    missing=page.evaluate("names=>names.filter(name=>typeof window[name]!=='function')", sorted(names))
+    assert not missing,missing
+    assert not errors,errors

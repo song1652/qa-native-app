@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
+import re
 
 
 class CaptureLocatorValidationError(ValueError):
@@ -59,7 +60,15 @@ def validate_locator_xml(
             "text": "text",
         }
 
-    if strategy in attributes:
+    if platform == "ios" and strategy in ("accessibility-id", "accessibility id"):
+        matches = [element for element in root.iter() if (element.get("name") or element.get("label")) == value]
+    elif platform == "ios" and strategy == "predicate string":
+        predicate = re.fullmatch(r'type\s*==\s*"([^"]+)"(?:\s+AND\s+label\s*==\s*"([^"]*)")?', value)
+        if not predicate:
+            raise CaptureLocatorValidationError("지원하지 않는 predicate 형식입니다. type/label 후보를 사용하세요.", 400)
+        element_type, label = predicate.groups()
+        matches = [element for element in root.iter() if (element.get("type") or element.tag) == element_type and (label is None or element.get("label") == label)]
+    elif strategy in attributes:
         attribute = attributes[strategy]
         matches = [element for element in root.iter() if element.get(attribute) == value]
     elif strategy == "xpath":

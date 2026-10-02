@@ -1,7 +1,7 @@
 var _quickPlatform='android';
 
 function setQuickPlatform(platform){
-  if(platform!=='android'&&platform!=='ios') return;
+  if(window._quickRunActive||(platform!=='android'&&platform!=='ios')) return;
   window._quickRunResultVisible=false;
   _quickPlatform=platform;
   updateAutomationStatus(platform);
@@ -15,7 +15,10 @@ async function refreshGenerated(options){
   if(window._quickRunActive) return;
   if(window._quickRunResultVisible && !(options && options.navigation)) return;
   try{
-    var res=await fetch('/api/generated?platform='+encodeURIComponent(_quickPlatform)); var data=await res.json();
+    var requestedPlatform=_quickPlatform;
+    var res=await fetch('/api/generated?platform='+encodeURIComponent(requestedPlatform)); var data=await res.json();
+    if(requestedPlatform!==_quickPlatform||window._quickRunActive) return;
+    if(window._quickRunResultVisible&&!(options&&options.navigation)) return;
     window._generatedTests = data;
     var allHtml='', andHtml='', iosHtml='';
     data.forEach(function(g){
@@ -73,11 +76,14 @@ async function refreshGenerated(options){
 
 function quickToggleGenerated(checked){
   document.querySelectorAll('.quick-group-list .quick-group-cb').forEach(function(cb){ cb.checked=checked; });
+  syncQuickSelection();
 }
 function syncQuickSelection(){
   var all=document.querySelectorAll('.quick-group-list .quick-group-cb'), selected=document.querySelectorAll('.quick-group-list .quick-group-cb:checked');
   var toggle=document.getElementById('quick-select-all');
-  if(toggle) toggle.checked=all.length>0 && all.length===selected.length;
+  if(toggle){toggle.checked=all.length>0&&all.length===selected.length;toggle.indeterminate=selected.length>0&&selected.length<all.length;}
+  var button=document.getElementById('quick-generated-run');
+  if(button)button.disabled=!!window._quickRunActive||selected.length===0;
 }
 
 function _setQuickRunCompletionStatus(statusEl, completedCount, failedCount){
@@ -111,6 +117,8 @@ async function runSelectedGenerated(){
   if(statusEl){statusEl.className='quick-run-status running';statusEl.textContent='● 테스트 실행 중';}
   var noHeal=document.getElementById('generated-heal')?.checked === true;
   window._quickRunActive=true;
+  document.querySelectorAll('.quick-platform-btn').forEach(function(button){button.disabled=true;});
+  try{localStorage.removeItem('qa-native-app.quick-log-name.'+_quickPlatform);}catch(_){ }
   try{localStorage.setItem('qa-native-app.quick-active.'+_quickPlatform,JSON.stringify({platform:_quickPlatform,total:files.length,passed:0,failed:0,current:0,startedAt:new Date().toISOString()}));}catch(_){ }
   var passed=0, failed=0, done=0, groupStats={}, caseResults=[];
   var logEl=document.getElementById('quick-generated-log'), logWrap=document.getElementById('quick-generated-log-wrap'), resultEl=document.getElementById('quick-generated-result');
@@ -152,6 +160,8 @@ async function runSelectedGenerated(){
   window._quickRunLogEl=null;
   window._quickRunLogWrap=null;
   window._quickRunActive=false;
+  document.querySelectorAll('.quick-platform-btn').forEach(function(button){button.disabled=false;});
+  syncQuickSelection();
   // 대시보드 KPI·히스토리 뷰 갱신
   refreshOverview();
   renderRunHistory();
@@ -195,7 +205,7 @@ function resetQuickRun(){
   window._quickRunLogEl=null;
   window._quickRunLogWrap=null;
   window._quickRunResultVisible=false;
-  try{localStorage.removeItem('qa-native-app.quick-result-v3.'+_quickPlatform);localStorage.removeItem('qa-native-app.quick-summary.'+_quickPlatform);localStorage.removeItem('qa-native-app.quick-log.'+_quickPlatform);localStorage.removeItem('qa-native-app.quick-active.'+_quickPlatform);localStorage.removeItem('qa-native-app.quick-live-log.'+_quickPlatform);}catch(_){ }
+  try{localStorage.removeItem('qa-native-app.quick-result-v3.'+_quickPlatform);localStorage.removeItem('qa-native-app.quick-summary.'+_quickPlatform);localStorage.removeItem('qa-native-app.quick-log.'+_quickPlatform);localStorage.removeItem('qa-native-app.quick-log-name.'+_quickPlatform);localStorage.removeItem('qa-native-app.quick-active.'+_quickPlatform);localStorage.removeItem('qa-native-app.quick-live-log.'+_quickPlatform);}catch(_){ }
 }
 
 function toggleQuickLog(){
@@ -227,12 +237,14 @@ function executeGeneratedFile(platform,file,heal,folder){
       resolve({ok:false,exit_code:1}); return;
     }
     var logName=data.log;
+    try{localStorage.setItem('qa-native-app.quick-log-name.'+platform,logName);}catch(_){ }
     var timer=setInterval(async function(){
     try{
       var res=await fetch('/api/run_log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({log:logName})});
       var data=await res.json();
       if(data.ok){
         var liveLog=data.log||'실행 중...';
+        try{localStorage.setItem('qa-native-app.quick-live-log.'+platform,liveLog);}catch(_){ }
         if(window._quickRunLogEl){
           if(window._quickRunLogWrap) window._quickRunLogWrap.style.display='block';
           window._quickRunLogEl.textContent=liveLog;
