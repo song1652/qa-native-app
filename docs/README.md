@@ -4,7 +4,7 @@
 
 ## 사용 가이드
 
-- [QA Control Center 사용자 가이드](guides/USER_GUIDE.html): 현재 밝은 UI의 화면별 사용법과 TC 스튜디오, 실행 및 결과 확인
+- [QA Control Center 사용자 가이드](guides/USER_GUIDE.html): 기존 가이드를 확장한 상세 사용법. 시작 경로, 엑셀 매핑·초안 검토·내보내기, 화면 캡처 작성, 실행·재시도·증거 분석, 리포트·기록, 기기 설정과 오류 해결을 설명합니다.
 - [온보딩](../ONBOARDING.md): 설치·환경 준비·첫 실행 절차
 
 ## 현재 화면과 주소
