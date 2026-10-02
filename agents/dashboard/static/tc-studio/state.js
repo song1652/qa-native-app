@@ -20,7 +20,7 @@
   // 엑셀에서 가져와 자동 승인된 케이스 — 검토 대상이 아니라 검토 상태를 바꿀 수 없다
   NS.isImported = (c) => c.review_source === 'import';
   NS.importedTitle = (c) => `엑셀에서 가져온 케이스는 검토 상태를 바꿀 수 없습니다${c.import_origin && c.import_origin.filename ? ` (출처: ${c.import_origin.filename.replace(/^xlsx:/, '')})` : ''}`;
-  NS.RESULT_LABEL = { '': '미실행', pass: '통과', fail: '실패', not_test: '미실행', na: 'N/A' };
+  NS.RESULT_LABEL = { '': '미실행', pass: '통과', fail: '실패', not_test: '테스트 안 함', na: 'N/A' };
   NS.PRIORITIES = ['P0', 'P1', 'P2', 'P3'];
   NS.isAppSuite = () => (NS.state.suites.find((s) => s.suite === NS.state.suite) || {}).kind === 'app';
 

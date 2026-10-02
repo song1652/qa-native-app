@@ -44,11 +44,11 @@
             <div class="field"><label class="label" for="detail-tags">태그</label><input class="input" id="detail-tags" data-id="detail-tags" placeholder="쉼표로 구분"><span class="help">태그를 쉼표로 구분해 입력하세요.</span></div>
             <div class="field"><label class="label" for="detail-precondition">사전 조건</label><textarea class="textarea" id="detail-precondition" data-id="detail-precondition" rows="2"></textarea></div>
             <div class="field">
-              <div class="row"><span class="label">Test Step</span><span class="spacer"></span><span class="faint" style="font-size:10.5px">끌어서 순서 변경 · <span class="kbd">Alt</span><span class="kbd">↑↓</span></span></div>
+              <div class="row"><span class="label">테스트 단계</span><span class="spacer"></span><span class="faint" style="font-size:10.5px">끌어서 순서 변경 · <span class="kbd">Alt</span><span class="kbd">↑↓</span></span></div>
               <ol class="steps" id="d-steps" data-id="detail-steps"></ol>
-              <button class="btn-sm" data-id="detail-step-add" id="detail-step-add" style="justify-self:start">+ Step 추가</button>
+              <button class="btn-sm" data-id="detail-step-add" id="detail-step-add" style="justify-self:start">+ 단계 추가</button>
             </div>
-            <div class="field"><label class="label" for="detail-expected">Expected Result</label>
+            <div class="field"><label class="label" for="detail-expected">기대 결과</label>
               <textarea class="textarea" id="detail-expected" data-id="detail-expected" rows="2"></textarea><span class="help" id="d-exp-help"></span></div>
             <div class="field">
               <div class="row"><span class="label">UI 문구</span><span class="spacer"></span><span class="faint" style="font-size:10.5px">배지를 눌러 확인/추정 전환</span></div>

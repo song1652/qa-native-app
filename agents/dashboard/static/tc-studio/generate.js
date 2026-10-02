@@ -62,7 +62,7 @@
   <section class="screen" id="screen-generate" data-screen="generate">
     <div class="wrap"><div class="gen">
       <div class="panel">
-        <div class="panel-head">1. 기획 정보 입력</div>
+        <div class="panel-head">기획 정보</div>
         <div class="panel-body" style="display:grid;gap:12px">
           <div class="warnbox" id="gen-no-suite" hidden>
             <b>TC 작성을 시작할 빈 양식이 없습니다.</b>
@@ -78,7 +78,7 @@
         </div>
       </div>
       <div style="display:grid;gap:16px">
-        <div class="panel"><div class="panel-head">2. 작성할 시트·분류</div>
+        <div class="panel"><div class="panel-head">작성 위치</div>
           <div class="panel-body" style="display:grid;gap:10px">
             <div class="field"><span class="label">시트</span><div class="row" style="flex-wrap:nowrap"><select class="select" id="gen-target-sheet" data-id="gen-target-sheet" style="min-width:0"></select><button class="btn-sm" type="button" data-id="gen-add-sheet" id="gen-add-sheet" style="white-space:nowrap;flex-shrink:0">시트 추가</button><button class="btn-sm" type="button" data-id="gen-rename-sheet" id="gen-rename-sheet" style="white-space:nowrap;flex-shrink:0" disabled>이름 변경</button></div></div>
             <div class="field app-only"><label class="label" for="gen-platforms">대상 플랫폼</label><select class="select" id="gen-platforms"><option value="both">둘 다</option><option value="android">And</option><option value="ios">iOS</option></select></div>

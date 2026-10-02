@@ -84,8 +84,8 @@
         <span class="pill st-${d.status}">${NS.STATUS_LABEL[d.status]}</span>${errors.length ? '<span class="tag err">검증 오류</span>' : ''}${estimated(d) ? '<span class="tag warn">추정 문구</span>' : ''}${styleIssues(d).length ? `<span class="tag warn" data-id="draft-style" title="${esc(styleIssues(d).map((x) => x.message).join('\n'))}">문체 확인</span>` : ''}${d.draft_meta.quote_found === false ? '<span class="tag warn" title="모델이 인용한 문장을 원문에서 찾지 못했습니다">인용 불일치</span>' : ''}
         <span class="spacer"></span><button class="src-ref" data-id="draft-source-ref">${esc(d.source_refs[0] || '')}</button></div>
       <dl class="draft-grid"><dt>경로</dt><dd>${esc(d.path.filter(Boolean).join(' › '))}</dd><dt>사전 조건</dt><dd>${esc(d.precondition) || '<span class="faint">없음</span>'}</dd>
-        <dt>Test Step</dt><dd>${esc(d.steps.map((s, n) => `${n + 1}. ${s}`).join('\n'))}</dd>
-        <dt>Expected</dt><dd>${esc(d.expected)}${d.bullets.map((b) => `\n- ${esc(b.text)}${b.verified ? '' : ' <span class="tag warn">추정</span>'}`).join('')}</dd>
+        <dt>테스트 단계</dt><dd>${esc(d.steps.map((s, n) => `${n + 1}. ${s}`).join('\n'))}</dd>
+        <dt>기대 결과</dt><dd>${esc(d.expected)}${d.bullets.map((b) => `\n- ${esc(b.text)}${b.verified ? '' : ' <span class="tag warn">추정</span>'}`).join('')}</dd>
         <dt>우선순위</dt><dd>${esc(d.priority) || '—'}</dd></dl>
       ${errors.length ? `<ul class="checks">${errors.map((x) => `<li><span class="bad">✕</span>${esc(x.message)}</li>`).join('')}</ul>` : ''}
       ${dup && target ? `<div class="dupbox" data-id="dup-resolution"><b>기존 케이스와 비슷합니다 · ${dup.case_id} (${Math.round(dup.similarity * 100)}%)</b>

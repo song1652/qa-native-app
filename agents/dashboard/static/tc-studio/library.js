@@ -36,7 +36,7 @@
         <div class="filterbar" role="search">
           <div class="search"><input class="input" id="lib-search" data-id="lib-search" placeholder="제목, Step, Expected, UI 문구 검색  ( / )" autocomplete="off"></div>
           <select class="fselect" id="lib-filter-result" data-id="lib-filter-result" aria-label="실행 결과">
-            ${opt('', '실행 결과 전체')}${opt('none', '미실행')}${opt('pass', '통과')}${opt('fail', '실패')}${opt('not_test', '미실행')}${opt('na', 'N/A')}</select>
+            ${opt('', '실행 결과 전체')}${opt('none', '미실행')}${opt('pass', '통과')}${opt('fail', '실패')}${opt('not_test', '테스트 안 함')}${opt('na', 'N/A')}</select>
           <select class="fselect app-only" id="lib-filter-platform" aria-label="플랫폼">${opt('', '플랫폼 전체')}${opt('android', 'And')}${opt('ios', 'iOS')}</select>
           <button class="fchip app-only" id="lib-filter-mismatch" aria-pressed="false">And·iOS 결과가 다른 것만</button>
           <select class="fselect" id="lib-filter-status" data-id="lib-filter-status" aria-label="검토 상태">
@@ -74,7 +74,7 @@
         <div class="bulkbar" id="bulkbar" data-id="bulk-bar" hidden>
           <b><span id="bulk-n">0</span>건 선택</b>
           <select class="chip-select app-result" data-id="bulk-platform" id="bulk-platform">${opt('android', 'Android')}${opt('ios', 'iOS')}</select>
-          <select class="chip-select" data-id="bulk-result" id="bulk-result">${opt('', '실행 결과…')}${opt('none', '미실행')}${opt('pass', '통과')}${opt('fail', '실패')}${opt('not_test', '미실행')}${opt('na', 'N/A')}</select>
+          <select class="chip-select" data-id="bulk-result" id="bulk-result">${opt('', '실행 결과…')}${opt('none', '미실행')}${opt('pass', '통과')}${opt('fail', '실패')}${opt('not_test', '테스트 안 함')}${opt('na', 'N/A')}</select>
           <select class="chip-select" data-id="bulk-status" id="bulk-status">${opt('', '검토 상태…')}${opt('approved', '승인')}${opt('draft', '초안으로')}${opt('rejected', '반려')}</select>
           <button class="btn-sm" data-id="bulk-move" id="bulk-move">계층 이동…</button>
           <details class="bulk-more"><summary aria-label="일괄 작업 더보기">⋯ 더보기</summary><div>
