@@ -223,6 +223,8 @@ def _check_empty_authoring(tc_server):
         page = browser.new_page()
         page.goto(f'{tc_server}/tc-studio')
         page.wait_for_function("document.querySelector('#suite-select')?.value === '기본양식'")
+        # Suite selection precedes the library/context requests and screen rendering.
+        page.wait_for_selector('#screen-generate.active')
         assert page.locator('#screen-generate').is_visible()
         assert page.locator('#src-paste').count() == 1
         assert page.locator('#btn-start-blank').is_hidden()
