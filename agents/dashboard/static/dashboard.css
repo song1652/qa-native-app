@@ -963,3 +963,13 @@ code,pre,.log-area,.log-panel,.overview-log{font-family:var(--font-mono)}
 .history-row{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 16px;font-size:13px}.history-row.header{background:var(--surface-sub);font-size:12px;white-space:nowrap}.history-result,.history-platform,.history-type{border-radius:var(--radius-badge);font-size:12px;white-space:nowrap}.history-result{background:var(--surface-sub)}.history-empty{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-card);padding:32px;font-size:14px}
 
 .app-main.history-view>.grid{max-width:none;margin:0}.history-row{grid-template-columns:145px 120px 120px 135px 100px minmax(140px,1fr) 115px}
+
+/* Excel wizard — Import / Import2 / Import3 / Import4 / Import5. */
+#view-import.import-studio{--is-bg:var(--bg);--is-card:var(--surface);--is-card2:var(--surface-sub);--is-border:var(--border);--is-accent:var(--accent);--is-text:var(--text);--is-text2:var(--text-2);--is-text3:var(--text-3);height:auto;min-height:560px;border:0;background:var(--bg)}
+#view-import.import-studio[class*=is-stage]{height:auto;min-height:560px}
+.is-header{padding:0 0 20px;border:0}.is-title{font-size:22px;font-weight:600}.is-wizard{padding:16px 0;flex-basis:100%}.is-step-circle{border-radius:var(--radius-badge);width:24px;height:24px;border-width:1px}.is-step-circle.active,.is-step-circle.done{background:var(--accent);color:var(--on-accent)}
+.is-content{padding:0}.is-file-grid{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}.is-panel,.is-file-card,.is-subpanel{border:1px solid var(--border);border-radius:var(--radius-card)}.is-file-card{padding:16px}.is-file-card.selected{background:var(--accent-bg)}.is-excel-icon{background:var(--pass-bg);color:var(--pass);font-size:12px}
+.is-file-card.selected .is-file-check{color:var(--on-accent)}.is-step2-layout{grid-template-columns:220px minmax(0,1fr) 280px}.is-subpanel-body{padding:16px}.is-panel-title,.is-subpanel-title{font-size:15px}.is-field-row{font-size:13px}
+.is-bottom{margin-top:20px;padding:16px 0;border-top:1px solid var(--border);background:var(--bg)}.is-btn{min-height:34px;font-size:14px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:var(--radius-control)}.is-btn.primary,.is-btn.success{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.is-full-table th{font-size:12px;background:var(--surface-sub);white-space:nowrap}.is-full-table td{font-size:13px;color:var(--text)}.is-policy-card{background:var(--surface);border-radius:var(--radius-card)}
+@media(max-width:1100px){.is-step2-layout{grid-template-columns:1fr}.is-wizard{overflow:auto}.is-step-line{min-width:10px;margin:0 6px}}
