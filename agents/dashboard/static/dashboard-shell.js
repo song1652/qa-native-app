@@ -105,7 +105,7 @@ function renderOverviewRateChart(entries){
   });
   if(!points.length)return '<div class="overview-chart-empty">실행 이력이 쌓이면 통과율 추이가 표시됩니다.</div>';
   var description=points.map(function(point){return point.label+' '+point.rate+'%';}).join(', ');
-  var grid=[32,59,86,112].map(function(y){return '<line x1="40" y1="'+y+'" x2="440" y2="'+y+'" class="overview-chart-grid"/>';}).join('');
+  var grid=[32,59,86].map(function(y){return '<line x1="40" y1="'+y+'" x2="440" y2="'+y+'" class="overview-chart-grid"/>';}).join('');
   var line=points.length>1?'<polyline class="overview-chart-line" points="'+points.map(function(point){return point.x+','+point.y;}).join(' ')+'"/>':'';
   return '<svg class="overview-rate-svg" viewBox="0 0 480 190" role="img" aria-label="통과율 추이: '+esc(description)+'"><title>'+esc(description)+'</title>'+grid+line+points.map(function(point){return '<g class="overview-chart-point '+point.kind+'"><title>'+esc(point.label+' · '+point.rate+'% · '+(point.kind==='pass'?'통과':point.kind==='warn'?'주의':'실패'))+'</title><text x="'+point.x+'" y="'+(point.y-11)+'" text-anchor="middle">'+point.rate+'%</text><circle cx="'+point.x+'" cy="'+point.y+'" r="4"/><text class="overview-chart-time" x="'+point.x+'" y="183" text-anchor="middle">'+esc(point.label)+'</text></g>';}).join('')+'</svg>';
 }

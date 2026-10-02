@@ -76,7 +76,7 @@
   <main class="app-main dashboard-view">
   <div id="tc-studio-root" class="view-hidden"></div>
   <div id="view-overview" class="overview-view">
-    <div class="overview-heading-row"><div><h2 class="overview-heading">대시보드</h2><p class="overview-context" id="overview-context">최근 실행 없음</p></div><button id="overview-reset-btn" class="overview-reset" type="button" onclick="resetOverviewDashboard()">대시보드 초기화</button></div>
+    <div class="overview-heading-row"><div><h2 class="overview-heading">대시보드</h2><p class="overview-context" id="overview-context">최근 실행 없음</p></div><div class="overview-heading-actions"><details class="overview-filter-menu"><summary>플랫폼</summary><div class="overview-platform-filter" role="group" aria-label="플랫폼"><button type="button" aria-pressed="true" onclick="setOverviewPlatform('all')">전체</button><button type="button" aria-pressed="false" onclick="setOverviewPlatform('android')">Android</button><button type="button" aria-pressed="false" onclick="setOverviewPlatform('ios')">iOS</button></div></details><button id="overview-reset-btn" class="overview-reset" type="button" onclick="resetOverviewDashboard()">대시보드 초기화</button></div></div>
     <section class="overview-summary" aria-label="실행 요약">
       <div><span>마지막 실행</span><strong id="overview-last-result">—</strong><small id="overview-last-detail">실행 정보 없음</small></div>
       <div><span>최근 10회 통과율</span><strong id="overview-history-rate">—</strong><small id="overview-history-count">실행 이력 없음</small></div>
@@ -87,7 +87,7 @@
     <div class="overview-columns">
       <div class="overview-primary">
         <section class="overview-card overview-recent-card"><div class="overview-section-head"><h3>최근 실행</h3><button class="text-link" onclick="selectView('history',document.querySelector('.sidebar-item[data-view=history]'))">전체 기록 보기</button></div><div id="overview-trend" class="overview-trend-empty">실행 이력 없음</div></section>
-        <section class="overview-card overview-chart-card"><div class="overview-section-head"><h3>통과율 추이</h3><details class="overview-filter-menu"><summary>플랫폼</summary><div class="overview-platform-filter" role="group" aria-label="플랫폼"><button type="button" aria-pressed="true" onclick="setOverviewPlatform('all')">전체</button><button type="button" aria-pressed="false" onclick="setOverviewPlatform('android')">Android</button><button type="button" aria-pressed="false" onclick="setOverviewPlatform('ios')">iOS</button></div></details></div><div id="overview-rate-chart"></div><div class="overview-chart-footer"><span id="overview-chart-context">실행 이력 없음</span><span class="overview-chart-legend"><span class="pass">통과</span><span class="warn">주의</span><span class="fail">실패</span></span></div></section>
+        <section class="overview-card overview-chart-card"><div class="overview-section-head"><h3>통과율 추이</h3></div><div id="overview-rate-chart"></div><div class="overview-chart-footer"><span id="overview-chart-context">실행 이력 없음</span><span class="overview-chart-legend"><span class="pass">통과</span><span class="warn">주의</span><span class="fail">실패</span></span></div></section>
       </div>
       <div class="overview-side">
         <section class="overview-card"><div class="overview-section-head"><h3>파이프라인 상태</h3></div><dl class="overview-environment"><div><dt>파이프라인</dt><dd id="overview-pipeline-status">정보 없음</dd></div><div><dt>빠른 실행</dt><dd id="overview-quick-status">실행 없음</dd></div><div><dt>최근 리포트</dt><dd id="overview-report-status">정보 없음</dd></div></dl></section>
