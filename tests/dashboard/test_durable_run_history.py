@@ -80,6 +80,25 @@ def test_all_pass_report_start_can_follow_manifest_by_milliseconds(history_clien
     assert len(entries)==1 and entries[0]['runId']==rid
 
 
+def test_delayed_successful_retry_report_keeps_explicit_execution_identity(history_client,tmp_path):
+    from scripts.report_html import build_report
+    rid='run_android_20261002_120000_000'
+    manifest(tmp_path,rid,finished='2026-10-02T12:01:09+09:00')
+    report(tmp_path,'report_android_20261002_120000_001.html',run_id=rid,passed=0,failed=1)
+    name='report_android_20261002_120100_001.html'
+    document=build_report([{'label':'settings','rows_html':'','pass_cnt':1,'total_cnt':1,
+                           'all_pass':True,'has_tests':True}],
+                          {'passed':1,'failed':0},'2026-10-02 12:01:10',
+                          platform='android',run_id=rid)
+    assert f'<meta name="qa-run-id" content="{rid}">' in document
+    assert 'href="/api/run_artifacts/' not in document
+    document=document.replace('</body>','<pre>previous run_android_20261001_120000_000</pre></body>')
+    (tmp_path/'tests/reports'/name).write_text(document)
+    entries=history_client.get('/api/run-history').json()['entries']
+    assert len(entries)==1
+    assert entries[0]['runId']==rid and entries[0]['reportName']==name
+
+
 def test_report_without_links_is_not_matched_to_different_counts(history_client,tmp_path):
     manifest(tmp_path,'run_android_20261002_120000_289',outcomes=('passed','failed'))
     report(tmp_path,'report_android_20261002_120000_376.html')

@@ -581,6 +581,7 @@ def _generate_html_report(state: dict, platform: str,
     html_content = report_html.build_report(
         groups_data, summary, created_at, subtitle,
         video_path=rel_video, platform=platform,
+        run_id=state.get("last_run_id") or state.get("obs_last_run_id") or "",
     )
 
     stamp = report_stamp or datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]

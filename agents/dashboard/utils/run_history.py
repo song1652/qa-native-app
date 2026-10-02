@@ -36,8 +36,13 @@ class _ReportSummary(HTMLParser):
         self.created = None
         self.number = None
         self.title = ''
+        self.run_id = None
 
     def handle_starttag(self, tag, attrs):
+        if tag == 'meta':
+            metadata = dict(attrs)
+            if metadata.get('name') == 'qa-run-id' and _RUN_ID.fullmatch(metadata.get('content', '')):
+                self.run_id = metadata['content']
         if tag in {'meta', 'link', 'input', 'img', 'br', 'hr', 'source', 'wbr'}:
             return
         classes = dict(attrs).get('class', '').split()
@@ -93,8 +98,8 @@ def _report_cached(path, mtime, size):
     counts = {'total': parser.stats['전체'], 'passed': parser.stats['통과'], 'failed': parser.stats['실패'], 'skipped': parser.stats.get('건너뜀', 0)}
     if counts['total'] != counts['passed'] + counts['failed'] + counts['skipped']:
         return None
-    ids = {item.group(0) for item in _RUN_ID.finditer(text)}
-    platforms = {item.group(1) for item in _RUN_ID.finditer(text)}
+    ids = {parser.run_id} if parser.run_id else {item.group(0) for item in _RUN_ID.finditer(text)}
+    platforms = {item.split('_')[1] for item in ids}
     platform = match[1] or (next(iter(platforms)) if len(platforms) == 1 else 'unknown')
     return {**counts, 'id': 'report:'+Path(path).name, 'type': 'execution', 'platform': platform,
             'executedAt': executed.isoformat(), 'duration': None, 'groups': parser.groups,
