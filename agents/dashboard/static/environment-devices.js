@@ -554,7 +554,3 @@ function envVirtualActionFromButton(button) {
     decodeURIComponent(button.dataset.envTarget || '')
   );
 }
-function envAndroidStart(avd) { return envDeviceAction('android', 'start', avd); }
-function envAndroidStop(avd) { return envDeviceAction('android', 'stop', avd); }
-function envIosStart(udid) { return envDeviceAction('ios', 'start', udid); }
-function envIosStop(udid) { return envDeviceAction('ios', 'stop', udid); }

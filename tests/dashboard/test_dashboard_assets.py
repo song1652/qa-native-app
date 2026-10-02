@@ -15,7 +15,6 @@ from serve import app  # noqa: E402
 EXPECTED_SCRIPTS = [
     "/static/dashboard-shell.js",
     "/static/execution.js",
-    "/static/import-studio.js",
     "/static/quick-run.js",
     "/static/reports.js",
     "/static/observability.js",

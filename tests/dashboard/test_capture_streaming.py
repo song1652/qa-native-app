@@ -4,7 +4,6 @@ import io
 
 from agents.dashboard.utils.capture_streaming import (
     iter_jpeg_frames,
-    resolve_adb_serial,
 )
 
 
@@ -35,8 +34,3 @@ def test_iter_jpeg_frames_ignores_incomplete_trailing_frame():
 
     assert list(iter_jpeg_frames(reader)) == [b"\xff\xd8complete\xff\xd9"]
 
-
-def test_resolve_adb_serial_prefers_udid_then_device_name():
-    assert resolve_adb_serial({"udid": "R3CN", "device_name": "Pixel"}) == "R3CN"
-    assert resolve_adb_serial({"device_name": "emulator-5554"}) == "emulator-5554"
-    assert resolve_adb_serial({}) == ""

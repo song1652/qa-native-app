@@ -42,25 +42,10 @@ function _obsRenderStrips(){
   });
 }
 
-// 아티팩트 도트 HTML (kept=true & 각 타입 존재 여부)
-function _artDotsHtml(hasVideo, hasLog, hasShot, isFail){
-  var cls = isFail ? 'fail-on' : 'on';
-  return '<span class="art-dots">'
-    +'<span class="art-dot '+(hasVideo?cls:'')+'" title="영상">▶</span>'
-    +'<span class="art-dot '+(hasLog?cls:'')+'" title="로그">▤</span>'
-    +'<span class="art-dot '+(hasShot?cls:'')+'" title="스크린샷">▣</span>'
-    +'</span>';
-}
 
 // ── 증거 상세 오버레이 ─────────────────────────────────────
 var _evState = {runId:null, nodeid:null, manifest:null, tab:'video', attempt:null};
 
-function openEvDetail(runId, nodeid, manifest){
-  _evState.runId=runId; _evState.nodeid=nodeid; _evState.manifest=manifest; _evState.tab='video'; _evState.attempt=null;
-  _evLogRaw=[]; _evLogLvlActive='ALL'; _evLogQ='';
-  _evRender();
-  document.getElementById('ev-detail-overlay').classList.add('open');
-}
 
 function _evSelection(){
   var manifest=_evState.manifest||{};

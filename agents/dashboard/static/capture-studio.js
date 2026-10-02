@@ -50,9 +50,6 @@ function csStopScreenWatcher() {
 }
 
 // CSS grid align-items:stretch가 높이 동기화를 담당하므로 JS sync 불필요
-function csSyncPanelHeight() { /* noop: CSS stretch handles this */ }
-var _csMirrorObserver = null;
-function csStartMirrorObserver() { /* noop: CSS stretch handles this */ }
 
 function csPlatformToggle() {
   var isIos = document.getElementById('cs-platform').value === 'ios';
@@ -159,7 +156,7 @@ function csInit() {
           if(d2.alive){
             // 드라이버 살아있음 → workspace로 이동
             document.getElementById('cs-setup').style.display='none';
-            document.getElementById('cs-workspace').style.display='block'; setTimeout(function(){ csStartMirrorObserver(); csSyncPanelHeight(); }, 100);
+            document.getElementById('cs-workspace').style.display='block';
             document.getElementById('cs-session-badge').style.display='';
             var _rPlatform = (d && d.session && d.session.platform) || 'android';
             var _rDevice = (d && d.session && d.session.device_name) || '';
@@ -458,7 +455,7 @@ function csStartSession() {
           statusEl.style.color = 'var(--pass)';
           // 워크스페이스 전환
           document.getElementById('cs-setup').style.display='none';
-          document.getElementById('cs-workspace').style.display='block'; setTimeout(function(){ csStartMirrorObserver(); csSyncPanelHeight(); }, 100);
+          document.getElementById('cs-workspace').style.display='block';
           document.getElementById('cs-session-badge').style.display='';
           var _devLabel = isIos ? (document.getElementById('cs-device-name') ? document.getElementById('cs-device-name').value.trim() : '') : (d2.device_name || '');
           csInfoStripShow(platform, _devLabel, group);
@@ -477,7 +474,7 @@ function csStartSession() {
           statusEl.style.color = 'var(--fail)';
           // 세션은 생성됐으므로 워크스페이스는 진입 허용
           document.getElementById('cs-setup').style.display='none';
-          document.getElementById('cs-workspace').style.display='block'; setTimeout(function(){ csStartMirrorObserver(); csSyncPanelHeight(); }, 100);
+          document.getElementById('cs-workspace').style.display='block';
           document.getElementById('cs-session-badge').style.display='';
           var _devLabel = isIos ? (document.getElementById('cs-device-name') ? document.getElementById('cs-device-name').value.trim() : '') : (d2.device_name || '');
           csInfoStripShow(platform, _devLabel, group);
@@ -502,7 +499,7 @@ function csStartSession() {
         statusEl.textContent = msg;
         statusEl.style.color = 'var(--warn)';
         document.getElementById('cs-setup').style.display='none';
-        document.getElementById('cs-workspace').style.display='block'; setTimeout(function(){ csStartMirrorObserver(); csSyncPanelHeight(); }, 100);
+        document.getElementById('cs-workspace').style.display='block';
         document.getElementById('cs-session-badge').style.display='';
         var _devLabelCatch = isIos ? (document.getElementById('cs-device-name') ? document.getElementById('cs-device-name').value.trim() : '') : '';
         csInfoStripShow(platform, _devLabelCatch, group);

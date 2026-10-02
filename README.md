@@ -261,7 +261,7 @@ DOM을 모르는 상태에서 locator를 추측해 코드를 확정하지 않습
 | `agents/dashboard/routes/*.py` | 환경·실행·Capture·관측성·MCP API 라우트 |
 | `agents/dashboard/utils/*.py` | 디바이스, 프로세스, 코드 생성, 증거 보존 공통 서비스 |
 | `agents/dashboard/routes/mcp.py` | Nova MCP HTTP+SSE 서버 (JSON-RPC 2.0, 툴 9종) |
-| `scripts/import_excel.py` | Excel 열 매핑과 OS별 TC Markdown 변환 |
+| `scripts/import_excel.py` | TC Markdown 렌더러 (TC 스튜디오 내보내기 형식) |
 | `scripts/01_analyze.py` | Appium native UI hierarchy 수집 |
 | `scripts/02_generate.py` | TC Markdown → pytest 코드 생성 |
 | `scripts/03_lint.py` | 생성 코드 lint 검사 |

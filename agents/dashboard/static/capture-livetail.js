@@ -22,8 +22,6 @@ function csSubStatusConn(connected) {
   if(dot){ dot.style.background = connected ? 'var(--pass)' : 'var(--fail)'; dot.className = ''; }
   if(txt){ txt.textContent = connected ? '연결됨' : '미러링 끊김'; txt.style.color = connected ? 'var(--pass)' : 'var(--fail)'; }
 }
-function csSubStatusUpdate(platform, deviceName) { /* no-op: csInfoStripShow handles this */ }
-function csSubStatusHide() { /* no-op: csInfoStripHide handles this */ }
 
 // ── CS 세션 정보 스트립 ───────────────────────────────────────
 function csInfoStripShow(platform, deviceName, group) {

@@ -160,7 +160,6 @@ def _extract_screen(filepath: str) -> str:
     parts = Path(filepath).parts
     try:
         gen_idx = next(i for i, p in enumerate(parts) if p == "generated")
-        generated_platform = parts[gen_idx + 1] if len(parts) > gen_idx + 1 else ""
         group_idx = gen_idx + 2
         if len(parts) > group_idx:
             subfolder = parts[group_idx]

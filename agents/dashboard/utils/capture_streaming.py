@@ -1,7 +1,7 @@
 """Pure helpers used by the Capture Studio MJPEG stream."""
 
 from collections.abc import Iterator
-from typing import BinaryIO, Mapping, Any
+from typing import BinaryIO
 
 
 def iter_jpeg_frames(stdout: BinaryIO) -> Iterator[bytes]:
@@ -25,7 +25,3 @@ def iter_jpeg_frames(stdout: BinaryIO) -> Iterator[bytes]:
             yield buffer[start : end + 2]
             buffer = buffer[end + 2 :]
 
-
-def resolve_adb_serial(session: Mapping[str, Any]) -> str:
-    """Return the Capture session's preferred ADB device identifier."""
-    return str(session.get("udid") or session.get("device_name") or "")

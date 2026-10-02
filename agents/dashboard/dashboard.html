@@ -44,7 +44,6 @@
       <a class="sidebar-item" data-view="tc_studio" href="/tc-studio" onclick="event.preventDefault();selectView('tc_studio',this)" style="text-decoration:none">
         <span class="sidebar-dot"></span><span>TC 스튜디오</span>
       </a>
-      <a class="legacy-import-link" data-view="tc_import" href="/tc-studio?import=1" hidden style="display:none"><span>엑셀 가져오기</span></a>
       <a class="sidebar-item" data-view="capture" onclick="event.preventDefault();selectView('capture',this)" id="sidebar-capture" href="/?view=capture">
         <span class="sidebar-dot" style="background:var(--accent-bg)"></span><span>화면 캡처로 작성</span>
       </a>
@@ -276,10 +275,6 @@
       <div id="gen-all"  class="tab-content active"><div class="empty">없음</div></div>
       <div id="gen-android" class="tab-content"><div class="empty">없음</div></div>
         <div id="gen-ios"     class="tab-content"><div class="empty">없음</div></div>
-    </div>
-
-    <div class="card import-studio" id="view-import">
-      <div id="import-studio-root"><div class="import-loading">Import Studio를 불러오는 중...</div></div>
     </div>
 
     <!-- 리포트 -->
@@ -858,7 +853,6 @@
 
 <script src="/static/dashboard-shell.js"></script>
 <script src="/static/execution.js"></script>
-<script src="/static/import-studio.js"></script>
 <script src="/static/quick-run.js"></script>
 <script src="/static/reports.js"></script>
 <script src="/static/observability.js"></script>

@@ -7,7 +7,6 @@ import json
 import sys
 import time as _time
 from datetime import datetime
-from pathlib import Path
 
 try:
     from shared import (

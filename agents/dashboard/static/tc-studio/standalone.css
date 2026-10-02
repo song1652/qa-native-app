@@ -1,4 +1,4 @@
-.header-spacer { flex: 1; }
+
 .title-row{height:54px;display:flex;align-items:center;gap:14px;padding:0 24px;flex-shrink:0;background:var(--surface);border-bottom:1px solid var(--border-glass);position:relative;z-index:10}
 .title-row::after{content:'';position:absolute;left:0;right:0;bottom:0;height:1px;background:var(--surface)}
 .title-row::before{content:'';font-size:10px;font-weight:600;letter-spacing:.8px;color:var(--approved-color);background:var(--pass-bg);border:1px solid var(--border);padding:3px 10px;border-radius:16px}

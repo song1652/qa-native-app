@@ -44,8 +44,8 @@ from utils.state import (  # noqa: E402
     is_capture_active,
     is_pipeline_active,
     load_devices_json,
+    save_devices_json,  # env_registry가 deps.save_devices_json으로 사용
     load_env_session,
-    save_devices_json,
     update_env_session_sections,
 )
 from utils.env_devices import (  # noqa: E402

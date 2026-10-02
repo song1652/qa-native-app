@@ -1,7 +1,6 @@
 """
 Unit tests for env_session.json 읽기/쓰기 + 스키마 (M1-05, M1-06).
 
-RED: utils.state.load_env_session / save_env_session 가 아직 없으므로 ImportError.
 """
 import json
 import sys
@@ -17,7 +16,6 @@ from utils.state import (  # noqa: E402
     is_capture_active,
     load_env_session,
     save_capture_session,
-    save_env_session,
     update_env_session_sections,
 )
 
@@ -103,17 +101,17 @@ class TestLoadEnvSession:
         assert result["appium"]["error_msg"] == "connection refused"
 
 
-class TestSaveEnvSession:
+class TestUpdateEnvSession:
 
-    def test_save_creates_file(self, tmp_path, monkeypatch):
-        """save_env_session이 파일을 생성한다."""
+    def test_update_creates_file(self, tmp_path, monkeypatch):
+        """update_env_session_sections가 파일을 생성한다."""
         session_file = tmp_path / "env_session.json"
         monkeypatch.setattr("utils.state.ENV_SESSION_PATH", session_file)
         data = dict(ENV_SESSION_DEFAULT)
-        save_env_session(data)
+        update_env_session_sections(data)
         assert session_file.exists()
 
-    def test_save_and_load_roundtrip(self, tmp_path, monkeypatch):
+    def test_update_and_load_roundtrip(self, tmp_path, monkeypatch):
         """저장 후 로드하면 동일한 데이터."""
         session_file = tmp_path / "env_session.json"
         monkeypatch.setattr("utils.state.ENV_SESSION_PATH", session_file)
@@ -122,7 +120,7 @@ class TestSaveEnvSession:
             "android": {"status": "stopped", "avd": None, "started_at": None},
             "ios": {"status": "stopped", "simulator": None, "started_at": None},
         }
-        save_env_session(data)
+        update_env_session_sections(data)
         loaded = load_env_session()
         assert loaded["appium"]["pid"] == 5678
         assert loaded["appium"]["status"] == "managed"
@@ -132,7 +130,7 @@ class TestSaveEnvSession:
         session_file = tmp_path / "env_session.json"
         monkeypatch.setattr("utils.state.ENV_SESSION_PATH", session_file)
         initial = json.loads(json.dumps(ENV_SESSION_DEFAULT))
-        save_env_session(initial)
+        session_file.write_text(json.dumps(initial), encoding="utf-8")
         newer = {**initial["android"], "status": "starting", "avd": "Pixel_7"}
         update_env_session_sections({"android": newer})
 

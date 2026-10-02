@@ -34,7 +34,7 @@
 .tc-studio .page-header { padding:16px 20px 14px; border-bottom:1px solid var(--line); display:grid; gap:12px; }
 .tc-studio .ph-top { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
 .tc-studio .page-title { font-size:20px; font-weight:700; letter-spacing:-.02em; margin:0; }
-.tc-studio .crumb { font-size:12px; color:var(--text3); }
+
 .tc-studio .suite-select { background:var(--card); border:1px solid var(--line); border-radius:var(--radius-sm); padding:5px 8px; font-weight:600; }
 /* 스위트 목록: 브라우저 기본 목록(macOS는 선택 항목 기준으로 위로 펼쳐짐) 대신 디자인에 맞춘 목록을 항상 아래로 연다.
    지원하지 않는 브라우저는 기본 목록을 그대로 쓴다 */
@@ -52,8 +52,7 @@
   .tc-studio .suite-select option:checked { color:var(--text); font-weight:600; background:var(--accent-bg); }
   .tc-studio .suite-select option::checkmark { order:1; margin-left:auto; color:var(--accent); }
 }
-.tc-studio .demo-box { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text3); border:1px dashed var(--line2); border-radius:var(--radius-sm); padding:3px 6px; }
-.tc-studio .demo-box select { background:transparent; border:none; font-size:11px; color:var(--text2); }
+
 .tc-studio .wizard { display:flex; align-items:center; overflow-x:auto; scrollbar-width:none; }
 .tc-studio .wizard::-webkit-scrollbar { display:none; }
 .tc-studio .step-item { display:flex; align-items:center; gap:7px; background:none; border:none; padding:4px 2px; cursor:pointer; flex-shrink:0; }
@@ -89,7 +88,7 @@
 .tc-studio .icon-btn:hover { background:var(--card2); color:var(--text); }
 .tc-studio .pill { display:inline-flex; align-items:center; gap:4px; padding:1px 8px; border-radius:10px; font-size:10.5px; font-weight:600; white-space:nowrap; line-height:18px; }
 .tc-studio .pill::before { content:""; width:6px; height:6px; border-radius:50%; background:currentColor; }
-.tc-studio .pill.nodot::before { display:none; }
+
 .tc-studio .st-draft { background:var(--accent-soft); color:var(--accent); }
 .tc-studio .st-approved { background:var(--ok-bg); color:var(--ok); }
 .tc-studio .st-imported { background:var(--card3); color:var(--text3); }
@@ -108,8 +107,7 @@
 .tc-studio .chip-select.p1 { color:var(--warn); }
 .tc-studio .chip-select.p2 { color:var(--info); }
 .tc-studio .chip-select.p3 { color:var(--text2); }
-.tc-studio .chip-select.yweb { color:var(--info); }
-.tc-studio .chip-select.yapp { color:var(--accent); }
+
 .tc-studio .chip-select.n { color:var(--text2); }
 .tc-studio .chip-select.empty { color:var(--text3); font-style:italic; }
 .tc-studio .chip-select.result-pass { color:var(--ok); background-color:var(--ok-bg); }
@@ -303,13 +301,7 @@
 .tc-studio .seg button[aria-pressed="true"] { background:var(--accent); color:var(--on-accent); }
 .tc-studio .regen { display:grid; gap:6px; }
 .tc-studio .rv-right { padding:14px; display:grid; gap:12px; align-content:start; background:var(--bg2); }
-.tc-studio .figma-frame { aspect-ratio: 9 / 12; max-width:100%; width:220px; border-radius:18px; border:1px solid var(--line); background:var(--surface); position:relative; overflow:hidden; margin:0 auto; }
-.tc-studio .figma-frame .fbanner { position:absolute; left:10px; right:10px; top:38px; height:74px; border-radius:10px; background:repeating-var(--surface); border:1.5px solid var(--accent); display:grid; place-items:center; font-size:10px; color:var(--accent); font-weight:700; }
-.tc-studio .figma-frame .find { position:absolute; left:0; right:0; top:118px; display:flex; justify-content:center; gap:4px; }
-.tc-studio .figma-frame .find i { width:5px; height:5px; border-radius:50%; background:var(--text3); }
-.tc-studio .figma-frame .find i:first-child { background:var(--text); width:12px; border-radius:3px; }
-.tc-studio .figma-frame .fbar { position:absolute; left:10px; right:10px; height:10px; border-radius:3px; background:var(--card3); }
-.tc-studio .figma-frame .fhead { position:absolute; left:10px; top:14px; font-size:10px; font-weight:700; color:var(--text2); }
+
 .tc-studio .gap-list { list-style:none; margin:0; padding:0; display:grid; gap:6px; }
 .tc-studio .gap-list li { display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center; padding:8px 10px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--card); font-size:12px; }
 .tc-studio .gap-list li.gap-more { display:block; padding:6px 10px; background:none; }
@@ -480,10 +472,10 @@
 .tc-studio .log{background:var(--log-bg);font-size:12px;line-height:1.7}
 .tc-studio .review{margin-top:20px;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--surface)}
 .tc-studio .dcard{border-radius:8px;background:var(--surface)}
-.tc-studio .dcard-title{font-size:15px}.tc-studio .draft-grid{font-size:13px}
+.tc-studio .draft-grid{font-size:13px}
 .tc-studio .exp{gap:20px}.tc-studio .fmt{border-radius:6px;background:var(--surface-sub)!important;color:var(--text-2)!important;font:12px var(--font-mono)}
 .tc-studio .warnbox{background:var(--warn-bg);border-color:var(--border);color:var(--warn);font-size:13px;line-height:1.7}
-.tc-studio .fname,.tc-studio .md-content{background:var(--log-bg);font-family:var(--font-mono)}
+.tc-studio .fname {background:var(--log-bg);font-family:var(--font-mono)}
 .tc-studio .exp-card{gap:16px}.tc-studio .radio{font-size:14px}
 .tc-studio .funnel .f{font-size:13px}.tc-studio .md-preview{background:var(--surface);border-color:var(--border)}
 @media(max-width:1100px){.tc-studio .gen{grid-template-columns:minmax(0,1fr)}}

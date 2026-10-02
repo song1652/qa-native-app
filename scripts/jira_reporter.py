@@ -11,7 +11,6 @@ import json
 import mimetypes
 import os
 import re
-import sys
 import urllib.error
 import urllib.request
 from datetime import datetime
@@ -188,7 +187,6 @@ def create_issue(client: JiraClient, config: dict, failure: dict,
                  platform: str, video: str,
                  screenshot_path: "Path | None" = None) -> str:
     file_path = failure.get("file", "")
-    test_name = failure.get("test", "unknown")
     body = {"fields": {
         "project": {"key": config["project_key"]},
         "issuetype": {"id": config["issue_type_id"]},

@@ -257,14 +257,6 @@ function _pollRunAllBatch(batchId){
   poll();
 }
 
-function _isHealLogActive(healRound){
-  // run_heal_1.txt ~ run_heal_3.txt 존재 여부로 heal 활성 감지
-  return fetch('/api/run_log', {method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({log: 'run_heal_' + healRound + '.txt'})})
-    .then(function(r){ return r.json(); })
-    .then(function(d){ return d.ok && d.log.length > 0; })
-    .catch(function(){ return false; });
-}
 
 function _pollRunAllStep(idx, platform){
   var MAIN_STEPS = _runAllMainSteps;

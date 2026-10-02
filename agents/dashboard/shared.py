@@ -28,12 +28,11 @@ ENV_SESSION_PATH     = PROJECT_ROOT / "state" / "env_session.json"
 REPORTS_DIR          = PROJECT_ROOT / "tests" / "reports"
 GENERATED_DIR        = PROJECT_ROOT / "tests" / "generated"
 SCREENSHOTS_DIR      = PROJECT_ROOT / "reports" / "screenshots"
-IMPORT_DIR           = PROJECT_ROOT / "import"
 LOGS_DIR             = PROJECT_ROOT / "logs"
 CAPTURES_DIR         = PROJECT_ROOT / "state" / "captures"
 TESTCASES_DIR        = PROJECT_ROOT / "testcases"
 
-for _d in (LOGS_DIR, REPORTS_DIR, SCREENSHOTS_DIR, IMPORT_DIR, CAPTURES_DIR):
+for _d in (LOGS_DIR, REPORTS_DIR, SCREENSHOTS_DIR, CAPTURES_DIR):
     _d.mkdir(parents=True, exist_ok=True)
 
 

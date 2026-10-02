@@ -53,14 +53,9 @@ testcases/ios/{group}/     → tests/generated/ios/{group}/
 
 대시보드에서 Android를 선택하면 `testcases/android`만, iOS를 선택하면 `testcases/ios`만 실행 대상으로 노출합니다. 플랫폼 루트는 생성 결과에 다시 중첩하지 않습니다.
 
-## Excel → Markdown 변환 규칙 (`scripts/import_excel.py`)
+## TC Markdown 형식 (`scripts/import_excel.py`)
 
-화면 메뉴는 없고(엑셀 가져오기는 TC 스튜디오), 변환 함수와 `/api/import/*` API만 호환용으로 남아 있습니다. TC 스튜디오의 Markdown 내보내기도 같은 `_render_markdown` 형식을 씁니다.
-
-- 입력 파일은 `import/*.xlsx`에 두며 원본을 수정하지 않습니다. 필수 매핑은 `tc_id`, `title`, `precondition`, `steps`, `expected`입니다.
-- Android는 `testcases/android/{sheet}/`, iOS는 `testcases/ios/{sheet}/`에 별도 Markdown을 생성합니다. 시트명 자체가 `android` 또는 `ios`이면 같은 OS에만, 플랫폼 루트 바로 아래에 생성합니다.
-- 두 플랫폼이면 파일을 각각 만들고 각 Markdown의 `## 플랫폼`에는 하나의 OS만 기록합니다.
-- 기본 정책은 `skip-conflict`(기존 Markdown 보존), 명시적 `overwrite`만 덮어씁니다.
+`import_excel._render_markdown`이 `02_generate.parse_tc_blocks`가 읽는 `## 테스트 케이스 N` 블록 형식을 만드는 **유일한** 함수입니다. TC 스튜디오 Markdown 내보내기(`scripts/_tc_md_export.py`)가 이 함수를 씁니다. 형식을 바꾸면 `tests/unit/test_generate_markdown_parsing.py`로 왕복을 확인합니다.
 
 ## 화면 캡처로 작성 (Capture)
 
@@ -156,7 +151,7 @@ python scripts/05_execute.py --platform ios
 config/locators.json       # locator source of truth
 config/{devices,screens,test_data}.json
 scripts/                   # 분석·생성·린트·실행·힐링
-import/                    # Excel 직접 변환 입력 (호환용)
+import/                    # export_testcases_excel.py 출력 (Markdown → Excel)
 testcases/{android,ios}/   # OS별 입력 TC Markdown
 tests/generated/{android,ios}/ # OS별 생성 코드
 tests/reports/             # 실행 리포트

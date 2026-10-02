@@ -25,7 +25,6 @@
       flex-shrink: 0;
       background: var(--surface);
 
-
       border-bottom: 1px solid var(--border-glass);
       padding: 0 24px;
       height: 54px;
@@ -58,29 +57,9 @@
       white-space: nowrap;
     }
 
-    .live-indicator {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 10px;
-      font-weight: 600;
-      letter-spacing: 0.8px;
-      text-transform: uppercase;
-      color: var(--approved-color);
-      background: var(--pass-bg);
-      border: 1px solid var(--border);
-      padding: 3px 12px 3px 9px;
-      border-radius: 16px;
-    }
+    
 
-    .live-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--approved-color);
-
-      box-shadow:none;
-    }
+    
 
     .reset-btn {
       font-size: 11px;
@@ -101,11 +80,7 @@
       border-color: var(--revision-border);
     }
 
-    .header-meta {
-      font-size: 12px;
-      color: var(--text-dim);
-      white-space: nowrap;
-    }
+    
 
     /* ── Layout ── */
     .body-wrap {
@@ -120,7 +95,6 @@
       width: 260px;
       flex-shrink: 0;
       background: var(--surface);
-
 
       border-right: 1px solid var(--border-glass);
       display: flex;
@@ -216,17 +190,9 @@
     }
 
     /* 상태 없는 순수 내비 항목용 — 닷 대신 동일 크기 투명 공간 */
-    .sidebar-dot-spacer {
-      width: 7px;
-      height: 7px;
-      flex-shrink: 0;
-    }
+    
 
-    .sidebar-dot.active-run {
-      background: var(--pending-color);
-      border-color: var(--pending-color);
-      box-shadow:none;
-    }
+    
 
     .sidebar-dot.done {
       background: var(--approved-color);
@@ -239,11 +205,7 @@
       border-color: var(--border);
     }
 
-    .sidebar-dot.waiting-vote {
-      background: var(--pending-color);
-      border-color: var(--pending-color);
-      box-shadow:none;
-    }
+    
 
     .sidebar-name {
       flex: 1;
@@ -253,10 +215,7 @@
       font-size: 14px;
     }
 
-    .sidebar-step {
-      font-size: 11px;
-      color: var(--text-dim);
-    }
+    
 
     /* ── Content area ── */
     .content-wrap {

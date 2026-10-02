@@ -159,40 +159,9 @@ async function runSelectedGenerated(){
   await _obsRenderCompletedQuickRun(_quickPlatform);
 }
 
-async function toggleQuickCaseDetail(button){
-  if(!button) return;
-  var caseWrap=button.closest('.quick-folder-case');
-  var detail=caseWrap?caseWrap.querySelector('.quick-case-detail'):button.querySelector('.quick-case-detail');
-  if(!detail) return;
-  var openTarget=caseWrap||button;
-  var isOpen=openTarget.classList.toggle('open');
-  if(!isOpen) return;
-  if(button.dataset.loaded==='true') return;
-  try{
-    var query='?platform='+encodeURIComponent(button.dataset.platform)+'&file='+encodeURIComponent(button.dataset.file);
-    var res=await fetch('/api/testcase'+query); var data=await res.json();
-    detail.textContent=data.ok?data.content:(data.error||'Markdown TC를 불러오지 못했습니다.');
-    button.dataset.loaded='true';
-  }catch(_){ detail.textContent='Markdown TC를 불러오지 못했습니다.'; }
-}
 
-function toggleQuickFolderResult(button){
-  var folder=button&&button.closest('.quick-folder-result');
-  if(folder) folder.classList.toggle('open');
-}
 
-function filterQuickFolderCases(button,filter){
-  var folder=button&&button.closest('.quick-folder-result');
-  if(!folder) return;
-  folder.querySelectorAll('.quick-folder-filter').forEach(function(item){item.classList.toggle('active',item===button);});
-  folder.querySelectorAll('.quick-folder-case').forEach(function(item){
-    item.classList.toggle('hidden',filter!=='all'&&item.dataset.result!==filter);
-  });
-}
 
-function formatQuickCaseName(file){
-  return String(file||'').split('/').pop().replace(/\.py$/,'').replace(/^tc_?\d+_/i,'').replace(/^ApiDemos_/i,'').replace(/_/g,' ');
-}
 
 function setupQuickCasePagination(root){
   if(!root) return;
@@ -247,10 +216,6 @@ function clearQuickLog(){
   try{localStorage.removeItem('qa-native-app.quick-log.'+_quickPlatform);localStorage.removeItem('qa-native-app.quick-live-log.'+_quickPlatform);}catch(_){ }
 }
 
-async function runGeneratedFile(platform, file){
-  var noHeal=document.getElementById('generated-heal')?.checked === true;
-  return executeGeneratedFile(platform,file,!noHeal);
-}
 function executeGeneratedFile(platform,file,heal,folder){
   return new Promise(async function(resolve){
     try{

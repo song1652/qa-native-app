@@ -2,7 +2,7 @@
 routes/api.py — 일반 GET 엔드포인트.
 
 /api/state, /api/status, /api/reports, /api/generated, /api/testcase,
-/api/screenshots, /api/tc-folders, /api/import/files, /api/import/sheets,
+/api/screenshots, /api/tc-folders,
 /api/check/mjpeg, /api/check/appium, /reports/{path}, /screenshots/{path}, /
 """
 from __future__ import annotations
@@ -20,7 +20,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from shared import (  # noqa: E402
     HERE,
     GENERATED_DIR,
-    IMPORT_DIR,
     PROJECT_ROOT,
     REPORTS_DIR,
     SCREENSHOTS_DIR,
@@ -29,9 +28,7 @@ from shared import (  # noqa: E402
     _running,
 )
 from utils.state import (  # noqa: E402
-    is_capture_active,
     list_generated,
-    list_import_files,
     list_reports,
     list_screenshots,
     list_tc_folders,
@@ -199,31 +196,6 @@ async def get_tc_folders(platform: str | None = None):
     if platform is not None and platform not in ("android", "ios"):
         return JSONResponse({"ok": False, "error": "invalid platform"}, status_code=400)
     return JSONResponse({"folders": list_tc_folders(platform)})
-
-
-@router.get("/api/import/files")
-async def get_import_files():
-    return JSONResponse({"files": list_import_files()})
-
-
-@router.get("/api/import/sheets")
-async def get_import_sheets(file: str = ""):
-    filename = file
-    if filename != Path(filename).name or not filename.endswith(".xlsx"):
-        return JSONResponse(
-            {"ok": False, "error": "허용되지 않은 Excel 파일명입니다"}, status_code=400
-        )
-    source = (IMPORT_DIR / filename).resolve()
-    if not source.is_file() or not source.is_relative_to(IMPORT_DIR.resolve()):
-        return JSONResponse(
-            {"ok": False, "error": "Excel 파일을 찾을 수 없습니다"}, status_code=404
-        )
-    try:
-        sys.path.insert(0, str(PROJECT_ROOT / "scripts"))
-        from import_excel import list_sheets
-        return JSONResponse({"ok": True, "sheets": list_sheets(source)})
-    except Exception as exc:
-        return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
 
 
 @router.get("/reports/{name:path}")

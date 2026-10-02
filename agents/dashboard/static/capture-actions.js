@@ -1,10 +1,3 @@
-function csToggleRecord() {
-  _cs.recording = !_cs.recording;
-  var btn = document.getElementById('cs-record-btn');
-  btn.textContent = _cs.recording ? '⏸ 일시정지' : '● 녹화 시작';
-  btn.style.color = _cs.recording ? 'var(--fail)' : '';
-  btn.style.borderColor = _cs.recording ? 'var(--fail)' : '';
-}
 
 function csSendBack() {
   fetch('/capture/back', {
@@ -277,7 +270,7 @@ function csSaveTC() {
   });
 }
 
-function csShowGenerateBtn(platform) {} // 자동 생성으로 대체 — 수동 버튼 불필요
+ // 자동 생성으로 대체 — 수동 버튼 불필요
 
 // _cs.actions를 서버 코드 생성 포맷으로 변환
 function _csActionsForCodeGen() {
@@ -366,7 +359,6 @@ function csLoadGeneratedFile(platform) {
     }).catch(function(){});
 }
 
-function csRunGenerate(platform, btn) { csAutoGenerate(platform); }
 
 // 드라이버 죽음 상태에서 setup 화면에서 재실행
 function csReLaunchFromSetup() {
@@ -394,7 +386,7 @@ function csReLaunchFromSetup() {
     _cs.launching = false;
     if(d.ok){
       document.getElementById('cs-setup').style.display='none';
-      document.getElementById('cs-workspace').style.display='block'; setTimeout(function(){ csStartMirrorObserver(); csSyncPanelHeight(); }, 100);
+      document.getElementById('cs-workspace').style.display='block';
       document.getElementById('cs-session-badge').style.display='';
       csRenderTimeline();
       csMirrorConnect();
@@ -468,53 +460,9 @@ function csStatusMsg(msg) {
   if(el){ el.textContent = msg; }
 }
 
-// ── Healing 재확인: Locator 검토 재진입 ──────────────────────
-async function csOpenHealReview(platform, testFile) {
-  // 1. Capture Studio 탭으로 이동
-  var captureItem = document.querySelector('.sidebar-item[data-view=capture]');
-  selectView('capture', captureItem);
-  if(!_csInitialized){ _csInitialized=true; await csInit(); }
-
-  // 2. 재확인 모드 표시
-  var badge = document.getElementById('cs-session-badge');
-  if(badge){ badge.textContent=' Locator 재확인 모드'; badge.style.display=''; }
-
-  // 3. 해당 TC의 actions.json 로드 시도
-  //    파일명에서 TC 슬러그 추출: tests/generated/android/settings/tc_001_xxx.py
-  var tcFile = testFile.replace(/^.*\//, '').replace(/\.py$/, '') + '.md';
-  var folder = testFile.includes('/') ? testFile.split('/').slice(0,-1).join('/') : '';
-
-  // 4. 워크스페이스 표시 (세션 없어도 재확인 모드 진입)
-  document.getElementById('cs-setup').style.display='none';
-  document.getElementById('cs-workspace').style.display='block'; setTimeout(function(){ csStartMirrorObserver(); csSyncPanelHeight(); }, 100);
-  // 활성 세션이 있으면 미러링 자동 시작
-  if(_cs.sessionId) { setTimeout(function(){ csMirrorConnect(); csRefreshHierarchy(); }, 500); }
-
-  // 5. 재확인 안내 메시지
-  var saveStatus = document.getElementById('cs-save-status');
-  if(saveStatus){
-    saveStatus.textContent = ' 재확인 모드: ' + testFile + ' — 실패한 Locator를 선택하고 승인하세요.';
-    saveStatus.style.color = 'var(--accent)';
-  }
-
-  // 6. 4단계 Locator 검토 패널 강조
-  var locatorsEl = document.getElementById('cs-locators');
-  if(locatorsEl){
-    locatorsEl.innerHTML = '<div style="color:var(--accent);font-weight:600;margin-bottom:8px"> Healing 재확인</div>'
-      + '<div style="color:var(--text2);font-size:11px">파일: ' + esc(testFile) + '</div>'
-      + '<div style="color:var(--text3);font-size:11px;margin-top:6px">Appium 세션을 시작하고 실패 화면으로 이동한 뒤<br>요소를 선택하면 Locator 후보가 여기에 표시됩니다.</div>';
-  }
-
-  // 7. TC 정보 미리 채우기
-  var tcIdEl = document.getElementById('cs-tc-id');
-  var titleEl = document.getElementById('cs-tc-title');
-  if(tcIdEl) tcIdEl.value = testFile.replace(/^.*\//, '').replace(/\.py$/, '');
-  if(titleEl) titleEl.value = platform + ' / ' + testFile.replace(/^.*\//, '');
-}
 
 // Capture Studio 탭 선택 시 초기화
 var _csInitialized = false;
-var _origSelectView = typeof selectView === 'function' ? selectView : null;
 // selectView 함수 후킹 (Capture 탭 선택 감지)
 document.addEventListener('DOMContentLoaded', function(){
   var captureItem = document.getElementById('sidebar-capture');

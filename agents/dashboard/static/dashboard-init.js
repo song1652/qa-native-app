@@ -11,7 +11,7 @@
       updateAutomationStatus(initialPlatform);
     }
   }
-  if(['dashboard','config','import','capture','pipeline','tests','reports','history','tc_studio'].includes(initialView)){
+  if(['dashboard','config','capture','pipeline','tests','reports','history','tc_studio'].includes(initialView)){
     selectView(initialView, document.querySelector('.sidebar-item[data-view="'+initialView+'"]'), {preserveRun:location.hash.indexOf('#obs/')===0});
   }
   initReportControls();
@@ -19,7 +19,7 @@
   renderProgressBar();
   updateStepLocks();
   refreshOverview();
-  await Promise.all([refreshStatus(),refreshGenerated(),refreshReports(),refreshTcFolders(),refreshImportFiles()]);
+  await Promise.all([refreshStatus(),refreshGenerated(),refreshReports(),refreshTcFolders()]);
   loadDevicePicker(getPlatform(), 'pipeline');
   // 관측성 스트립 초기 렌더
   _obsRenderStrips();
@@ -42,7 +42,6 @@
   setInterval(refreshGenerated, 10000);
   setInterval(refreshReports, 15000);
   setInterval(refreshTcFolders, 15000);
-  setInterval(refreshImportFiles, 15000);
   pollEnvStatus();
   setInterval(pollEnvStatus, 3000);
 })();

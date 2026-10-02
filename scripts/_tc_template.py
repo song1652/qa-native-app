@@ -153,19 +153,6 @@ def _letter(col: str) -> int:
     return column_index_from_string(col.replace("열", "").strip().upper())
 
 
-# Import Studio 매핑 프로필의 필드 → TC 스튜디오 필드
-IMPORT_STUDIO_FIELDS = {"title": "feature", "steps": "steps", "expected": "expected",
-                        "precondition": "precondition", "priority": "priority", "group": "l1",
-                        "tc_id": "source_tc_id", "source_tc_id": "source_tc_id", "tags": "tags",
-                        "l1": "l1", "l2": "l2", "l3": "l3"}
-
-
-def mapping_from_import_profile(mappings: dict[str, str]) -> dict[str, str]:
-    """Import Studio 프로필 {"title": "B열", …} → {"feature": "B", …} 원본 ID·태그도 보존한다."""
-    return {IMPORT_STUDIO_FIELDS[k]: v.replace("열", "").strip().upper()
-            for k, v in mappings.items() if k in IMPORT_STUDIO_FIELDS and v}
-
-
 def profile_from_mapping(ws, mapping: dict) -> TemplateProfile:
     """다른 양식 직접 매핑 (Phase 2 G0). mapping: {"header_row": 1, "columns": {"feature": "B", …},
     "result_columns": {"And": "K"}}. 대분류 열이 없으면 시트 이름을 대분류로 쓴다."""

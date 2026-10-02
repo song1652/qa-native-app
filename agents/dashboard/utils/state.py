@@ -22,7 +22,6 @@ from shared import (  # noqa: E402
     REPORTS_DIR,
     GENERATED_DIR,
     SCREENSHOTS_DIR,
-    IMPORT_DIR,
     TESTCASES_DIR,
     PROJECT_ROOT,
     _state_lock,
@@ -180,52 +179,6 @@ def list_screenshots() -> list[dict]:
     )[:30]
 
 
-def list_import_files() -> list[dict]:
-    if not IMPORT_DIR.exists():
-        return []
-    return sorted(
-        [
-            {
-                "name": file.name,
-                "size": file.stat().st_size,
-                "modified_at": datetime.fromtimestamp(file.stat().st_mtime).isoformat(),
-            }
-            for file in IMPORT_DIR.glob("*.xlsx")
-            if file.is_file()
-        ],
-        key=lambda item: item["name"].lower(),
-    )
-
-
-def parse_failed_tcs(log_text: str) -> list[dict]:
-    failures: list[dict] = []
-    lines = log_text.splitlines()
-    i = 0
-    while i < len(lines):
-        line = lines[i]
-        if line.startswith("FAILED "):
-            tc = line.replace("FAILED ", "").split(" - ")[0].strip()
-            error = line.split(" - ", 1)[1].strip() if " - " in line else ""
-            failures.append({"tc": tc, "error": error})
-        if "short test summary info" in line:
-            for j in range(i + 1, min(i + 100, len(lines))):
-                if lines[j].startswith("FAILED"):
-                    tc = lines[j].replace("FAILED ", "").split(" - ")[0].strip()
-                    error = lines[j].split(" - ", 1)[1].strip() if " - " in lines[j] else ""
-                    entry = {"tc": tc, "error": error}
-                    if entry not in failures:
-                        failures.append(entry)
-        i += 1
-    seen: set = set()
-    unique: list[dict] = []
-    for f in failures:
-        key = f["tc"]
-        if key not in seen:
-            seen.add(key)
-            unique.append(f)
-    return unique
-
-
 def list_tc_folders(platform: str | None = None) -> list[str]:
     if not TESTCASES_DIR.exists():
         return []
@@ -324,12 +277,6 @@ def load_env_session() -> dict:
     """env_session.json 로드. 파일 없거나 손상 시 기본값 반환."""
     with _ENV_SESSION_LOCK:
         return load_json(ENV_SESSION_PATH) or copy.deepcopy(ENV_SESSION_DEFAULT)
-
-
-def save_env_session(data: dict) -> None:
-    """env_session.json을 프로세스 내 잠금과 원자적 교체로 저장한다."""
-    with _ENV_SESSION_LOCK:
-        _write_env_session_unlocked(data)
 
 
 def update_env_session_sections(

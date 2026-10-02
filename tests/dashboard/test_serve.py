@@ -11,10 +11,8 @@ sys.path.insert(0, str(_DASHBOARD_DIR))
 
 # state.py에서 유틸리티 함수 import
 from utils.state import (  # noqa: E402
-    parse_failed_tcs,
     list_generated,
     list_reports,
-    list_import_files,
     list_tc_folders,
 )
 
@@ -26,20 +24,12 @@ class _ServeCompat:
     DASHBOARD_HTML = DASHBOARD_HTML
 
     @staticmethod
-    def parse_failed_tcs(log_text):
-        return parse_failed_tcs(log_text)
-
-    @staticmethod
     def list_generated(platform=None):
         return list_generated(platform)
 
     @staticmethod
     def list_reports():
         return list_reports()
-
-    @staticmethod
-    def list_import_files():
-        return list_import_files()
 
     @staticmethod
     def list_tc_folders(platform=None):
@@ -55,35 +45,9 @@ def test_dashboard_html_contains_core_shell():
     assert "/api/status" in serve.DASHBOARD_HTML
     assert "quick-mode') ? _quickPlatform : getPlatform()" in serve.DASHBOARD_HTML
     assert "Promise.all([refreshStatus(),refreshGenerated()])" in serve.DASHBOARD_HTML
-    assert "function importPreviewStats()" in serve.DASHBOARD_HTML
-    assert 'class="is-full-table"' in serve.DASHBOARD_HTML
-    assert 'class="is-reset-btn"' in serve.DASHBOARD_HTML
-    assert "_importPreviewRequest++;_importStudio=" in serve.DASHBOARD_HTML
-    assert "is-stage-mapping" in serve.DASHBOARD_HTML
-    assert "is-stage-preview" in serve.DASHBOARD_HTML
-    assert "setImportPreviewFilter" in serve.DASHBOARD_HTML
+    assert "/static/import-studio.js" not in serve.DASHBOARD_HTML  # 엑셀 가져오기는 TC 스튜디오로 통합
     assert "analyze: null, generate:null" in serve.DASHBOARD_HTML
     assert '<span>TC 스튜디오</span>' in serve.DASHBOARD_HTML
-
-
-def test_parse_failed_tcs_deduplicates_summary_entries():
-    log = """
-FAILED tests/generated/tc_login.py::test_login - AssertionError: denied
-================ short test summary info ================
-FAILED tests/generated/tc_login.py::test_login - AssertionError: denied
-FAILED tests/generated/tc_search.py::test_search - TimeoutError
-"""
-
-    assert serve.parse_failed_tcs(log) == [
-        {
-            "tc": "tests/generated/tc_login.py::test_login",
-            "error": "AssertionError: denied",
-        },
-        {
-            "tc": "tests/generated/tc_search.py::test_search",
-            "error": "TimeoutError",
-        },
-    ]
 
 
 def test_list_generated_groups_test_cases_by_platform(tmp_path, monkeypatch):
@@ -141,21 +105,6 @@ def test_report_listing_ignores_nested_reports(tmp_path, monkeypatch):
     monkeypatch.setattr(state_mod, "REPORTS_DIR", reports)
 
     assert list_reports() == []
-
-
-def test_import_files_include_metadata(tmp_path, monkeypatch):
-    import utils.state as state_mod
-    import_dir = tmp_path / "import"
-    import_dir.mkdir()
-    source = import_dir / "sample.xlsx"
-    source.write_bytes(b"excel")
-    monkeypatch.setattr(state_mod, "IMPORT_DIR", import_dir)
-
-    files = list_import_files()
-
-    assert files[0]["name"] == "sample.xlsx"
-    assert files[0]["size"] == 5
-    assert files[0]["modified_at"]
 
 
 def test_tc_folders_follow_selected_platform(tmp_path, monkeypatch):

@@ -645,12 +645,6 @@ def kill_port(port: int) -> None:
 # ---------------------------------------------------------------------------
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
-# Appium caps에 전달하지 않을 대시보드 전용 필드
-_NON_APPIUM_KEYS: frozenset[str] = frozenset(
-    {"default", "wifi_ip", "team_id", "label", "note"}
-)
-
-
 def get_default_device(platform: str, mode: str) -> dict | None:
     """config/devices.json에서 platform+mode의 default:true 항목 반환.
 
@@ -683,11 +677,6 @@ def get_default_device(platform: str, mode: str) -> dict | None:
 
     # fallback: 첫 번째 항목
     return section[0] if section else None
-
-
-def filter_appium_caps(device: dict) -> dict:
-    """devices.json 항목에서 Appium 비전달 필드를 제거한 caps dict 반환."""
-    return {k: v for k, v in device.items() if k not in _NON_APPIUM_KEYS}
 
 
 # ---------------------------------------------------------------------------

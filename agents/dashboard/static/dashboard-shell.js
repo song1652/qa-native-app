@@ -245,7 +245,6 @@ var _tcStudioMounted = false;
 async function refreshSelectedView(view, options){
   if(view === 'dashboard') return refreshOverview();
   if(view === 'reports') return refreshReports();
-  if(view === 'import') return refreshImportFiles();
   if(view === 'history') return renderRunHistory();
   if(view === 'config') return pollEnvStatus();
   if(view === 'pipeline') return Promise.all([refreshStatus(),refreshTcFolders(),loadDevicePicker(getPlatform(), 'pipeline')]);
@@ -288,7 +287,7 @@ function selectView(view, item, options){
   var pipeline=document.getElementById('view-pipeline');
   var overview=document.getElementById('view-overview');
   var studio=document.getElementById('tc-studio-root');
-  var rightViews=['tests','import','reports','history','config','capture'];
+  var rightViews=['tests','reports','history','config','capture'];
   if(!grid || !pipeline) return;
   if(studio) studio.classList.toggle('view-hidden', view !== 'tc_studio');
   if(overview) overview.classList.toggle('view-hidden', view !== 'dashboard');
@@ -306,7 +305,6 @@ function selectView(view, item, options){
   document.body.classList.toggle('report-mode', view === 'reports');
   document.body.classList.toggle('dashboard-mode', view === 'dashboard');
   if(main) main.classList.toggle('report-view', view === 'reports');
-  if(main) main.classList.toggle('import-view', view === 'import');
   if(main) main.classList.toggle('capture-view', view === 'capture');
   if(main) main.classList.toggle('quick-view', view === 'tests');
   if(main) main.classList.toggle('history-view', view === 'history');

@@ -49,12 +49,11 @@ def test_split_note_reads_system_line_and_keeps_human_note():
 
 def test_external_metadata_roundtrip(tmp_path):
     import openpyxl
-    from _tc_template import analyze_with_mapping, mapping_from_import_profile
+    from _tc_template import analyze_with_mapping
     from _tc_xlsx_export import export_workbook
 
-    columns = mapping_from_import_profile({'tc_id': 'A열', 'title': 'B열', 'steps': 'C열',
-        'expected': 'D열', 'tags': 'E열', 'auto': 'F열', 'priority': 'G열', 'l2': 'H열', 'l3': 'I열'})
-    assert columns['source_tc_id'] == 'A' and columns['tags'] == 'E'
+    columns = {'source_tc_id': 'A', 'feature': 'B', 'steps': 'C', 'expected': 'D', 'tags': 'E',
+               'priority': 'G', 'l2': 'H', 'l3': 'I'}
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = 'Cases'

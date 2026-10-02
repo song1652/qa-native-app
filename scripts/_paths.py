@@ -9,7 +9,6 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 TC_LIBRARY_DIR = PROJECT_ROOT / "state" / "tc_library"
 IMPORT_PROFILES_PATH = TC_LIBRARY_DIR / "_mapping_profiles.json"
-IMPORT_DIR = PROJECT_ROOT / "import"
 IMPORT_SESSIONS_DIR = PROJECT_ROOT / "state" / "import_sessions"
 IMPORT_SNAPSHOTS_DIR = PROJECT_ROOT / "state" / "import_snapshots"
 TESTCASES_DIR = PROJECT_ROOT / "testcases"

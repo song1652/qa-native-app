@@ -13,7 +13,7 @@ from datetime import datetime
 from pathlib import Path
 
 import _paths
-from _state import read_state, update_state
+from _state import update_state
 from _tc_library import (
     LibraryError, _append_history, _backfill_review_source, _entry, load_cases, suite_dir, suite_lock, without_auto,
 )
