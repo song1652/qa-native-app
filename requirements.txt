@@ -12,3 +12,4 @@ uvicorn[standard]>=0.29.0
 websockets>=12.0
 python-multipart>=0.0.9
 pytest-rerunfailures
+httpx2  # FastAPI TestClient (tests/dashboard)

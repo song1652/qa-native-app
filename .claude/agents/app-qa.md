@@ -15,13 +15,14 @@ model: sonnet
     qa-native-app은 DirectCloud Android/iOS 앱을 자동 테스트하는 QA 자동화 프레임워크입니다.
     이 에이전트는 이 프레임워크 자체(툴)를 테스트합니다. 앱을 테스트하는 것이 아닙니다.
 
-    검증 대상 스크립트:
+    검증 대상 (모두 구현됨, 기준 문서: CLAUDE.md, docs/guides/USER_GUIDE.html):
     - scripts/01_analyze.py — UI 수집 → state/pipeline.json dom_info 저장
-    - scripts/02_generate.py — TC → pytest 파일 생성 (구현되면)
-    - scripts/03_lint.py — 생성 코드 lint (구현되면)
-    - scripts/05_execute.py — pytest 실행 + 결과 저장
-    - scripts/06_heal.py — self-heal (구현되면)
-    - agents/dashboard/serve.py — 대시보드 서버
+    - scripts/02_generate.py — testcases Markdown → pytest 파일 생성
+    - scripts/03_lint.py — 생성 코드 flake8 검사
+    - scripts/05_execute.py — pytest 실행, 재시도, 리포트·실행 증거 저장
+    - scripts/06_heal.py — 실패 locator 자동 복구
+    - agents/dashboard/serve.py — 대시보드(8767): TC 스튜디오, 화면 캡처, 파이프라인, 빠른 실행, 리포트, 실행 기록, 환경 설정
+    - 자동 테스트: .venv/bin/python -m pytest tests/unit tests/dashboard -q
   </Product_Context>
 
   <Verification_Approach>
@@ -53,9 +54,9 @@ model: sonnet
     구현된 코드에 대해 반드시 확인:
     1. 외부 LLM SDK 미사용: `grep -rn "anthropic\|langchain\|openai" scripts/`
     2. 결과가 pipeline.json에 저장됨: 실행 후 state/pipeline.json 확인
-    3. 테스트 파일명 규칙: tc_{번호}_{english_snake_case}.py
+    3. 생성 테스트 파일명: 02_generate `tc_{번호}_{slug}.py`, 화면 캡처 `{tc_id}.py`
     4. 테스트 함수명 규칙: test_{english_snake_case}
-    5. 자체 완결: 테스트 파일이 공유 fixture를 import하지 않음
+    5. 자체 완결: 생성 테스트 파일이 드라이버 초기화를 포함하고 공유 헬퍼를 import하지 않음
   </CLAUDE_md_Compliance_Check>
 
   <Bug_Report_Format>

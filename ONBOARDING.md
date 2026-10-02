@@ -9,6 +9,7 @@
 - Node.js 18 이상
 - Android Studio와 Android SDK
 - iOS 테스트를 사용할 경우 Xcode와 iOS Simulator runtime
+- TC 스튜디오 초안 생성을 쓸 경우 Claude Code CLI(`claude`) 설치·로그인
 - 저장소 접근 권한
 
 버전을 확인합니다.
@@ -172,7 +173,7 @@ appium --address 127.0.0.1 --port 4723 \
   --allow-insecure=uiautomator2:adb_screen_streaming
 ```
 
-`adb_screen_streaming` 권한은 Android Capture Studio의 MJPEG 화면에 필요합니다. Appium을 `0.0.0.0`에 바인딩하면 같은 네트워크에서 디바이스 제어 API가 노출될 수 있으므로 사용하지 않습니다.
+`adb_screen_streaming` 권한은 Android 화면 캡처의 MJPEG 화면에 필요합니다. Appium을 `0.0.0.0`에 바인딩하면 같은 네트워크에서 디바이스 제어 API가 노출될 수 있으므로 사용하지 않습니다.
 
 ## 6. QA 작업 흐름
 
@@ -186,6 +187,14 @@ appium --address 127.0.0.1 --port 4723 \
 
 내보낸 결과는 `testcases/{platform}/{group}/tc_*.md`에 저장됩니다.
 
+### 기획 정보로 TC 초안 만들기
+
+1. 터미널에서 `claude -p "hi"`로 Claude Code CLI 로그인을 확인합니다. 대시보드는 `claude -p`를 호출해 초안을 만듭니다.
+2. **TC 스튜디오 → 기획 정보 · 생성**에서 파일·텍스트·URL·Confluence·Figma로 기획 정보를 추가합니다. Confluence·Figma는 **연결 설정**에서 토큰을 먼저 저장합니다.
+3. 시트·분류와 대상 플랫폼을 고르고 **초안 생성**을 누릅니다. 결과는 **초안 검토**에서 승인·반려합니다.
+
+모델을 고정하려면 `TCS_CLAUDE_MODEL=claude-opus-5-5 .venv/bin/python agents/dashboard/serve.py`처럼 서버를 시작합니다. 비우면 CLI 기본 모델을 씁니다. 그 밖의 설정은 `TCS_CLAUDE_BIN`(실행 파일 경로), `TCS_CHUNK_TIMEOUT`(묶음당 제한 초, 기본 300)입니다.
+
 ### 화면 캡처로 작성에서 TC 만들기
 
 1. **화면 캡처로 작성**에서 플랫폼, 디바이스, 앱을 선택하고 **환경 확인** 후 세션을 시작합니다.
@@ -196,7 +205,7 @@ appium --address 127.0.0.1 --port 4723 \
 
 **실행 대상은 선택한 종류를 유지합니다.** 에뮬레이터·시뮬레이터가 꺼져 있으면 연결된 실기기로 대신 실행하지 않습니다. 환경 설정에서 해당 가상 기기를 시작하거나 실행 대상을 직접 실기기로 바꾼 뒤 **환경 확인**을 다시 합니다. 세션 시작 후에는 동일한 기기 ID로 앱 실행·미러링·재연결을 진행합니다.
 
-Android는 MJPEG 스트림을, iOS는 XCUITest 스크린샷 폴링을 사용합니다. 같은 플랫폼에서는 Capture Studio 세션과 테스트 실행을 동시에 사용하지 않습니다.
+Android는 MJPEG 스트림을, iOS는 XCUITest 스크린샷 폴링을 사용합니다. 같은 플랫폼에서는 화면 캡처 세션과 테스트 실행을 동시에 사용하지 않습니다.
 
 메뉴를 옮겨도 세션은 유지됩니다. 테스트를 실행하려면 Capture 화면의 **세션 종료**를 누릅니다. 30분 비활동 시 세션은 자동 비활성화되지만 기록은 보존됩니다. 드라이버가 끊긴 경우에는 **앱 재실행**으로 다시 연결합니다. 진행 표시는 **세션 설정 → 동작 기록 → Locator 검토 → 저장 및 생성**의 네 단계입니다.
 
@@ -264,7 +273,7 @@ iOS는 `--platform ios --mode simulator`를 사용합니다.
 
 ## 8. Nova MCP 연결 (선택)
 
-Claude Code에서 Capture Studio 세션을 제어하려면 `.claude/settings.json`에 서버를 등록합니다.
+Claude Code에서 화면 캡처 세션을 제어하려면 `.claude/settings.json`에 서버를 등록합니다.
 
 ```json
 {
@@ -276,7 +285,7 @@ Claude Code에서 Capture Studio 세션을 제어하려면 `.claude/settings.jso
 }
 ```
 
-Claude Code를 다시 시작하고 Capture Studio 세션을 연 뒤 screenshot, hierarchy, tap, scroll, input, back, screen info, TC 생성 도구를 사용할 수 있습니다. 활성 세션이 없으면 `session_not_active`가 반환됩니다.
+Claude Code를 다시 시작하고 화면 캡처 세션을 연 뒤 screenshot, hierarchy, tap, scroll, input, back, screen info, TC 생성 도구를 사용할 수 있습니다. 활성 세션이 없으면 `session_not_active`가 반환됩니다.
 
 ## 9. 설치 및 코드 검증
 
@@ -312,7 +321,7 @@ pytest -q tests --ignore=tests/generated
 
 - `logs/`: Appium, 가상 기기, 테스트 실행 로그
 - `state/runs/`: 영상·시스템 로그·스크린샷·manifest
-- `state/captures/`: Capture Studio 세션 자료
+- `state/captures/`: 화면 캡처 세션 자료
 - `state/running_procs.json`: 대시보드가 관리하는 프로세스 정보
 - `tests/reports/`: 저장된 HTML 리포트 (`reports/screenshots/`는 예전 산출물의 호환 경로)
 
@@ -326,10 +335,10 @@ pytest -q tests --ignore=tests/generated
 | Android 화면이 보이지 않음 | Appium 시작 옵션, 8093 포트 | Appium을 `adb_screen_streaming` 허용 옵션으로 재시작합니다. |
 | 에뮬레이터가 `offline` | `adb devices`, 부팅 완료 값 | 환경 설정에서 중지 후 다시 시작하고 `adb shell getprop sys.boot_completed`가 `1`인지 확인합니다. |
 | iOS 세션 생성이 오래 걸림 | 첫 WDA 빌드 | Xcode 라이선스와 runtime을 확인하고 첫 연결은 30초 이상 기다립니다. |
-| iOS 세션 충돌 | 열린 XCUITest 세션 | 같은 Simulator의 Capture Studio 세션을 종료한 뒤 테스트를 실행합니다. |
+| iOS 세션 충돌 | 열린 XCUITest 세션 | 같은 Simulator의 화면 캡처 세션을 종료한 뒤 테스트를 실행합니다. |
 | Appium이 비정상 종료됨 | 환경 설정 상태 | Appium 카드에서 다시 시작합니다. 상태 폴링이 종료된 PID를 제거합니다. |
 | 대시보드 재시작 후 상태가 이상함 | 기록 PID와 실제 프로세스 | 대시보드를 다시 시작합니다. 살아 있는 PID만 복원됩니다. |
 | 디스크 사용량 증가 | `state/runs/`와 보존 설정 | 보존 한도를 낮추거나 대시보드에서 필요 없는 run을 삭제합니다. |
-| `collected 0 items` | 선택한 생성 테스트 폴더 | TC Studio에서 승인 TC를 Markdown으로 내보내거나 Capture Studio로 TC를 만든 뒤 다시 실행합니다. |
+| `collected 0 items` | 선택한 생성 테스트 폴더 | TC 스튜디오에서 승인 TC를 Markdown으로 내보내거나 화면 캡처로 TC를 만든 뒤 다시 실행합니다. |
 
 추가 사용법은 [README.md](README.md)와 [docs/guides/USER_GUIDE.html](docs/guides/USER_GUIDE.html)을 참고하세요.

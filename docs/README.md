@@ -29,4 +29,3 @@
 ## 화면 이미지와 촬영 기준
 
 - [현재 제품 화면](images/user-guide/README.md): 현재 밝은 UI의 실제 전체 화면 캡처와 출처
-- [환경 설정 이미지 설명](images/env-setup/README.md): 환경 설정 상태별 캡처와 실제 화면·브라우저 예시 상태 구분

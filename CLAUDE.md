@@ -8,7 +8,8 @@
 - TC 스튜디오는 웹 저장소(`/Users/junghoyoung/qa-native-fixed`, 기준 `f4e7a6b`)를 **참고만 해서 이 저장소에 이식**한다. 웹 저장소는 읽기 전용 — 수정·커밋·push·서버 재시작 금지.
 - 대시보드 `http://localhost:8767`의 TC 스튜디오 메뉴는 웹 원본과 같은 독립 화면 `/tc-studio`로 이동한다. 여기에서 엑셀 TC 가져오기, 기획 자료 기반 초안 생성, 검토, 엑셀·Markdown 내보내기를 수행한다. API는 `agents/dashboard/routes/tc_studio.py`, 데이터 처리는 `scripts/_tc_*.py`, 저장소는 `state/tc_library/`다.
 - 앱 스위트의 Android/iOS 결과는 `results`에 따로 저장한다. Markdown은 `scripts/_tc_md_export.py`가 기존 `scripts/import_excel.py:_render_markdown` 형식으로 만들어 `testcases/{android,ios}/{group}/`에 쓴다.
-- 엑셀 가져오기는 TC Studio에 통합한다. 예전 `/?view=import` 주소는 TC Studio 가져오기 모달로 연결하고, 기존 `/api/import/*` 변환 API는 호환을 위해 유지한다. 테스트에서는 `state/tc_library/`, `testcases/`, `import/`의 실제 데이터를 사용하지 않는다.
+- 엑셀 가져오기는 TC 스튜디오에 통합되어 있다. 예전 `/?view=import` 주소는 서버가 `/tc-studio?import=1`(가져오기 모달)로 보낸다. 테스트에서는 `state/tc_library/`, `testcases/`, `import/`의 실제 데이터를 사용하지 않는다.
+- 초안 생성은 `claude -p` CLI를 subprocess로 호출한다(`scripts/_tc_generate.py`). 대시보드를 띄운 계정에서 `claude`가 설치·로그인되어 있어야 한다. 환경 변수: `TCS_CLAUDE_MODEL`(예: `claude-opus-5-5`, 비우면 CLI 기본 모델), `TCS_CLAUDE_BIN`(claude 실행 파일 경로), `TCS_CHUNK_TIMEOUT`(섹션당 제한 초, 기본 300).
 
 ## 대시보드 디자인과 서버
 
@@ -52,24 +53,18 @@ testcases/ios/{group}/     → tests/generated/ios/{group}/
 
 대시보드에서 Android를 선택하면 `testcases/android`만, iOS를 선택하면 `testcases/ios`만 실행 대상으로 노출합니다. 플랫폼 루트는 생성 결과에 다시 중첩하지 않습니다.
 
-## 이전 Excel 직접 변환 API (호환용)
+## Excel → Markdown 변환 규칙 (`scripts/import_excel.py`)
 
-- 흐름: `파일·시트 선택 → 열 매핑 → 미리보기 → 안전한 반영 → 완료`
-- 입력 파일은 `import/*.xlsx`에 두며 원본을 수정하지 않습니다.
-- 파일을 선택한 뒤 카드 내부에서 하나 이상의 시트를 선택해야 합니다.
-- 필수 매핑은 `tc_id`, `title`, `precondition`, `steps`, `expected`입니다.
-- 선택한 Excel 열 매핑은 `scripts/import_excel.py` 변환에 실제로 전달되어야 합니다.
-- `/api/import/preview`는 현재 매핑과 플랫폼을 기준으로 상태 집계와 전체 TC 상세 데이터를 반환하며, 열 매핑 화면 변경 시 다시 호출합니다.
-- 미리보기 단계는 `전체/추가/업데이트/충돌/오류/동일` 필터와 전체 TC 상세 테이블을 제공하며 열 매핑 화면에는 중복 미니 테이블을 노출하지 않습니다.
-- Android는 `testcases/android/{sheet}/`, iOS는 `testcases/ios/{sheet}/`에 별도 Markdown을 생성합니다.
-- 단, 시트명 자체가 `android` 또는 `ios`이면 같은 OS에만 반영하고 플랫폼 루트 바로 아래에 생성하여 중첩 플랫폼 폴더를 만들지 않습니다.
-- 두 플랫폼을 선택하면 플랫폼별 파일을 각각 생성하고 각 Markdown의 `## 플랫폼`에는 하나의 OS만 기록합니다.
-- 파일명 충돌은 시트별 하위 폴더로 방지합니다.
-- 안전한 반영의 기본 정책은 `skip-conflict`이며 기존 Markdown을 보존합니다. 명시적으로 `overwrite`를 선택하면 동일 경로 파일을 덮어씁니다.
+화면 메뉴는 없고(엑셀 가져오기는 TC 스튜디오), 변환 함수와 `/api/import/*` API만 호환용으로 남아 있습니다. TC 스튜디오의 Markdown 내보내기도 같은 `_render_markdown` 형식을 씁니다.
 
-## Capture Studio
+- 입력 파일은 `import/*.xlsx`에 두며 원본을 수정하지 않습니다. 필수 매핑은 `tc_id`, `title`, `precondition`, `steps`, `expected`입니다.
+- Android는 `testcases/android/{sheet}/`, iOS는 `testcases/ios/{sheet}/`에 별도 Markdown을 생성합니다. 시트명 자체가 `android` 또는 `ios`이면 같은 OS에만, 플랫폼 루트 바로 아래에 생성합니다.
+- 두 플랫폼이면 파일을 각각 만들고 각 Markdown의 `## 플랫폼`에는 하나의 OS만 기록합니다.
+- 기본 정책은 `skip-conflict`(기존 Markdown 보존), 명시적 `overwrite`만 덮어씁니다.
 
-대시보드의 Capture Studio 탭에서 실제 앱 화면을 보며 요소를 선택하고 TC를 직접 생성합니다.
+## 화면 캡처로 작성 (Capture)
+
+대시보드의 **화면 캡처로 작성** 메뉴(`/?view=capture`)에서 실제 앱 화면을 보며 요소를 선택하고 TC를 직접 생성합니다.
 
 **구성 요소:**
 - FastAPI 세션 API, 플랫폼별 세션 충돌 방지, Android MJPEG/iOS polling 화면, 세션 설정 화면
@@ -80,10 +75,10 @@ testcases/ios/{group}/     → tests/generated/ios/{group}/
 - **iOS 화면 미러링**: XCUITest + `GET /capture/screenshot` polling (1.2초), 25회 실패 후 에러 표시 (WDA 안정화 30초 여유)
 - **화면 전환 자동 감지**: `GET /capture/page_source_hash` 4초 폴링 → hash 변경 시 hierarchy 자동 새로고침 (쿨다운 3초)
 - **back 액션**: 실행 후 1.2초 뒤 hierarchy 자동 새로고침
-- **세션 복구**: mirror 에러 시 "🔄 세션 재연결" 버튼 → `csReLaunch()` → Back 없이 드라이버 재시작
+- **세션 복구**: mirror 에러 시 "세션 재연결" 버튼 → `csReLaunch()` → Back 없이 드라이버 재시작
 - **Nova MCP** (`routes/mcp.py`): HTTP+SSE MCP 서버, JSON-RPC 2.0, 툴 9종. Claude Code에서 MCP 툴 호출 시 자동 연결, 대시보드 MCP ON/OFF 칩으로 상태 확인·수동 해제
 - **TC 생성 소스 필터**: `/capture/generate_from_actions`에 `source_filter` 파라미터 추가 (`all`|`user`|`mcp`, 기본 `all`). `screenshot`·`hierarchy` 등 비실행 타입은 자동 제거. 생성 TC docstring에 출처(user/mcp/mixed)·액션 수 표기
-- **Livetail**: Livetail 버튼이 Capture Studio 세션 없이도 항상 표시. 페이지 로드 시 WebSocket 자동 연결
+- **Livetail**: Livetail 버튼이 캡처 세션 없이도 항상 표시. 페이지 로드 시 WebSocket 자동 연결
 - **파이프라인 Livetail 연동**: `pipeline.py`의 각 단계 시작·완료가 Livetail에 `source: pipeline` 이벤트로 실시간 표시 (단건 `/api/run` 포함)
 
 **TC 파일 명명 규칙:**
@@ -100,8 +95,8 @@ testcases/ios/{group}/     → tests/generated/ios/{group}/
 **제약 및 주의사항:**
 - Android: MJPEG 스트리밍은 포트 8093, Appium 서버에 `--allow-insecure=uiautomator2:adb_screen_streaming` 플래그 필요 (Appium 3.x)
 - iOS: XCUITest 세션에는 `bundle_id`와 `device_name`(Simulator 이름)이 필요합니다. `xcrun simctl list`로 정확한 이름 확인
-- **iOS XCUITest 세션 충돌**: 시뮬레이터당 세션 1개만 허용. Capture Studio iOS 세션이 열려 있으면 iOS pytest TC를 동시에 실행할 수 없음 (반대도 동일). 충돌 시 드라이버가 None이 되며 "🔄 세션 재연결" 버튼으로 복구
-- **플랫폼별 독립 가드**: iOS Capture Studio 세션이 열려 있어도 Android 파이프라인 실행 가능 (반대도 동일). 같은 플랫폼에서만 세션이 충돌합니다
+- **iOS XCUITest 세션 충돌**: 시뮬레이터당 세션 1개만 허용. iOS 캡처 세션이 열려 있으면 iOS pytest TC를 동시에 실행할 수 없음 (반대도 동일). 충돌 시 드라이버가 None이 되며 "세션 재연결" 버튼으로 복구
+- **플랫폼별 독립 가드**: iOS 캡처 세션이 열려 있어도 Android 파이프라인 실행 가능 (반대도 동일). 같은 플랫폼에서만 세션이 충돌합니다
 - Android 세션 key는 `app_package` / `app_activity`, iOS는 `bundle_id`를 사용합니다
 
 ## Locator 작업 규칙
@@ -125,7 +120,7 @@ python scripts/02_generate.py --platform ios --strict-locators
 | 파일 | 역할 |
 |---|---|
 | `config/test_data.json` | 앱 package/activity, bundle ID, 테스트 데이터 |
-| `config/devices.json` | Android/iOS capability. **스키마 (v0.6 확정)**: 모든 모드 키는 **단수형 배열** — `android.emulator[]`, `android.real_device[]`, `ios.simulator[]`, `ios.real_device[]`. 각 항목에 `default: true`로 기본 디바이스 지정. **케이스 규칙**: Appium에 직접 전달되는 필드는 camelCase(`deviceName`, `mjpegServerPort` 등), 대시보드 전용 필드는 snake_case(`default`, `wifi_ip`, `team_id`). ENV Setup UI에서 관리 — 직접 편집 시 배열 형식·케이스 규칙 유지 필수. **MJPEG caps**는 각 emulator 항목 안에 flat하게 포함 (`mjpegServerPort`, `mjpegScalingFactor`, `mjpegServerScreenshotQuality`). **Android 실기기 식별자**: `android.real_device[]` 항목에서 adb serial은 `udid` 키에 저장하고, `/api/env/status` 응답에서는 `serial`로 노출됨 — `config/devices.json` 직접 편집 시 `udid` 키 사용 필수. |
+| `config/devices.json` | Android/iOS capability. **스키마 (v0.6 확정)**: 모든 모드 키는 **단수형 배열** — `android.emulator[]`, `android.real_device[]`, `ios.simulator[]`, `ios.real_device[]`. 각 항목에 `default: true`로 기본 디바이스 지정. **케이스 규칙**: Appium에 직접 전달되는 필드는 camelCase(`deviceName`, `mjpegServerPort` 등), 대시보드 전용 필드는 snake_case(`default`, `wifi_ip`, `team_id`). 대시보드 **환경 설정**에서 관리 — 직접 편집 시 배열 형식·케이스 규칙 유지 필수. **MJPEG caps**는 각 emulator 항목 안에 flat하게 포함 (`mjpegServerPort`, `mjpegScalingFactor`, `mjpegServerScreenshotQuality`). **Android 실기기 식별자**: `android.real_device[]` 항목에서 adb serial은 `udid` 키에 저장하고, `/api/env/status` 응답에서는 `serial`로 노출됨 — `config/devices.json` 직접 편집 시 `udid` 키 사용 필수. |
 | `config/screens.json` | 분석 화면과 진입 action |
 | `config/locators.json` | 플랫폼별 target locator registry |
 | `config/jira_config.json` | 이 제품 전용 Jira 프로젝트/이슈 설정 |
@@ -139,8 +134,9 @@ python scripts/02_generate.py --platform ios --strict-locators
 
 ```bash
 appium --address 127.0.0.1 --port 4723
-python agents/dashboard/serve.py
+.venv/bin/python agents/dashboard/serve.py   # 포트 8767
 
+# 아래 스크립트는 .venv 활성화 상태에서 실행 (source .venv/bin/activate)
 # Android
 python scripts/01_analyze.py --platform android --mode emulator
 python scripts/02_generate.py --platform android --strict-locators
@@ -160,12 +156,13 @@ python scripts/05_execute.py --platform ios
 config/locators.json       # locator source of truth
 config/{devices,screens,test_data}.json
 scripts/                   # 분석·생성·린트·실행·힐링
-import/                    # Import Studio Excel 입력
+import/                    # Excel 직접 변환 입력 (호환용)
 testcases/{android,ios}/   # OS별 입력 TC Markdown
 tests/generated/{android,ios}/ # OS별 생성 코드
 tests/reports/             # 실행 리포트
 state/pipeline.json        # 실행 상태와 snapshot
-state/capture_session.json # Capture Studio 세션 상태
+state/capture_session.json # 화면 캡처 세션 상태
+state/tc_library/          # TC 스튜디오 라이브러리·작업·이력
 state/runs/{run_id}/artifacts/ # TC attempt별 영상·시스템 로그 + manifest.json
 logs/                      # 단계별 로그
 docs/guides/USER_GUIDE.html # 현재 사용자 가이드
@@ -185,9 +182,9 @@ git diff --check
 
 실제 Appium 실행은 연결된 서버와 디바이스가 있을 때 별도로 수행합니다.
 
-## ENV Setup UI
+## 환경 설정
 
-대시보드 ENV Setup 탭에서 Appium 서버와 디바이스(에뮬레이터/시뮬레이터/실기기)를 관리합니다.
+대시보드 **환경 설정** 메뉴(`/?view=config`)에서 Appium 서버와 디바이스(에뮬레이터/시뮬레이터/실기기)를 관리합니다.
 
 환경 설정 사용법은 [현재 사용자 가이드](docs/guides/USER_GUIDE.html)를 확인합니다. 완료된 마이그레이션 계획을 다시 실행하지 않습니다.
 
@@ -196,7 +193,7 @@ git diff --check
 
 **Appium 바인딩**: `--address 127.0.0.1` 고정. Appium은 인증 없이 앱 설치·파일 전송·셸 실행 권한을 노출하므로 `0.0.0.0` 바인딩을 금지합니다. 원격 디바이스 팜이 필요하면 인증·TLS를 포함한 별도 설계로 다룹니다.
 
-**에뮬레이터/시뮬레이터는 Appium과 독립적으로 시작합니다.** Appium이 `stopped`/`error` 상태여도 AVD 시작·시뮬레이터 부팅이 가능합니다. Appium은 **Capture Studio 세션 시작과 파이프라인 실행**의 선행 조건일 뿐이며, 디바이스 컨트롤에 잠금(`locked`) 상태를 표시하지 않습니다.
+**에뮬레이터/시뮬레이터는 Appium과 독립적으로 시작합니다.** Appium이 `stopped`/`error` 상태여도 AVD 시작·시뮬레이터 부팅이 가능합니다. Appium은 **캡처 세션 시작과 파이프라인 실행**의 선행 조건일 뿐이며, 디바이스 컨트롤에 잠금(`locked`) 상태를 표시하지 않습니다.
 
 **Capture 가드는 플랫폼별로 분리됩니다**: `is_capture_active(platform: str | None = None)` (`agents/dashboard/utils/state.py`). 인자를 생략하면 플랫폼 무관 전체 확인이고, `"android"` / `"ios"`를 넘기면 해당 플랫폼 세션만 확인합니다. `state/capture_session.json`에 `platform` 필드가 없는 구버전 레코드는 보수적으로 `True`(차단)를 반환합니다. 무인자 기존 호출부는 하위호환으로 그대로 동작합니다.
 
@@ -204,16 +201,15 @@ git diff --check
 - `POST /api/env/appium/stop`: `is_capture_active()` (플랫폼 무관 전체) 활성 시 `403 capture_session_active`, 파이프라인 실행 중 `409 pipeline_running`. **`external` 상태에서도 중지 가능** — `lsof -ti :<port>`로 PID 탐색 후 SIGTERM (v1.0)
 - `POST /api/env/android/avd/stop`: `is_capture_active("android")` 활성 시 `403 capture_session_active` — iOS Capture 세션은 차단 사유가 아님
 - `POST /api/env/ios/simulator/stop`: `is_capture_active("ios")` 활성 시 `403 capture_session_active` — Android Capture 세션은 차단 사유가 아님
-- `POST /api/env/android/avd/start`: 다른 에뮬레이터 실행 중 `409 already_running`. **Appium 상태 가드 없음**
-- `POST /api/env/ios/simulator/start`: **Appium 상태 가드 없음**. 생략 시 `devices.json`의 `default: true` 시뮬레이터를 사용. `subprocess.Popen`(비동기)으로 즉시 202 + `status: "starting"` 반환 — 3초 폴링이 `simctl list` Booted 감지 시 `running` 전환 (v1.0)
-
-> ⚠️ start 계열(`avd/start`, `simulator/start`)은 아직 `is_capture_active()`를 무인자로 호출해 무관한 플랫폼 세션도 시작을 차단합니다. 플랫폼 분리는 stop 계열에만 적용된 상태입니다.
+- `POST /api/env/android/avd/start`: `is_capture_active("android")` 활성 시 `403`, 다른 에뮬레이터 실행 중 `409 already_running`. **Appium 상태 가드 없음**
+- `POST /api/env/ios/simulator/start`: `is_capture_active("ios")` 활성 시 `403`. **Appium 상태 가드 없음**. 생략 시 `devices.json`의 `default: true` 시뮬레이터를 사용. `subprocess.Popen`(비동기)으로 즉시 202 + `status: "starting"` 반환 — 3초 폴링이 `simctl list` Booted 감지 시 `running` 전환 (v1.0)
+- Android 실기기 `real/connect`·`real/disconnect`·`real/pair`는 `is_capture_active("android")`, iOS `real/wda_build`는 `is_capture_active("ios")` 활성 시 `403 capture_session_active`
 
 **디바이스 추가/삭제**: `POST /api/env/{android,ios}/{add,remove}` 4종이 구현되어 있으며, 모든 `devices.json` 쓰기는 `agents/dashboard/utils/state.py`의 `save_devices_json()`을 경유합니다 (`.json.tmp` 기록 → `Path.replace()` 원자적 교체, `default` 중복 시 `ValueError` → 400). `config/devices.json`에 직접 `write_text()`하는 경로를 새로 만들지 마세요.
 
 - 요청 스키마: `add` = `{mode, deviceName, avd?|udid?, default?}`, `remove` = `{mode, deviceName}`. `mode`는 Android `emulator|real_device`, iOS `simulator|real_device`
 - 마지막 1개 항목은 삭제 불가 (`400 last_device`). `default: true` 항목 삭제 시 남은 첫 항목이 승계
-- 대시보드 ENV Setup 탭에 추가 버튼·모달·✕ 삭제 UI가 구현되어 있습니다
+- 대시보드 환경 설정에 추가 버튼·모달·삭제 UI가 구현되어 있습니다
 - add·remove에 Capture/파이프라인 **잠금 가드가 구현**되어 있습니다. 세션 활성 중 호출 시 403이 반환됩니다
 
 `is_capture_active(platform: str | None = None)` — 인자를 생략하면 전체 플랫폼을 확인합니다(기존 무인자 호출부와 하위호환). 세션 레코드에서 플랫폼을 식별할 수 없으면 보수적으로 `True`를 반환합니다.

@@ -22,6 +22,8 @@ Appium 기반 Android/iOS 앱 테스트 자동화 프로젝트입니다. native 
 ### 설치
 
 ```bash
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 npm install -g appium
 appium driver install uiautomator2
@@ -70,7 +72,7 @@ WebView가 없는 앱과 화면에서는 Playwright를 시작하지 않습니다
 ```bash
 ANDROID_HOME="$HOME/Library/Android/sdk" appium --address 127.0.0.1 --port 4723 \
   --allow-insecure=uiautomator2:adb_screen_streaming
-python agents/dashboard/serve.py
+.venv/bin/python agents/dashboard/serve.py
 ```
 
 > ⚠️ `--address 127.0.0.1` 고정 필수. `0.0.0.0` 바인딩은 보안상 금지됩니다.  
@@ -117,7 +119,24 @@ testcases/android/{그룹}/ → tests/generated/android/{그룹}/
 testcases/ios/{그룹}/     → tests/generated/ios/{그룹}/
 ```
 
-서로 다른 시트에서 같은 TC 번호를 사용해도 시트별 하위 폴더로 분리되므로 파일이 덮어써지지 않습니다. 빠른 실행은 선택한 OS의 `tests/generated/{platform}`만 조회합니다.
+Markdown 파일 이름은 그룹 매핑의 접두어로 매긴 TC ID(`tc_{ID}_{제목}.md`)라 같은 그룹 안에서 겹치지 않고, 기존 파일과 겹치면 미리보기에서 충돌로 표시됩니다. 빠른 실행은 선택한 OS의 `tests/generated/{platform}`만 조회합니다.
+
+### TC 스튜디오 초안 생성 준비
+
+기획 정보로 초안을 만들려면 대시보드를 실행하는 계정에서 Claude Code CLI(`claude`)가 설치·로그인되어 있어야 합니다. 대시보드는 `claude -p`를 별도 프로세스로 호출하며 LLM SDK를 쓰지 않습니다.
+
+```bash
+claude -p "hi"                                   # 로그인 확인
+TCS_CLAUDE_MODEL=claude-opus-5-5 .venv/bin/python agents/dashboard/serve.py   # 모델 고정(선택)
+```
+
+| 환경 변수 | 뜻 | 기본값 |
+|---|---|---|
+| `TCS_CLAUDE_MODEL` | 초안 생성 모델 | 비우면 `claude` CLI 기본 모델 |
+| `TCS_CLAUDE_BIN` | `claude` 실행 파일 경로 | `PATH`에서 찾음 |
+| `TCS_CHUNK_TIMEOUT` | 기획 정보 묶음 1개당 제한 시간(초) | `300` |
+
+Confluence·Figma 토큰은 TC 스튜디오의 **연결 설정**에서 입력하며 이 컴퓨터에만 저장됩니다.
 
 ### 환경 설정
 
@@ -133,10 +152,10 @@ iOS 카드     — 시뮬레이터 목록 · 부팅(비동기) · 종료 · 기�
 - `external` 상태에서도 대시보드 중지 버튼으로 종료 가능 (포트 기반 PID 탐색 후 SIGTERM)
 - 에뮬레이터/시뮬레이터는 Appium과 독립적으로 시작·종료 가능
 - 최소 보유 정책: 가상 기기(에뮬레이터/시뮬레이터) 최소 1대 유지 (삭제 시 disabled), 실기기 0대 허용
-- Capture Studio iOS 세션 활성 중 시뮬레이터 종료 차단 (Android 세션과 독립)
+- 화면 캡처 iOS 세션 활성 중 시뮬레이터 종료 차단 (Android 세션과 독립)
 - 자세한 조작: [사용자 가이드](docs/guides/USER_GUIDE.html)
 
-### 화면 캡처로 작성 (Capture Studio)
+### 화면 캡처로 작성
 
 대시보드의 **화면 캡처로 작성** 메뉴에서 실제 앱 화면을 보면서 요소를 선택하고 TC를 직접 생성합니다.
 
@@ -160,13 +179,13 @@ iOS 카드     — 시뮬레이터 목록 · 부팅(비동기) · 종료 · 기�
 - Healing 연계: 실패 TC에서 Locator 검토(현재 진행 표시의 3단계) 재진입
 - 세션 재연결 버튼 (`csReLaunch()`)
 - **Nova MCP**: `routes/mcp.py` — HTTP+SSE MCP 서버, 툴 9종 (`screenshot`, `hierarchy`, `device_tap`, `scroll`, `input_text`, `back`, `screen_info`, `generate_test_case`, `clear_actions`). Claude Code에서 MCP 툴 호출 시 자동 연결, 대시보드 MCP ON/OFF 칩으로 상태 확인·수동 해제.
-- **Livetail**: Capture Studio 세션 없이도 접근 가능. user·mcp·pipeline 소스 필터, 200행 버퍼. 파이프라인 단계 시작·완료 이벤트 실시간 표시
+- **Livetail**: 화면 캡처 세션 없이도 접근 가능. user·mcp·pipeline 소스 필터, 200행 버퍼. 파이프라인 단계 시작·완료 이벤트 실시간 표시
 - **TC 생성 소스 선택**: `source_filter` 파라미터(`all`|`user`|`mcp`)로 TC에 포함할 액션 출처 지정. 비실행 타입(`screenshot`·`hierarchy` 등) 자동 제거, 생성 TC docstring에 출처·액션 수 표기
 
 **제약사항:**
 - Android MJPEG: Appium `--allow-insecure=uiautomator2:adb_screen_streaming` 필수, 포트 8093 개방 필요
-- iOS: 시뮬레이터당 XCUITest 세션 1개 — Capture Studio iOS 세션과 파이프라인 iOS TC 동시 실행 불가
-- 같은 플랫폼의 Capture Studio 세션과 파이프라인 실행은 동시에 불가. 다른 플랫폼(iOS Capture ↔ Android 파이프라인)은 독립 실행 가능
+- iOS: 시뮬레이터당 XCUITest 세션 1개 — 화면 캡처 iOS 세션과 파이프라인 iOS TC 동시 실행 불가
+- 같은 플랫폼의 화면 캡처 세션과 파이프라인 실행은 동시에 불가. 다른 플랫폼(iOS Capture ↔ Android 파이프라인)은 독립 실행 가능
 - 메뉴 이동은 Capture 세션을 종료하지 않습니다. 테스트 실행 전 **세션 종료**를 누릅니다. 30분 비활동 시 자동 비활성화되며 기록은 보존됩니다. 드라이버 연결이 끊긴 경우 **앱 재실행**으로 다시 연결합니다.
 
 생성된 pytest 파일은 자체 완결형(`_build_driver()` + `_el()` + class 구조 포함)으로, 수정 없이 `05_execute.py`로 바로 실행할 수 있습니다.
@@ -238,7 +257,7 @@ DOM을 모르는 상태에서 locator를 추측해 코드를 확정하지 않습
 | `agents/dashboard/serve.py` | FastAPI 앱 구성과 대시보드 서버 진입점 |
 | `agents/dashboard/dashboard.html` | 대시보드 문서 구조와 화면 컨테이너 |
 | `agents/dashboard/static/dashboard.css` | 대시보드 공통 스타일 |
-| `agents/dashboard/static/*.js` | 환경 설정, 실행, 관측성, Capture Studio, 리포트 UI 모듈 |
+| `agents/dashboard/static/*.js` | 환경 설정, 실행, 관측성, 화면 캡처, 리포트 UI 모듈 |
 | `agents/dashboard/routes/*.py` | 환경·실행·Capture·관측성·MCP API 라우트 |
 | `agents/dashboard/utils/*.py` | 디바이스, 프로세스, 코드 생성, 증거 보존 공통 서비스 |
 | `agents/dashboard/routes/mcp.py` | Nova MCP HTTP+SSE 서버 (JSON-RPC 2.0, 툴 9종) |
