@@ -490,3 +490,18 @@
 
 .tc-studio .seg button[aria-pressed="true"]{background:var(--text);color:var(--on-accent)}
 .tc-studio .maprow{grid-template-columns:minmax(0,1fr);gap:6px}.tc-studio .maprow>.row{flex-wrap:wrap}.tc-studio .maprow>.tag{justify-self:start}
+/* 스튜디오 대화창과 알림 */
+.tc-studio .scrim{background:var(--backdrop);z-index:1500;padding:24px}
+.tc-studio .modal{background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-modal)}
+.tc-studio .modal .panel-head{font-size:17px;font-weight:600}
+.tc-studio .modal .panel-body{padding:20px}
+.tc-studio .modal .icon-btn{width:34px;height:34px;border:1px solid var(--border)}
+.tc-studio .modal .drop{background:var(--log-bg)}
+.tc-studio .modal table{width:100%;border-collapse:collapse;font-size:13px}
+.tc-studio .modal th{background:var(--surface-sub);color:var(--text-2);white-space:nowrap;font-weight:500}
+.tc-studio .modal td,.tc-studio .modal th{padding:10px;border-bottom:1px solid var(--border);vertical-align:top}
+.tc-studio #import-custom-mapping>.row:has(#import-profile-name){display:grid;grid-template-columns:minmax(180px,1fr) repeat(4,auto)}
+.tc-studio #import-mapping-profile{width:auto;min-width:200px}
+.tc-studio .toast{background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow-modal);color:var(--text);font-size:14px}
+.tc-studio .suite-menu{background:var(--surface);border-color:var(--border);box-shadow:var(--shadow-modal)}
+@media(max-width:900px){.tc-studio #import-custom-mapping>.row:has(#import-profile-name){display:flex;flex-wrap:wrap}}
