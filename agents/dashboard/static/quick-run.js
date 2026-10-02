@@ -19,7 +19,7 @@ async function refreshGenerated(){
     window._generatedTests = data;
     var allHtml='', andHtml='', iosHtml='';
     data.forEach(function(g){
-      var badge='<span class="gen-badge '+g.platform+'">'+(g.platform==='android'?'🤖':'🍎')+' '+g.platform+'</span>';
+      var badge='<span class="gen-badge '+g.platform+'">'+(g.platform==='android'?'':'')+' '+g.platform+'</span>';
       var block='<div class="gen-item"><div>'+badge+'<span class="gen-count">'+g.count+'개 파일</span></div></div>';
       block+=g.files.map(function(file){
         var key=g.platform+':'+file.split('/')[0];
@@ -35,7 +35,7 @@ async function refreshGenerated(){
     var groups=Object.keys(groupMap);
     var staleFiles=data.reduce(function(all,g){return all.concat(g.stale_files||[]);},[]);
     var staleHtml=staleFiles.length
-      ? '<div class="env-error-banner">⚠️ 구버전 테스트 '+staleFiles.length+'개가 감지되었습니다. Capture Studio에서 다시 저장·생성한 뒤 실행하세요.</div>'
+      ? '<div class="env-error-banner"> 구버전 테스트 '+staleFiles.length+'개가 감지되었습니다. Capture Studio에서 다시 저장·생성한 뒤 실행하세요.</div>'
       : '';
     var folderHtml=groups.map(function(key){ return '<label class="quick-group-item"><input type="checkbox" class="quick-group-cb" value="'+esc(key)+'" checked onchange="syncQuickSelection()">'
       +'<span class="quick-group-name">'+esc(key.split(':').slice(1).join(':'))+'</span><span class="quick-group-count">'+groupMap[key].length+'개 파일</span></label>'; }).join('');
@@ -45,7 +45,7 @@ async function refreshGenerated(){
     window._quickRunResultVisible=false;
     var quickHtml='<div class="quick-view-head"><div><div class="quick-view-title">빠른 실행</div><p class="quick-view-subtitle">선택한 OS의 tests/generated 폴더에 생성된 테스트 코드만 실행합니다.</p></div>'
       +'<button type="button" class="reset-btn" onclick="resetQuickRun()">↺ 리셋</button></div>'+staleHtml
-      +'<div class="quick-platform-selector"><button type="button" class="quick-platform-btn '+(_quickPlatform==='android'?'active':'')+'" onclick="setQuickPlatform(\'android\')">🤖 Android</button><button type="button" class="quick-platform-btn '+(_quickPlatform==='ios'?'active':'')+'" onclick="setQuickPlatform(\'ios\')">🍎 iOS</button></div>'
+      +'<div class="quick-platform-selector"><button type="button" class="quick-platform-btn '+(_quickPlatform==='android'?'active':'')+'" onclick="setQuickPlatform(\'android\')"> Android</button><button type="button" class="quick-platform-btn '+(_quickPlatform==='ios'?'active':'')+'" onclick="setQuickPlatform(\'ios\')"> iOS</button></div>'
       +'<div class="device-picker" style="margin-bottom:14px"><div class="device-picker-head"><span>디바이스 선택</span><button onclick="refreshDevicePicker()">↻ 새로고침</button></div><div id="quick-device-hint" class="device-hint none" style="display:none"></div><div id="quick-device-list"><div style="font-size:11px;color:var(--text3)">로딩 중...</div></div></div>'
       +'<div id="obs-strip-quick">'+_obsStripHtml()+'</div>'
       +'<div class="quick-select-card"><div class="quick-select-head"><span>'+(_quickPlatform==='android'?'Android':'iOS')+' 테스트 폴더</span><label><input type="checkbox" id="quick-select-all" checked onchange="quickToggleGenerated(this.checked)"> 전체 선택</label></div>'

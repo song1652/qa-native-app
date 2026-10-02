@@ -114,7 +114,7 @@ function _evRender(){
   // 배지
   var badge=document.getElementById('ev-dialog-badge');
   var nodeEl=document.getElementById('ev-dialog-node');
-  if(badge) badge.innerHTML='<span style="padding:2px 9px;border-radius:5px;font-size:10px;font-weight:700;'+(outcome==='failed'?'color:var(--fail);background:rgba(251,113,133,.14);border:1px solid rgba(251,113,133,.3)':'color:var(--pass);background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.3)')+'">'+outcome.toUpperCase()+'</span>';
+  if(badge) badge.innerHTML='<span style="padding:2px 9px;border-radius:5px;font-size:10px;font-weight:700;'+(outcome==='failed'?'color:var(--fail);background:var(--fail-bg);border:1px solid var(--fail)':'color:var(--pass);background:var(--pass-bg);border:1px solid var(--pass)')+'">'+outcome.toUpperCase()+'</span>';
   if(nodeEl) nodeEl.textContent=nodeid;
 
   var hasVideo=kept&&attempt.video;
@@ -303,8 +303,8 @@ function _obsEntryStatus(entry){
   var attempts=_obsEntryAttempts(entry), latest=attempts[attempts.length-1]||{};
   var priorFailed=attempts.slice(0,-1).some(function(a){return a.outcome==='failed'||a.outcome==='error';});
   if(latest.outcome==='passed'&&priorFailed) return {key:'flaky',label:'FLAKY'};
-  if(latest.outcome==='failed'||latest.outcome==='error') return {key:'fail',label:'FAIL'};
-  return {key:'pass',label:'PASS'};
+  if(latest.outcome==='failed'||latest.outcome==='error') return {key:'fail',label:'실패'};
+  return {key:'pass',label:'통과'};
 }
 
 function _obsAttemptUrl(kind,runId,nodeid,attempt){
@@ -399,12 +399,12 @@ function _obsRenderWorkspace(runId,manifest,nodeid){
   }).join('');
   root.innerHTML='<section class="obs-run-workspace" data-run-id="'+esc(runId)+'" data-platform="'+esc(manifest.platform||'unknown')+'">'
     +'<div class="obs-run-summary">'
-    +'<div class="obs-summary-cell"><span class="obs-summary-label">RUN_ID</span><span class="obs-summary-value">'+esc(runId)+'</span></div>'
+    +'<div class="obs-summary-cell"><span class="obs-summary-label">실행 ID</span><span class="obs-summary-value">'+esc(runId)+'</span></div>'
     +'<div class="obs-summary-cell"><span class="obs-summary-label">기기</span><span class="obs-summary-value">'+esc(device)+'</span></div>'
     +'<div class="obs-summary-cell"><span class="obs-summary-label">결과</span><span class="obs-summary-value obs-summary-result"><b class="pass">'+passed+' 통과</b><b class="fail">'+failed+' 실패</b></span></div>'
     +'<div class="obs-summary-cell"><span class="obs-summary-label">증거 용량</span><span class="obs-summary-value">'+_obsFormatBytes(totalBytes)+'</span></div>'
     +'<div class="obs-summary-cell"><span class="obs-summary-label">보존</span><span class="obs-summary-value">'+keepLabel+'</span></div></div>'
-    +'<div class="obs-run-main"><section class="obs-run-list-panel"><div class="obs-panel-head"><strong>TC 결과</strong><span class="obs-panel-count">'+passed+' PASSED</span><span class="obs-panel-hint">실패 TC 클릭 → 증거</span></div>'
+    +'<div class="obs-run-main"><section class="obs-run-list-panel"><div class="obs-panel-head"><strong>TC 결과</strong><span class="obs-panel-count">'+passed+' 통과</span><span class="obs-panel-hint">실패 TC 클릭 → 증거</span></div>'
     +'<div class="obs-case-filters" role="group" aria-label="TC 결과 필터">'
     +'<button type="button" class="obs-case-filter '+(_obsWorkspace.caseFilter==='all'?'active':'')+'" onclick="_obsSetCaseFilter(\'all\')">전체 '+allEntries.length+'</button>'
     +'<button type="button" class="obs-case-filter '+(_obsWorkspace.caseFilter==='pass'?'active':'')+'" onclick="_obsSetCaseFilter(\'pass\')">성공 '+passed+'</button>'
@@ -566,7 +566,7 @@ function _obsPaintEvidence(){
   body.innerHTML='<section class="obs-evidence-section" data-kind="video"><div class="obs-evidence-section-head">▶ 영상</div><div class="obs-evidence-section-body">'+videoBody+'</div></section>'
     +'<section class="obs-evidence-section" data-kind="log"><div class="obs-evidence-section-head">▤ 시스템 로그</div><div class="obs-evidence-section-body">'+logBody+'</div></section>'
     +'<section class="obs-evidence-section" data-kind="shot"><div class="obs-evidence-section-head">▣ 스크린샷</div><div class="obs-evidence-section-body">'+shotBody+'</div></section>'
-    +(tcFile?'<section class="obs-evidence-section" data-kind="tc"><div class="obs-evidence-section-head">📋 TC 내용</div><div class="obs-evidence-section-body">'+tcBody+'</div></section>':'');
+    +(tcFile?'<section class="obs-evidence-section" data-kind="tc"><div class="obs-evidence-section-head"> TC 내용</div><div class="obs-evidence-section-body">'+tcBody+'</div></section>':'');
   if(tcFile){
     fetch('/api/testcase?platform='+encodeURIComponent(platform)+'&file='+encodeURIComponent(tcFile))
       .then(function(r){return r.json();})
