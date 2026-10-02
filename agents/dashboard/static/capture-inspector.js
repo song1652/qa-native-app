@@ -120,7 +120,7 @@ function csRenderLocatorCards(attrs) {
   if (!cards.length) return '<span style="color:var(--text3)">locator 없음</span>';
   var maxStars = Math.max.apply(null, cards.map(function(c){ return c.stars; }));
   return cards.map(function(c) {
-    var stars = '★'.repeat(c.stars) + '☆'.repeat(5 - c.stars);
+    var stars = ''.repeat(c.stars) + ''.repeat(5 - c.stars);
     var badge = c.stars >= 4 ? 'stable' : (c.stars >= 3 ? 'medium' : 'low');
     var badgeLabel = c.stars >= 4 ? '안정' : (c.stars >= 3 ? '보통' : '낮음');
     var rec = c.stars === maxStars;
@@ -129,7 +129,7 @@ function csRenderLocatorCards(attrs) {
     var alreadyApproved = _cs.approvedLocators.some(function(l){ return l.strategy === c.strategy && l.value === c.value; });
     var approveBtn = alreadyApproved
       ? '<button class="cs-btn" style="padding:1px 7px;font-size:10px;line-height:1.4;opacity:.5;cursor:default" disabled>승인됨 ✓</button>'
-      : '<button class="cs-btn" style="padding:1px 7px;font-size:10px;line-height:1.4;color:#34d399;border-color:rgba(52,211,153,.4)" onclick="csApproveLocator(\'' + strategyEsc + '\',\'' + valueEsc + '\',' + c.stars + ',this)">승인 ✓</button>';
+      : '<button class="cs-btn" style="padding:1px 7px;font-size:10px;line-height:1.4;color:var(--pass);border-color:var(--pass)" onclick="csApproveLocator(\'' + strategyEsc + '\',\'' + valueEsc + '\',' + c.stars + ',this)">승인 ✓</button>';
     return '<div class="cs-loc-card' + (rec ? ' recommended' : '') + '">'
       + '<div class="cs-loc-strategy" style="display:flex;align-items:center;justify-content:space-between">'
       + '<span>' + esc(c.strategy) + ' <span class="cs-loc-badge ' + badge + '">' + badgeLabel + '</span></span>'
@@ -166,19 +166,19 @@ function csValidateLocator(strategy, value, btn) {
     method: 'POST', headers: {'Content-Type':'application/json'},
     body: JSON.stringify({session_id: _cs.sessionId, strategy: strategy, value: value})
   }).then(function(r){ return r.json(); }).then(function(d){
-    if (!d.ok) { resultEl.textContent = '❌ ' + (d.error||'오류'); resultEl.style.color = 'var(--fail)'; return; }
+    if (!d.ok) { resultEl.textContent = ' ' + (d.error||'오류'); resultEl.style.color = 'var(--fail)'; return; }
     if (d.unique) {
-      resultEl.textContent = '✅ 유일 (1개 매칭) — 신뢰도: ' + d.confidence;
-      resultEl.style.color = '#34d399';
+      resultEl.textContent = ' 유일 (1개 매칭) — 신뢰도: ' + d.confidence;
+      resultEl.style.color = 'var(--pass)';
     } else if (d.match_count === 0) {
-      resultEl.textContent = '⚠️ 매칭 없음 — hierarchy 새로고침 후 재시도';
-      resultEl.style.color = '#fbbf24';
+      resultEl.textContent = ' 매칭 없음 — hierarchy 새로고침 후 재시도';
+      resultEl.style.color = 'var(--warn)';
     } else {
-      resultEl.textContent = '⚠️ ' + d.match_count + '개 매칭 — 신뢰도: ' + d.confidence;
-      resultEl.style.color = '#fbbf24';
+      resultEl.textContent = ' ' + d.match_count + '개 매칭 — 신뢰도: ' + d.confidence;
+      resultEl.style.color = 'var(--warn)';
     }
   }).catch(function(err){
-    resultEl.textContent = '❌ 오류: ' + err; resultEl.style.color = 'var(--fail)';
+    resultEl.textContent = ' 오류: ' + err; resultEl.style.color = 'var(--fail)';
   });
 }
 

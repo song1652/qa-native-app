@@ -62,11 +62,11 @@ function csInfoStripMcp(on) {
   if (on) {
     chip.className = 'cs-info-chip mcp-on';
     dot.className  = 'cs-info-dot green';
-    label.textContent = 'MCP ON';
+    label.textContent = 'MCP 연결됨';
   } else {
     chip.className = 'cs-info-chip mcp-off';
     dot.className  = 'cs-info-dot gray';
-    label.textContent = 'MCP OFF';
+    label.textContent = 'MCP 연결 대기';
   }
 }
 
@@ -111,7 +111,7 @@ function csToggleLivetail() {
 function csLtAppend(source, type, platform, summary, result, ms) {
   var now = new Date();
   var ts = now.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
-  var icon = source === 'user' ? '\u{1F464}' : source === 'mcp' ? '\u{1F916}' : '⚙';
+  var icon = source === 'user' ? '\u{1F464}' : source === 'mcp' ? '\u{1F916}' : '';
   var row = {ts:ts, source:source, icon:icon, type:type, platform:platform, summary:summary, result:result, ms:ms};
   _csLtRows.push(row);
   if (_csLtRows.length > 200) _csLtRows.shift();
@@ -129,7 +129,7 @@ function csLtRenderRow(row) {
   var div = document.createElement('div');
   div.className = 'lt-ov-row' + (row.source === 'pipeline' ? ' lt-pipe' : '');
   var resClass = row.result === 'ok' ? 'ok' : row.result === 'warn' ? 'wn' : 'fl';
-  var resIcon  = row.result === 'ok' ? '✅' : row.result === 'warn' ? '⚠' : '❌';
+  var resIcon  = row.result === 'ok' ? '' : row.result === 'warn' ? '' : '';
   var msStr    = row.ms ? ' ' + row.ms : '';
   div.innerHTML =
     '<div class="lt-ov-t">' + row.ts + '</div>' +
@@ -236,17 +236,17 @@ function _csSwipeDrawArrow(container, x1, y1, x2, y2) {
   marker.setAttribute('markerHeight','6'); marker.setAttribute('refX','6');
   marker.setAttribute('refY','3'); marker.setAttribute('orient','auto');
   var poly = document.createElementNS('http://www.w3.org/2000/svg','polygon');
-  poly.setAttribute('points','0 0, 8 3, 0 6'); poly.setAttribute('fill','rgba(96,165,250,0.9)');
+  poly.setAttribute('points','0 0, 8 3, 0 6'); poly.setAttribute('fill','var(--accent)');
   marker.appendChild(poly); defs.appendChild(marker); svg.appendChild(defs);
   var line = document.createElementNS('http://www.w3.org/2000/svg','line');
   line.setAttribute('x1',x1); line.setAttribute('y1',y1);
   line.setAttribute('x2',x2); line.setAttribute('y2',y2);
-  line.setAttribute('stroke','rgba(96,165,250,0.7)'); line.setAttribute('stroke-width','2');
+  line.setAttribute('stroke','var(--accent)'); line.setAttribute('stroke-width','2');
   line.setAttribute('stroke-dasharray','5 3'); line.setAttribute('marker-end','url(#sw-arrow)');
   svg.appendChild(line);
   var dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
   dot.setAttribute('cx',x1); dot.setAttribute('cy',y1); dot.setAttribute('r','5');
-  dot.setAttribute('fill','rgba(96,165,250,0.5)');
+  dot.setAttribute('fill','var(--accent)');
   svg.appendChild(dot);
   if (container.style.position !== 'relative' && container.style.position !== 'absolute') {
     container.style.position = 'relative';

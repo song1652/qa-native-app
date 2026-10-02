@@ -82,7 +82,7 @@ function csPlatformToggle() {
           sims.forEach(function(s){
             var opt = document.createElement('option');
             opt.value = s.deviceName || s.name || '';
-            opt.textContent = (s.deviceName || s.name || '') + (s.default ? ' ★' : '');
+            opt.textContent = (s.deviceName || s.name || '') + (s.default ? ' ' : '');
             if(s.default) opt.selected = true;
             devEl.appendChild(opt);
           });
@@ -137,17 +137,17 @@ function csInit() {
             csRenderTimeline();
             csMirrorConnect();
             var saveStatus = document.getElementById('cs-save-status');
-            if(saveStatus){ saveStatus.textContent = '✅ 세션 복원됨 (드라이버 연결)'; saveStatus.style.color='var(--pass)'; }
+            if(saveStatus){ saveStatus.textContent = ' 세션 복원됨 (드라이버 연결)'; saveStatus.style.color='var(--pass)'; }
             setTimeout(function(){ csRefreshHierarchy(); }, 600);
           } else {
             // 드라이버 죽음 → setup 화면 유지, 안내 메시지 + 버튼 표시
             if(statusEl2){
-              statusEl2.innerHTML = '⚠️ 이전 세션이 있지만 서버 재시작으로 드라이버가 끊겼습니다.<br>'
+              statusEl2.innerHTML = ' 이전 세션이 있지만 서버 재시작으로 드라이버가 끊겼습니다.<br>'
                 + '<div style="margin-top:6px;display:flex;gap:8px">'
                 + '<button class="cs-btn primary" onclick="csReLaunchFromSetup()" style="padding:4px 14px;font-size:11px">▶ 앱 재실행</button>'
                 + '<button class="cs-btn" onclick="csForceNewSession()" style="padding:4px 14px;font-size:11px;color:var(--text3)">새 세션 시작</button>'
                 + '</div>';
-              statusEl2.style.color='#fbbf24';
+              statusEl2.style.color='var(--warn)';
             }
             document.getElementById('cs-session-badge').style.display='';
           }
@@ -164,7 +164,7 @@ function csReLaunch() {
   var saveStatus = document.getElementById('cs-save-status');
   if(_cs.launching){
     // 절전 복귀 후 stuck될 수 있으므로 3초 안내 후 강제 해제
-    if(saveStatus){ saveStatus.textContent = '⏳ 진행 중... 계속 안 되면 다시 클릭하세요.'; saveStatus.style.color='#a78bfa'; }
+    if(saveStatus){ saveStatus.textContent = '⏳ 진행 중... 계속 안 되면 다시 클릭하세요.'; saveStatus.style.color='var(--accent)'; }
     setTimeout(function(){ _cs.launching = false; }, 3000);
     return;
   }
@@ -172,10 +172,10 @@ function csReLaunch() {
   var _reIsIos = (_cs.screenshotMode === 'poll');
   var _reTimeoutMs = _reIsIos ? 180000 : 45000;
   var _reStartTs = Date.now();
-  saveStatus.textContent = '📱 앱 재실행 중...'; saveStatus.style.color='#a78bfa';
+  saveStatus.textContent = ' 앱 재실행 중...'; saveStatus.style.color='var(--accent)';
   var _reProgressTimer = setInterval(function(){
     var s = Math.round((Date.now() - _reStartTs) / 1000);
-    saveStatus.textContent = '📱 앱 재실행 중… (' + s + '초 경과' + (_reIsIos ? ' / 최대 180초' : '') + ')';
+    saveStatus.textContent = ' 앱 재실행 중… (' + s + '초 경과' + (_reIsIos ? ' / 최대 180초' : '') + ')';
   }, 2000);
   var _launchCtrl = new AbortController();
   var _launchTimer = setTimeout(function(){ _launchCtrl.abort(); }, _reTimeoutMs);
@@ -189,12 +189,12 @@ function csReLaunch() {
       // 세션 만료 배너 제거
       var _eb = document.getElementById('cs-expired-banner');
       if(_eb) _eb.remove();
-      saveStatus.textContent = '✅ 앱 재실행됨 — 미러링 재연결 중';
+      saveStatus.textContent = ' 앱 재실행됨 — 미러링 재연결 중';
       saveStatus.style.color='var(--pass)';
       csMirrorConnect();
       setTimeout(csRefreshHierarchy, 1500);
     } else {
-      saveStatus.textContent = '❌ 재실행 실패: ' + (d.error||'알 수 없는 오류');
+      saveStatus.textContent = ' 재실행 실패: ' + (d.error||'알 수 없는 오류');
       saveStatus.style.color='var(--fail)';
     }
   }).catch(function(err){
@@ -202,8 +202,8 @@ function csReLaunch() {
     clearTimeout(_launchTimer); clearInterval(_reProgressTimer);
     var s2 = Math.round((Date.now() - _reStartTs) / 1000);
     saveStatus.textContent = err && err.name==='AbortError'
-      ? '⏱ 재실행 ' + s2 + '초 초과 — Appium/디바이스 상태를 확인하세요'
-      : '❌ 오류: ' + err;
+      ? ' 재실행 ' + s2 + '초 초과 — Appium/디바이스 상태를 확인하세요'
+      : ' 오류: ' + err;
     saveStatus.style.color='var(--fail)';
   });
 }
@@ -284,16 +284,16 @@ function csCheckEnv() {
   Promise.all(checks).then(function(results) {
     var appiumOk = results[0].ok;
     var msgs = [];
-    if(appiumOk) msgs.push('✅ Appium 연결됨');
-    else msgs.push('❌ Appium 미응답 (appium --address 0.0.0.0 --port 4723)');
+    if(appiumOk) msgs.push(' Appium 연결됨');
+    else msgs.push(' Appium 미응답 (appium --address 127.0.0.1 --port 4723)');
 
     if(!isIos) {
       var port2 = parseInt(document.getElementById('cs-mjpeg-port').value) || 8093;
       var mjpegOk = results[1] && results[1].ok;
-      if(mjpegOk) msgs.push('✅ MJPEG 포트 ' + port2 + ' 응답');
-      else msgs.push('⚠️ MJPEG 포트 미응답 — 세션 시작 후 활성화됩니다 (--allow-insecure=uiautomator2:adb_screen_streaming 필요)');
+      if(mjpegOk) msgs.push(' MJPEG 포트 ' + port2 + ' 응답');
+      else msgs.push(' MJPEG 포트 미응답 — 세션 시작 후 활성화됩니다 (--allow-insecure=uiautomator2:adb_screen_streaming 필요)');
     } else {
-      msgs.push('ℹ️ iOS는 screenshot polling 방식 사용 (MJPEG 불필요)');
+      msgs.push('iOS는 screenshot polling 방식 사용 (MJPEG 불필요)');
     }
 
     statusEl.innerHTML = msgs.join('<br>');
@@ -326,8 +326,8 @@ function csStartSession() {
 
   var statusEl = document.getElementById('cs-setup-status');
   if(_cs.launching){
-    statusEl.textContent = '📱 앱 실행이 이미 진행 중입니다. 잠시 기다려 주세요.';
-    statusEl.style.color = '#a78bfa';
+    statusEl.textContent = ' 앱 실행이 이미 진행 중입니다. 잠시 기다려 주세요.';
+    statusEl.style.color = 'var(--accent)';
     return;
   }
   _cs.launching = true;
@@ -360,11 +360,11 @@ function csStartSession() {
       function _updateLaunchStatus() {
         var elapsed = Math.round((Date.now() - _launchStartTs) / 1000);
         if (isIos) {
-          statusEl.textContent = '📱 iOS 앱 실행 중… WDA 초기화 대기 중 (' + elapsed + '초 경과 / 최대 180초)';
+          statusEl.textContent = ' iOS 앱 실행 중… WDA 초기화 대기 중 (' + elapsed + '초 경과 / 최대 180초)';
         } else {
-          statusEl.textContent = '📱 앱 실행 중… (' + elapsed + '초 경과)';
+          statusEl.textContent = ' 앱 실행 중… (' + elapsed + '초 경과)';
         }
-        statusEl.style.color = '#a78bfa';
+        statusEl.style.color = 'var(--accent)';
       }
       _updateLaunchStatus();
       _launchProgressTimer = setInterval(_updateLaunchStatus, 2000);
@@ -383,7 +383,7 @@ function csStartSession() {
           if(d2.screenshot_mode) _cs.screenshotMode = d2.screenshot_mode;
           var modeLabel = 'MJPEG 스트리밍';
           var elapsed2 = Math.round((Date.now() - _launchStartTs) / 1000);
-          statusEl.textContent = '✅ 앱 실행됨 (Appium: ' + (d2.appium_session_id||'').substring(0,8) + '...) — ' + modeLabel + ' 시작 (' + elapsed2 + '초)';
+          statusEl.textContent = ' 앱 실행됨 (Appium: ' + (d2.appium_session_id||'').substring(0,8) + '...) — ' + modeLabel + ' 시작 (' + elapsed2 + '초)';
           statusEl.style.color = 'var(--pass)';
           // 워크스페이스 전환
           document.getElementById('cs-setup').style.display='none';
@@ -402,7 +402,7 @@ function csStartSession() {
         } else {
           // 백엔드가 이미 친화적 메시지를 반환 (_friendly_appium_error) → 그대로 표시
           var errMsg = d2.error || '알 수 없는 오류가 발생했습니다.';
-          statusEl.textContent = '⚠️ 앱 실행 실패: ' + errMsg;
+          statusEl.textContent = ' 앱 실행 실패: ' + errMsg;
           statusEl.style.color = 'var(--fail)';
           // 세션은 생성됐으므로 워크스페이스는 진입 허용
           document.getElementById('cs-setup').style.display='none';
@@ -410,8 +410,8 @@ function csStartSession() {
           document.getElementById('cs-session-badge').style.display='';
           var _devLabel = isIos ? (document.getElementById('cs-device-name') ? document.getElementById('cs-device-name').value.trim() : '') : (d2.device_name || '');
           csInfoStripShow(platform, _devLabel, group);
-          document.getElementById('cs-save-status').textContent = '⚠️ Appium 미연결 — 오류 메시지를 확인하고 세션을 재시작하세요';
-          document.getElementById('cs-save-status').style.color = '#fbbf24';
+          document.getElementById('cs-save-status').textContent = ' Appium 미연결 — 오류 메시지를 확인하고 세션을 재시작하세요';
+          document.getElementById('cs-save-status').style.color = 'var(--warn)';
           // 실패해도 미러링 자동 시도 (iOS polling은 WDA 준비 후 자동 복구)
           csMirrorConnect();
         }
@@ -423,13 +423,13 @@ function csStartSession() {
         var msg;
         if (err2 && err2.name === 'AbortError') {
           msg = isIos
-            ? '⏱ iOS WDA 초기화 ' + elapsed3 + '초 초과 — Appium을 재시작하거나 시뮬레이터 이름(Device Name)을 확인하세요'
-            : '⏱ 앱 실행 ' + elapsed3 + '초 초과 — Appium 서버와 에뮬레이터 상태를 확인하세요';
+            ? ' iOS WDA 초기화 ' + elapsed3 + '초 초과 — Appium을 재시작하거나 시뮬레이터 이름(Device Name)을 확인하세요'
+            : ' 앱 실행 ' + elapsed3 + '초 초과 — Appium 서버와 에뮬레이터 상태를 확인하세요';
         } else {
-          msg = '⚠️ 앱 실행 오류: ' + err2;
+          msg = ' 앱 실행 오류: ' + err2;
         }
         statusEl.textContent = msg;
-        statusEl.style.color = '#fbbf24';
+        statusEl.style.color = 'var(--warn)';
         document.getElementById('cs-setup').style.display='none';
         document.getElementById('cs-workspace').style.display='block'; setTimeout(function(){ csStartMirrorObserver(); csSyncPanelHeight(); }, 100);
         document.getElementById('cs-session-badge').style.display='';
@@ -441,13 +441,13 @@ function csStartSession() {
       });
     } else {
       _cs.launching = false;
-      statusEl.textContent = '❌ ' + (d.error || '세션 시작 실패');
+      statusEl.textContent = ' ' + (d.error || '세션 시작 실패');
       statusEl.style.color = 'var(--fail)';
       document.getElementById('cs-start-btn').disabled = false;
     }
   }).catch(function(err){
     _cs.launching = false;
-    statusEl.textContent = '❌ 네트워크 오류: ' + err;
+    statusEl.textContent = ' 네트워크 오류: ' + err;
     statusEl.style.color = 'var(--fail)';
     document.getElementById('cs-start-btn').disabled = false;
   });
@@ -512,10 +512,10 @@ function csMirrorConnect() {
               var errDiv = document.createElement('div');
               errDiv.className = 'cs-mirror-error';
               errDiv.style.cssText = 'color:var(--fail);text-align:center;padding:12px';
-              errDiv.innerHTML = '❌ iOS 스크린샷 실패<br>'
+              errDiv.innerHTML = ' iOS 스크린샷 실패<br>'
                 + '<span style="font-size:10px;color:var(--text3)">Appium 세션이 끊겼습니다</span><br><br>'
-                + '<button class="cs-btn primary" onclick="csReLaunch()" style="padding:4px 12px;font-size:11px;margin-bottom:4px">🔄 세션 재연결</button><br>'
-                + '<button class="cs-btn" onclick="csMirrorConnect()" style="padding:4px 12px;font-size:11px">📷 미러링만 재시도</button>';
+                + '<button class="cs-btn primary" onclick="csReLaunch()" style="padding:4px 12px;font-size:11px;margin-bottom:4px"> 세션 재연결</button><br>'
+                + '<button class="cs-btn" onclick="csMirrorConnect()" style="padding:4px 12px;font-size:11px"> 미러링만 재시도</button>';
               placeholder.appendChild(errDiv);
             }
           }
@@ -554,10 +554,10 @@ function csMirrorConnect() {
       var errDetail = platform === 'ios'
         ? '화면 녹화 권한 또는 ffmpeg 오류'
         : 'MJPEG 포트 ' + (port || 8093) + ' 미응답';
-      errDiv.innerHTML = '❌ 미러링 연결 실패<br>'
+      errDiv.innerHTML = ' 미러링 연결 실패<br>'
         + '<span style="font-size:10px;color:var(--text3)">' + errDetail + '</span><br><br>'
-        + '<button class="cs-btn primary" onclick="csReLaunch()" style="padding:4px 12px;font-size:11px;margin-bottom:4px">🔄 세션 재연결</button><br>'
-        + '<button class="cs-btn" onclick="csMirrorConnect()" style="padding:4px 12px;font-size:11px">📷 미러링만 재시도</button>';
+        + '<button class="cs-btn primary" onclick="csReLaunch()" style="padding:4px 12px;font-size:11px;margin-bottom:4px"> 세션 재연결</button><br>'
+        + '<button class="cs-btn" onclick="csMirrorConnect()" style="padding:4px 12px;font-size:11px"> 미러링만 재시도</button>';
       placeholder.appendChild(errDiv);
     };
     img.onload = function() {
@@ -591,7 +591,7 @@ function csMirrorClick(event) {
 
   // hierarchy 미로드 시 좌표 기본값(1080) 사용 — 사용자에게 알림
   if (!_hierLoaded) {
-    csStatusMsg('⚠️ Hierarchy가 로드되지 않았습니다. 좌표가 부정확할 수 있습니다 — 잠시 후 Hierarchy 새로고침을 눌러주세요.');
+    csStatusMsg(' Hierarchy가 로드되지 않았습니다. 좌표가 부정확할 수 있습니다 — 잠시 후 Hierarchy 새로고침을 눌러주세요.');
   }
 
   // 이미지 → 디바이스 좌표 (MJPEG aspect 유지 가정)
@@ -621,7 +621,7 @@ function csMirrorClick(event) {
   }).then(function(r){ return r.json(); }).then(function(d){
     if (_tapOverlay && _tapOverlayTimer) { clearTimeout(_tapOverlayTimer); _tapOverlay.style.display = 'none'; }
     if (!d.ok) {
-      csStatusMsg('⚠️ ' + (d.error || 'tap 실패'));
+      csStatusMsg(' ' + (d.error || 'tap 실패'));
     }
   }).catch(function(err){
     if (_tapOverlay && _tapOverlayTimer) { clearTimeout(_tapOverlayTimer); _tapOverlay.style.display = 'none'; }
