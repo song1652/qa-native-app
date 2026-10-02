@@ -166,7 +166,7 @@
   async function viewRun(id,kind){
     try{
       const result=kind==='library'?await api.importRun(id):await api.mdImportRun(id);const run=result.run||result;
-      $('#import-history-detail',root).innerHTML=`<b>${esc(run.suite||run.tc_library_suite||'md 반영')} · ${esc(run.status||'')}</b>${rowsHtml(run.rows||[])}<div class="row">${run.status==='committed'?`<button class="btn btn-ghost" data-action="rollback" data-run="${esc(id)}" data-kind="${kind}">이 작업 되돌리기</button>`:''}${kind==='md'?`<a class="btn-sm" href="${api.skippedCsvUrl(id)}">제외 목록 CSV</a>`:''}<span class="help">이후 편집이 있으면 되돌리기를 중단하여 변경을 보호합니다.</span></div>`;
+      $('#import-history-detail',root).innerHTML=`<b>${esc(run.suite||run.tc_library_suite||'md 반영')} · ${esc(run.status||'')}</b>${rowsHtml(run.rows||[])}<div class="row">${run.status==='committed'?`<button class="btn btn-ghost" data-action="rollback" data-run="${esc(id)}" data-kind="${kind}">이 작업 되돌리기</button>`:''}<span class="help">이후 편집이 있으면 되돌리기를 중단하여 변경을 보호합니다.</span></div>`;
     }catch(err){toast(`이력 조회 실패: ${esc(err.message)}`,'err');}
   }
   function mount(r){

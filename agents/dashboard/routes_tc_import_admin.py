@@ -91,7 +91,6 @@ def _public_run(run, details=False):
     public['source'] = 'tc-library-md' if run.get('tc_library_suite') else 'excel-md'
     public['sources'] = [{k: s[k] for k in ('file_id', 'file_name', 'sheet_name', 'header_row') if k in s}
                          for s in run.get('sources', []) if isinstance(s, dict)]
-    public['skipped_csv_url'] = '/api/import/runs/' + run['run_id'] + '/skipped.csv'
     if details:
         rowkeys = ('tc_id', 'title', 'group', 'status', 'reason_code', 'reason', 'excluded', 'decision', 'before', 'after')
         public['rows'] = [{**{k: r[k] for k in rowkeys if k in r},

@@ -66,7 +66,6 @@
     mdImportRuns: () => request('GET', '/api/tc-library/import/md-runs'),
     mdImportRun: (id) => request('GET', `/api/tc-library/import/md-runs/${enc(id)}`),
     rollbackMdImport: (id) => request('POST', `/api/tc-library/import/md-runs/${enc(id)}/rollback`),
-    skippedCsvUrl: (id) => `/api/import/runs/${enc(id)}/skipped.csv`,
     exportXlsx: (suite, payload) => request('POST', `${S(suite)}/export/xlsx`, payload),
     downloadUrl: (exportId) => `/api/tc-library/exports/${enc(exportId)}/download`,
     // ── Phase 2: 소스·프로필·생성 작업·검토 ──
