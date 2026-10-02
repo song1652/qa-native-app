@@ -1,4 +1,4 @@
-/* QA Control Center 디자인 토큰 — 밝은 테마 (docs/design/mockups/01_Tokens.html)
+/* QA Control Center 디자인 토큰 — 현재 제품의 밝은 테마
    컴포넌트 CSS에는 hex를 직접 쓰지 말고 아래 변수만 쓴다. */
 :root {
   --bg: #F5F6F8;            /* 페이지 바탕 */

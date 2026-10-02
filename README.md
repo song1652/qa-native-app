@@ -8,7 +8,7 @@ Appium 기반 Android/iOS 앱 테스트 자동화 프로젝트입니다. native 
 01_analyze → 02_generate → 03_lint → 05_execute → 06_heal
 ```
 
-`06_heal`은 실행 실패가 있을 때만 사용합니다. 전체 실행은 대시보드의 단일 `파이프라인 실행` 흐름이며, 별도의 단일/병렬 실행 유형을 제공하지 않습니다.
+`06_heal`은 실행 실패가 있을 때만 사용합니다. 전체 실행은 대시보드의 단일 `파이프라인` 흐름이며, 별도의 단일/병렬 실행 유형을 제공하지 않습니다.
 
 ### 플랫폼
 
@@ -76,11 +76,19 @@ python agents/dashboard/serve.py
 > ⚠️ `--address 127.0.0.1` 고정 필수. `0.0.0.0` 바인딩은 보안상 금지됩니다.  
 > `--allow-insecure=uiautomator2:adb_screen_streaming` 없이 시작하면 Android MJPEG 미러링이 동작하지 않습니다.
 
-브라우저에서 <http://localhost:8767>을 엽니다. 대시보드에는 Appium 연결, Android/iOS 플랫폼, 디바이스 연결, 분석·생성·린트·실행·힐링 단계, 로그, 생성 테스트, 리포트, 실행 히스토리가 표시됩니다.
+브라우저에서 <http://localhost:8767>을 엽니다. 이 저장소의 앱 대시보드는 밝은 테마를 사용합니다. `8766`은 별도 웹 참고 저장소의 포트입니다.
 
-### TC Studio에서 Excel 가져오기
+상단의 파란 문서 체크 아이콘과 **QA Control Center** 제목을 누르면 대시보드로 이동합니다. 상단에는 Appium·기기 상태와 **실행 상태** 펼치기 메뉴가 있고, 실행 버튼은 각 실행 화면에 있습니다.
 
-`/tc-studio`의 가져오기에서 `import/` 폴더의 `.xlsx` 테스트 케이스를 TC 라이브러리로 가져옵니다. 검토·승인 후 내보내기 탭에서 Markdown을 생성합니다.
+사이드바에서 **대시보드**, **TC 스튜디오**, **화면 캡처로 작성**, **파이프라인**, **빠른 실행**, **리포트**, **실행 기록**, **환경 설정**을 선택합니다. 메뉴를 다시 누르면 해당 화면 데이터를 새로 확인하며, 화면 주소는 새로고침과 뒤로/앞으로 이동에도 유지됩니다. 대시보드에는 마지막 실행, 최근 10회 통과율, 최근 실행 목록과 추이, 환경 상태가 표시됩니다.
+
+![밝은 테마 대시보드](docs/images/user-guide/dashboard.png)
+
+화면별 실제 캡처와 주소는 [문서 안내](docs/README.md#현재-화면과-주소), 자세한 조작은 [사용자 가이드](docs/guides/USER_GUIDE.html)를 참고하세요. 캡처의 실행 결과와 기기명은 촬영 시점의 실제 로컬 상태이며 사용 환경마다 달라집니다.
+
+### TC 스튜디오에서 Excel 가져오기
+
+`/tc-studio`에서 **엑셀 가져오기**를 누르고 로컬 `.xlsx` 파일을 선택하거나 끌어다 놓습니다. 여러 파일을 선택할 수 있으며 파일당 최대 25MB입니다. 라이브러리로 가져온 케이스는 가져오기 상태로 관리되고 검토 승인·반려 대상에서는 제외됩니다. 내용을 확인한 뒤 **내보내기**에서 Markdown을 생성합니다.
 
 현재 Markdown 테스트 케이스를 Excel로 다시 만들려면 다음 명령을 사용합니다.
 
@@ -91,21 +99,17 @@ python scripts/export_testcases_excel.py
 기본 결과는 `import/qa_native_app_testcases.xlsx`이며 `전체`, `android`, `ios` 시트를 포함합니다.
 
 ```text
-파일·시트 선택 → 열 매핑 → 미리보기 → 안전한 반영 → 완료
+파일 선택 → 양식 인식·열 매핑 → 시트·스위트 지정 → 변경 미리보기 → 가져오기
 ```
 
-- 파일 카드에서 가져올 시트를 하나 이상 선택합니다.
-- 열 매핑에서는 Excel `A열~Z열`을 TC ID, 제목, 사전 조건, 테스트 단계, 예상 결과 등의 QA-Native 필드에 연결합니다.
-- 매핑 또는 대상 플랫폼을 변경하면 우측 검증 패널이 Excel을 다시 분석해 추가·업데이트·충돌·오류 수를 즉시 갱신합니다.
-- 열 매핑 우측에는 상태 집계만 표시하고, 다음 미리보기 단계에서 전체 TC를 상태별로 필터링해 전제조건·단계·기대결과·그룹까지 확인합니다.
-- 기본 매핑은 `TC ID=B열`, `제목=F열`, `사전 조건=G열`, `테스트 단계=H열`, `예상 결과=I열`, `우선순위=J열`입니다.
-- 필수 필드 5개가 모두 연결되어야 미리보기 단계로 이동할 수 있습니다.
-- Android/iOS 대상은 라이브러리에서 검토한 뒤 플랫폼별 Markdown으로 내보냅니다.
-- 안전한 반영에서는 라이브러리의 기존 TC와 충돌하는 항목을 확인합니다. Markdown 내보내기에서는 `skip-conflict`(기본값) 또는 `overwrite`를 선택합니다.
+- 기준 양식을 자동 인식하거나 **다른 양식 직접 매핑**에서 열 문자와 헤더 행을 지정합니다. 매핑 프로필을 저장해 재사용할 수 있습니다.
+- 가져올 시트와 case ID 접두어, 대상 스위트를 지정합니다. 시트마다 다른 매핑 프로필도 적용할 수 있습니다.
+- **변경 미리보기**에서 신규·갱신·동일·충돌·오류를 확인합니다. 충돌 행마다 덮어쓰기 또는 제외를 선택한 뒤 **가져오기**를 누릅니다.
+- Android/iOS 결과는 라이브러리에서 각각 관리합니다. 내보내기에서 플랫폼과 그룹을 지정하고 Markdown 변경을 미리 확인합니다. 기존 파일은 `skip-conflict`(기본값) 또는 `overwrite` 정책으로 처리합니다.
 - 원본 Excel 파일은 변경하지 않습니다.
 
 ```text
-import/{파일}.xlsx → TC Studio 라이브러리 → 검토·승인
+로컬 {파일}.xlsx → TC 스튜디오 라이브러리 → 내용 확인·내보내기
   ├─ Android → testcases/android/{그룹}/tc_*.md
   └─ iOS     → testcases/ios/{그룹}/tc_*.md
 
@@ -115,9 +119,9 @@ testcases/ios/{그룹}/     → tests/generated/ios/{그룹}/
 
 서로 다른 시트에서 같은 TC 번호를 사용해도 시트별 하위 폴더로 분리되므로 파일이 덮어써지지 않습니다. 빠른 실행은 선택한 OS의 `tests/generated/{platform}`만 조회합니다.
 
-### ENV Setup UI
+### 환경 설정
 
-대시보드 **ENV Setup 탭**에서 Appium 서버와 에뮬레이터/시뮬레이터를 터미널 없이 관리합니다.
+대시보드 **환경 설정** 메뉴에서 Appium 서버와 에뮬레이터/시뮬레이터를 터미널 없이 관리합니다.
 
 ```text
 Appium 카드  — 시작·중지·재시작. managed(대시보드 관리) / external(외부 실행) 모두 중지 가능
@@ -130,18 +134,17 @@ iOS 카드     — 시뮬레이터 목록 · 부팅(비동기) · 종료 · 기�
 - 에뮬레이터/시뮬레이터는 Appium과 독립적으로 시작·종료 가능
 - 최소 보유 정책: 가상 기기(에뮬레이터/시뮬레이터) 최소 1대 유지 (삭제 시 disabled), 실기기 0대 허용
 - Capture Studio iOS 세션 활성 중 시뮬레이터 종료 차단 (Android 세션과 독립)
-- 자세한 스펙: [docs/requirements/ENV_SETUP_PRD.md](docs/requirements/ENV_SETUP_PRD.md)
+- 자세한 조작: [사용자 가이드](docs/guides/USER_GUIDE.html)
 
-### Capture Studio
+### 화면 캡처로 작성 (Capture Studio)
 
-대시보드의 Capture Studio 탭에서 실제 앱 화면을 보면서 요소를 선택하고 TC를 직접 생성합니다.
+대시보드의 **화면 캡처로 작성** 메뉴에서 실제 앱 화면을 보면서 요소를 선택하고 TC를 직접 생성합니다.
 
 ```text
-1. 세션 설정   — OS(Android/iOS) · 디바이스 · 앱 설정 후 세션 시작
-2. 화면 탐색   — Android: MJPEG 미러링 / iOS: XCUITest 스크린샷 폴링 + hierarchy 트리
-3. 동작 기록   — Tap/Input/Scroll/Back/Wait 실제 조작을 Action Timeline에 기록
-4. Locator 검토 — 후보 별점 확인 및 승인
-5. 저장 및 생성 — /capture/generate_from_actions → 자체 완결형 pytest 파일 생성
+1. 세션 설정   — OS(Android/iOS) · 디바이스 · 앱 설정 후 환경 확인·세션 시작
+2. 동작 기록   — 화면 미러·hierarchy에서 Tap/Input/Scroll/Back/Wait 실제 조작 기록
+3. Locator 검토 — 후보 점수(n / 5)·안정성 확인, 검증 및 승인
+4. 저장 및 생성 — 미리보기 확인 후 자체 완결형 pytest 파일 생성
 ```
 
 #### 주요 기능
@@ -152,7 +155,7 @@ iOS 카드     — 시뮬레이터 목록 · 부팅(비동기) · 종료 · 기�
 - 동작 기록: tap / scroll / back / wait / input
 - Locator 후보 및 승인 (Android: resource-id > content-desc > text, iOS: label > name > predicate)
 - `저장 및 생성` → `_build_driver()` + `_el()` + `_ios_tap()` 포함 자체 완결형 pytest 생성
-- Healing 연계: 실패 TC에서 Locator 검토 4단계 재진입
+- Healing 연계: 실패 TC에서 Locator 검토(현재 진행 표시의 3단계) 재진입
 - 세션 재연결 버튼 (`csReLaunch()`)
 - **Nova MCP**: `routes/mcp.py` — HTTP+SSE MCP 서버, 툴 9종 (`screenshot`, `hierarchy`, `device_tap`, `scroll`, `input_text`, `back`, `screen_info`, `generate_test_case`, `clear_actions`). Claude Code에서 MCP 툴 호출 시 자동 연결, 대시보드 MCP ON/OFF 칩으로 상태 확인·수동 해제.
 - **Livetail**: Capture Studio 세션 없이도 접근 가능. user·mcp·pipeline 소스 필터, 200행 버퍼. 파이프라인 단계 시작·완료 이벤트 실시간 표시
@@ -162,6 +165,7 @@ iOS 카드     — 시뮬레이터 목록 · 부팅(비동기) · 종료 · 기�
 - Android MJPEG: Appium `--allow-insecure=uiautomator2:adb_screen_streaming` 필수, 포트 8093 개방 필요
 - iOS: 시뮬레이터당 XCUITest 세션 1개 — Capture Studio iOS 세션과 파이프라인 iOS TC 동시 실행 불가
 - 같은 플랫폼의 Capture Studio 세션과 파이프라인 실행은 동시에 불가. 다른 플랫폼(iOS Capture ↔ Android 파이프라인)은 독립 실행 가능
+- 메뉴 이동은 Capture 세션을 종료하지 않습니다. 테스트 실행 전 **세션 종료**를 누릅니다. 30분 비활동 시 자동 비활성화되며 기록은 보존됩니다. 드라이버 연결이 끊긴 경우 **앱 재실행**으로 다시 연결합니다.
 
 생성된 pytest 파일은 자체 완결형(`_build_driver()` + `_el()` + class 구조 포함)으로, 수정 없이 `05_execute.py`로 바로 실행할 수 있습니다.
 
@@ -173,7 +177,16 @@ iOS 카드     — 시뮬레이터 목록 · 부팅(비동기) · 종료 · 기�
 - `always`를 선택하면 성공 TC의 증거도 보존합니다.
 - 실행 증거는 `state/runs/{run_id}/`에 저장됩니다.
 - 보존 한도 기본값은 최근 20개 run, 전체 2GB입니다. `config/observability.json`의 `retention.max_runs`, `retention.max_total_mb`로 조정할 수 있습니다.
-- 빠른 실행의 `힐링 생략`은 기본 체크 상태이며, 이 경우 실패 TC를 재시도하지 않고 한 번만 실행합니다.
+- 빠른 실행의 **자동 복구 건너뛰기**는 기본 체크 상태이며, 이 경우 실패 TC를 재시도하지 않고 한 번만 실행합니다.
+- 파이프라인과 빠른 실행에서는 선택한 플랫폼의 연결된 기기 한 대를 라디오 버튼으로 선택합니다. 미연결 기기는 선택할 수 없습니다. 보존 정책도 **실패 시만** 또는 **항상** 중 하나를 라디오 버튼으로 선택합니다. 실패 시만은 실패·재시도 증거를 보존합니다.
+
+### 리포트와 실행 기록
+
+**리포트**에서 이름 검색·정렬로 파일을 찾습니다. 왼쪽 목록의 체크박스는 삭제 대상을 선택하며 미리보기를 열지 않습니다. **열기** 또는 목록 행을 눌러 오른쪽 미리보기에서 확인하고, **새 탭**으로 독립 화면을 엽니다. **삭제**와 **선택 삭제**는 확인 후 파일을 삭제합니다. 아무것도 선택하지 않으면 선택 삭제가 비활성화됩니다.
+
+리포트 본문은 그룹 선택 → 제목과 실행 정보 → 전체 통계 → 그룹별 필터와 TC 순서입니다. 첫 그룹은 펼쳐져 있으며, 실패 TC를 열면 오류 요약·전체 오류와 보존된 시도별 증거를 확인합니다. 본문 상단에는 대시보드 링크나 PDF 버튼이 없습니다. 목록은 380px, 미리보기는 남은 폭을 사용하며 좁은 화면에서는 세로로 배치됩니다. 기존 QA 리포트는 대시보드에서 열 때 현재 표시 스타일을 적용하고 원본 파일·증거는 유지합니다.
+
+**실행 기록**에서는 종류·그룹·플랫폼 필터로 저장된 실행 이력을 확인합니다. 화면의 초기화 기능은 확인 대화창을 거치므로 기록이 필요한 경우 내용을 먼저 확인하세요.
 
 ### CLI 실행
 
@@ -214,7 +227,7 @@ TC Markdown → target_ref + config/locators.json
             → 유일 후보만 registry 갱신
 ```
 
-DOM을 모르는 상태에서 locator를 추측해 코드를 확정하지 않습니다. `01_analyze.py`는 native XML과 감지된 WebView DOM을 분리해 저장하고, `06_heal.py`도 locator의 surface 안에서만 후보를 찾습니다. 자세한 정책은 [docs/operations/LOCATOR_HEALING.md](docs/operations/LOCATOR_HEALING.md)를 참고하세요.
+DOM을 모르는 상태에서 locator를 추측해 코드를 확정하지 않습니다. `01_analyze.py`는 native XML과 감지된 WebView DOM을 분리해 저장하고, `06_heal.py`도 locator의 surface 안에서만 후보를 찾습니다. 후보가 여러 개이거나 최신 화면을 확인할 수 없으면 자동 변경하지 않습니다. 실패 시 **화면 캡처로 작성**에서 요소의 Locator 후보를 검증하고 승인한 뒤 다시 생성합니다.
 
 ## 주요 파일
 
@@ -236,9 +249,8 @@ DOM을 모르는 상태에서 locator를 추측해 코드를 확정하지 않습
 | `scripts/locator_registry.py` | locator 정규화·registry·후보 탐색 공통 모듈 |
 | `config/locators.json` | 플랫폼별 locator source of truth |
 | `state/pipeline.json` | 단계별 상태와 UI hierarchy snapshot |
-| `docs/requirements/ENV_SETUP_PRD.md` | ENV Setup UI 제품 요구사항 (v1.0) |
-| `docs/operations/LOCATOR_HEALING.md` | locator healing 운영 정책 |
-| `docs/superpowers/specs/2026-09-15-nova-mcp-integration-design.md` | Nova MCP 통합 설계 문서 |
+| `docs/guides/USER_GUIDE.html` | 현재 화면 기준 사용자 가이드 |
+| `docs/images/user-guide/README.md` | 현재 제품 화면과 촬영 기준 |
 | `agents/lessons_learned.md` | 운영 중 발견된 패턴과 교훈 (Appium 환경변수, iOS 부팅 방식 등) |
 
 전체 문서 목록과 폴더별 안내는 [docs/README.md](docs/README.md)를 참고하세요.

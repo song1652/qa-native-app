@@ -4,7 +4,7 @@
 
 ## TC 스튜디오
 
-- 시작 문서: [`docs/tc-studio/README.md`](docs/tc-studio/README.md) → 설계 `TC_STUDIO_APP_DESIGN.md` → 실행 계획 `TC_STUDIO_APP_PLAN.md`.
+- 현재 사용법과 화면: [`docs/guides/USER_GUIDE.html`](docs/guides/USER_GUIDE.html). 완료된 개발 계획·PRD·디자인 문서는 사용자 요청으로 정리했습니다.
 - TC 스튜디오는 웹 저장소(`/Users/junghoyoung/qa-native-fixed`, 기준 `f4e7a6b`)를 **참고만 해서 이 저장소에 이식**한다. 웹 저장소는 읽기 전용 — 수정·커밋·push·서버 재시작 금지.
 - 대시보드 `http://localhost:8767`의 TC 스튜디오 메뉴는 웹 원본과 같은 독립 화면 `/tc-studio`로 이동한다. 여기에서 엑셀 TC 가져오기, 기획 자료 기반 초안 생성, 검토, 엑셀·Markdown 내보내기를 수행한다. API는 `agents/dashboard/routes/tc_studio.py`, 데이터 처리는 `scripts/_tc_*.py`, 저장소는 `state/tc_library/`다.
 - 앱 스위트의 Android/iOS 결과는 `results`에 따로 저장한다. Markdown은 `scripts/_tc_md_export.py`가 기존 `scripts/import_excel.py:_render_markdown` 형식으로 만들어 `testcases/{android,ios}/{group}/`에 쓴다.
@@ -118,7 +118,7 @@ python scripts/02_generate.py --platform android --strict-locators
 python scripts/02_generate.py --platform ios --strict-locators
 ```
 
-상세 healing 정책은 [docs/operations/LOCATOR_HEALING.md](docs/operations/LOCATOR_HEALING.md)에 있습니다.
+현재 healing 동작은 `scripts/06_heal.py`와 위 locator 규칙을 기준으로 확인합니다.
 
 ## 설정 파일
 
@@ -168,8 +168,8 @@ state/pipeline.json        # 실행 상태와 snapshot
 state/capture_session.json # Capture Studio 세션 상태
 state/runs/{run_id}/artifacts/ # TC attempt별 영상·시스템 로그 + manifest.json
 logs/                      # 단계별 로그
-docs/operations/LOCATOR_HEALING.md    # healing 정책
-docs/CAPTURE_STUDIO_PLAN.md # Capture Studio 구현 플랜
+docs/guides/USER_GUIDE.html # 현재 사용자 가이드
+docs/images/              # 현재 화면·상태별 설명 이미지
 ```
 
 ## 변경 시 검증
@@ -189,18 +189,7 @@ git diff --check
 
 대시보드 ENV Setup 탭에서 Appium 서버와 디바이스(에뮬레이터/시뮬레이터/실기기)를 관리합니다.
 
-**PRD**: `docs/requirements/ENV_SETUP_PRD.md` (v0.8 — F1·F3·F6 코드 반영 완료 · US-3 디바이스 CRUD API)
-**디자인 스펙**: https://claude.ai/code/artifact/55ba3c71-e480-4493-b60a-d0a2aad70fb1  
-**목업**: https://claude.ai/code/artifact/466103b7-6be2-4811-b34e-f0c088462334
-
-**M2.0 마이그레이션 선행 5단계** (M2.0 스프린트 착수 시 순서대로 수행):
-1. `config/devices.json` 단일 객체 → 배열 전환 + `.bak` 백업
-2. `utils/system.py`에 `default: true` 리더 함수 추가 (dict 하위호환 분기 포함)
-3. 소비 코드 3곳 교체: `android_driver.py:35`, `02_generate.py:388`, `capture.py:645`
-4. `capture.py:128-130` MJPEG 하드코딩 제거 → devices.json에서 읽도록 통일
-5. caps 조립 시 `default`/`wifi_ip`/`team_id` 등 비-Appium 필드 제거
-
-각 단계 후 `python3 -m py_compile scripts/*.py` + `02_generate --strict-locators` 회귀 확인 필수.
+환경 설정 사용법은 [현재 사용자 가이드](docs/guides/USER_GUIDE.html)를 확인합니다. 완료된 마이그레이션 계획을 다시 실행하지 않습니다.
 
 **Appium 5값 상태 모델**: `stopped` / `starting` / `managed` / `external` / `error`  
 `error` 상태는 자동 해소 없음 — 사용자가 "다시 시도" 클릭 또는 명시적 액션 시에만 전이.
@@ -218,14 +207,14 @@ git diff --check
 - `POST /api/env/android/avd/start`: 다른 에뮬레이터 실행 중 `409 already_running`. **Appium 상태 가드 없음**
 - `POST /api/env/ios/simulator/start`: **Appium 상태 가드 없음**. 생략 시 `devices.json`의 `default: true` 시뮬레이터를 사용. `subprocess.Popen`(비동기)으로 즉시 202 + `status: "starting"` 반환 — 3초 폴링이 `simctl list` Booted 감지 시 `running` 전환 (v1.0)
 
-> ⚠️ start 계열(`avd/start`, `simulator/start`)은 아직 `is_capture_active()`를 무인자로 호출해 무관한 플랫폼 세션도 시작을 차단합니다. 플랫폼 분리는 stop 계열에만 적용된 상태입니다 (PRD §15-7 항목 5).
+> ⚠️ start 계열(`avd/start`, `simulator/start`)은 아직 `is_capture_active()`를 무인자로 호출해 무관한 플랫폼 세션도 시작을 차단합니다. 플랫폼 분리는 stop 계열에만 적용된 상태입니다.
 
 **디바이스 추가/삭제**: `POST /api/env/{android,ios}/{add,remove}` 4종이 구현되어 있으며, 모든 `devices.json` 쓰기는 `agents/dashboard/utils/state.py`의 `save_devices_json()`을 경유합니다 (`.json.tmp` 기록 → `Path.replace()` 원자적 교체, `default` 중복 시 `ValueError` → 400). `config/devices.json`에 직접 `write_text()`하는 경로를 새로 만들지 마세요.
 
 - 요청 스키마: `add` = `{mode, deviceName, avd?|udid?, default?}`, `remove` = `{mode, deviceName}`. `mode`는 Android `emulator|real_device`, iOS `simulator|real_device`
 - 마지막 1개 항목은 삭제 불가 (`400 last_device`). `default: true` 항목 삭제 시 남은 첫 항목이 승계
-- 대시보드 ENV Setup 탭에 추가 버튼·모달·✕ 삭제 UI가 구현되어 있습니다 (PRD §15-7 항목 1 완료)
-- add·remove에 Capture/파이프라인 **잠금 가드가 구현**되어 있습니다. 세션 활성 중 호출 시 403이 반환됩니다 (PRD §15-7 항목 2 완료)
+- 대시보드 ENV Setup 탭에 추가 버튼·모달·✕ 삭제 UI가 구현되어 있습니다
+- add·remove에 Capture/파이프라인 **잠금 가드가 구현**되어 있습니다. 세션 활성 중 호출 시 403이 반환됩니다
 
 `is_capture_active(platform: str | None = None)` — 인자를 생략하면 전체 플랫폼을 확인합니다(기존 무인자 호출부와 하위호환). 세션 레코드에서 플랫폼을 식별할 수 없으면 보수적으로 `True`를 반환합니다.
 
