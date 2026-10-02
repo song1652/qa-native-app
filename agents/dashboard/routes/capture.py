@@ -24,6 +24,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import shared  # noqa: E402
 from shared import (  # noqa: E402
     CAPTURES_DIR,
     PROJECT_ROOT,
@@ -94,13 +95,20 @@ async def capture_start_session(request: Request):
         resolved = await asyncio.to_thread(resolve_capture_device, existing)
         if not resolved["ok"]:
             return JSONResponse(resolved, status_code=409)
-        save_capture_session({
-            **existing,
-            "udid": resolved["udid"],
-            "device_name": resolved["device_name"],
-            "active": True,
-            "last_activity_at": datetime.now().isoformat(),
-        })
+        # Device resolution awaits I/O; admission must be checked again atomically.
+        with shared._process_lock:
+            if shared.execution_active_locked():
+                return JSONResponse({"ok": False, "error": "실행 중입니다. 완료 후 Capture Studio를 시작하세요."}, status_code=409)
+            current = load_capture_session()
+            if current != existing:
+                return JSONResponse({"ok": False, "code": "capture_session_changed", "error": "기기 확인 중 Capture 세션이 변경되었습니다. 현재 세션을 확인한 뒤 다시 시도하세요."}, status_code=409)
+            save_capture_session({
+                **current,
+                "udid": resolved["udid"],
+                "device_name": resolved["device_name"],
+                "active": True,
+                "last_activity_at": datetime.now().isoformat(),
+            })
         mode = existing.get("screenshot_mode", "mjpeg")
         reconnect_resp: dict = {
             "ok":              True,
@@ -141,7 +149,12 @@ async def capture_start_session(request: Request):
         "last_activity_at":  datetime.now().isoformat(),
         "actions":           [],
     }
-    save_capture_session(session_data)
+    with shared._process_lock:
+        if shared.execution_active_locked():
+            return JSONResponse({"ok": False, "error": "실행 중입니다. 완료 후 Capture Studio를 시작하세요."}, status_code=409)
+        if is_capture_active():
+            return JSONResponse({"ok": False, "code": "capture_session_active", "error": "기존 Capture 세션을 종료한 뒤 새 실행 대상으로 시작하세요."}, status_code=409)
+        save_capture_session(session_data)
 
     session_dir = CAPTURES_DIR / new_session_id
     session_dir.mkdir(parents=True, exist_ok=True)

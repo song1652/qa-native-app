@@ -57,6 +57,14 @@ testcases/ios/{group}/     → tests/generated/ios/{group}/
 
 `import_excel._render_markdown`이 `02_generate.parse_tc_blocks`가 읽는 `## 테스트 케이스 N` 블록 형식을 만드는 **유일한** 함수입니다. TC 스튜디오 Markdown 내보내기(`scripts/_tc_md_export.py`)가 이 함수를 씁니다. 형식을 바꾸면 `tests/unit/test_generate_markdown_parsing.py`로 왕복을 확인합니다.
 
+## 실행·복구 정합성 정책
+
+- 대시보드 실행은 논리 작업 단위로 하나만 허용합니다. 폴더 사이 대기·healing 중에도 예약을 유지하며 Capture 세션과 동시에 실행하지 않습니다.
+- 취소/리셋은 프로세스 그룹 종료를 확인해야 예약을 해제합니다. 취소 후 다음 단계·healing·재실행을 시작하지 않습니다.
+- 분석·healing·검증에는 선택한 DEVICE_MODE/DEVICE_UDID 및 QA_RUN_ID를 전달합니다. 다른 기기로 fallback하지 않습니다.
+- 실행 결과는 `state/runs/{run_id}/execution_result.json`, pytest 중간 결과는 같은 run 아래 호출별 디렉터리에 저장합니다. `pipeline.json`은 최신 상태 호환용이며 과거 실행 결과 조회에 사용하지 않습니다.
+- 복구 검증 실패/예외 시 이번 시도 직전 코드와 Locator 레지스트리를 복원합니다. 기존 `.backup`을 원복 기준으로 사용하지 않습니다.
+
 ## 화면 캡처로 작성 (Capture)
 
 대시보드의 **화면 캡처로 작성** 메뉴(`/?view=capture`)에서 실제 앱 화면을 보며 요소를 선택하고 TC를 직접 생성합니다.

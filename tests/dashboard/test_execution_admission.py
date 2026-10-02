@@ -1,0 +1,295 @@
+"""Logical execution ownership using only fake subprocesses and temporary files."""
+from types import SimpleNamespace
+import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+from agents.dashboard.routes import pipeline
+
+@pytest.fixture
+def harness(monkeypatch, tmp_path):
+    jobs, commands = [], []
+    class Thread:
+        def __init__(self, target, args=(), **kwargs): jobs.append(lambda: target(*args))
+        def start(self): pass
+    class Process:
+        pid = 123456
+        returncode = None
+        def __init__(self, command, **kwargs):
+            commands.append((command, kwargs.get('env')))
+        def poll(self): return self.returncode
+        def wait(self, timeout=None):
+            self.returncode = 0
+            return 0
+        def terminate(self): self.returncode = -15
+    monkeypatch.setattr(pipeline, '_running', {})
+    monkeypatch.setattr(pipeline, '_test_runs', {})
+    monkeypatch.setattr(pipeline, '_pipeline_batches', {})
+    if hasattr(pipeline, '_execution_reservation'):
+        pipeline._execution_reservation.clear()
+    monkeypatch.setattr(pipeline, 'threading', SimpleNamespace(Thread=Thread))
+    monkeypatch.setattr(pipeline.subprocess, 'Popen', Process)
+    monkeypatch.setattr(pipeline, 'PROJECT_ROOT', tmp_path)
+    (tmp_path / 'scripts').mkdir()
+    for name in ('01_analyze.py', '02_generate.py', '03_lint.py', '05_execute.py', '06_heal.py', 'jira_reporter.py'):
+        (tmp_path / 'scripts' / name).touch()
+    monkeypatch.setattr(pipeline, 'LOGS_DIR', tmp_path)
+    monkeypatch.setattr(pipeline, 'GENERATED_DIR', tmp_path)
+    (tmp_path / 'android' / 'one').mkdir(parents=True)
+    (tmp_path / 'android' / 'two').mkdir()
+    monkeypatch.setattr(pipeline, 'list_tc_folders', lambda _: ['one', 'two'])
+    monkeypatch.setattr(pipeline, 'is_capture_active', lambda _: False)
+    monkeypatch.setattr(pipeline, 'read_state', lambda: {})
+    for name in ('save_state', 'broadcast_timeline_sync'):
+        monkeypatch.setattr(pipeline, name, lambda *_: None)
+    for name in ('save_running_pids', '_purge_old_runs', '_broadcast_run_summary'):
+        monkeypatch.setattr(pipeline, name, lambda *_: None)
+    monkeypatch.setattr(pipeline, '_SERIAL_FOLDER_GAP_SECONDS', 0)
+    app = FastAPI(); app.include_router(pipeline.router)
+    yield TestClient(app), jobs, commands
+    if hasattr(pipeline, '_execution_reservation'):
+        pipeline._execution_reservation.clear()
+
+
+def test_pending_full_run_reserves_execution(harness):
+    client, jobs, commands = harness
+    body = {'platform': 'android', 'tc_folders': ['one'], 'from_tc_studio': True}
+    assert client.post('/api/run_all', json=body).status_code == 200
+    assert client.post('/api/run_all', json=body).status_code == 409
+    assert client.post('/api/run_test', json={'test_folder': 'two'}).status_code == 409
+    assert commands == []
+
+
+def test_quick_run_blocks_capture(harness, monkeypatch):
+    client, _, commands = harness
+    monkeypatch.setattr(pipeline, 'is_capture_active', lambda _: True)
+    assert client.post('/api/run_test', json={'test_folder': 'one'}).status_code == 409
+    assert commands == []
+
+
+def test_cancel_queued_quick_run_never_spawns(harness):
+    client, jobs, commands = harness
+    assert client.post('/api/run_test', json={'test_folder': 'one'}).status_code == 200
+    assert client.post('/api/cancel', json={'step': 'folder:android:one'}).status_code == 200
+    jobs[0]()
+    assert commands == []
+
+@pytest.mark.parametrize('failures,expected_heals', [(1, 1), (4, 3)])
+def test_full_run_heals_failed_execute_with_same_environment(harness, monkeypatch, failures, expected_heals):
+    client, jobs, commands = harness
+    attempts = []
+    base = pipeline.subprocess.Popen
+    class Process(base):
+        def __init__(self, command, **kwargs):
+            super().__init__(command, **kwargs)
+            self.command = command
+        def wait(self, timeout=None):
+            if '05_execute.py' in self.command[2]:
+                attempts.append(True)
+                self.returncode = 1 if len(attempts) <= failures else 0
+            else:
+                self.returncode = 0
+            return self.returncode
+    monkeypatch.setattr(pipeline.subprocess, 'Popen', Process)
+    # Exhausted retries must not actually publish a Jira issue.
+    monkeypatch.setattr(pipeline.subprocess, 'run', lambda *_a, **_k: SimpleNamespace(stdout='', stderr=''))
+    response = client.post('/api/run_all', json={'tc_folders': ['one'], 'from_tc_studio': True})
+    jobs[0]()
+    executions = [env for command, env in commands if '05_execute.py' in command[2]]
+    heals = [env for command, env in commands if '06_heal.py' in command[2]]
+    assert len(heals) == expected_heals
+    assert len(executions) == expected_heals + 1
+    assert all(env == executions[0] for env in heals)
+    status = client.get('/api/run_all/status/' + response.json()['batch_id']).json()
+    assert status['done'] and status['ok'] is (failures == 1)
+
+
+def test_cancel_running_quick_run_never_heals(harness, monkeypatch):
+    client, jobs, commands = harness
+    base = pipeline.subprocess.Popen
+    class Process(base):
+        def wait(self, timeout=None):
+            assert client.post('/api/cancel', json={'step': 'folder:android:one'}).status_code == 200
+            self.returncode = -15
+            return -15
+    monkeypatch.setattr(pipeline.subprocess, 'Popen', Process)
+    monkeypatch.setattr(pipeline, '_terminate_group', lambda proc: setattr(proc, 'returncode', -15))
+    client.post('/api/run_test', json={'test_folder': 'one', 'heal': True})
+    jobs[0]()
+    assert len(commands) == 1
+    assert not pipeline._execution_reservation
+
+
+def test_termination_failure_keeps_admission_closed(harness, monkeypatch):
+    client, jobs, commands = harness
+    client.post('/api/run_test', json={'test_folder': 'one'})
+    proc = pipeline.subprocess.Popen(['fake'])
+    pipeline._running['folder:android:one'] = proc
+    def fail(_proc): raise RuntimeError('still alive')
+    monkeypatch.setattr(pipeline, '_terminate_group', fail)
+    assert client.post('/api/cancel', json={'step': 'folder:android:one'}).status_code == 409
+    jobs[0]()
+    assert client.post('/api/run_test', json={'test_folder': 'two'}).status_code == 409
+    assert pipeline._running['folder:android:one'] is proc
+
+
+def test_group_termination_escalates_even_after_parent_exits(monkeypatch):
+    import time
+    signals = []
+    clock = iter([0, 1, 4, 5, 6])
+    monkeypatch.setattr(time, 'monotonic', lambda: next(clock))
+    monkeypatch.setattr(time, 'sleep', lambda _: None)
+    def killpg(pid, signal):
+        signals.append(signal)
+        if signal == 0 and 9 in signals:
+            raise ProcessLookupError
+    monkeypatch.setattr(pipeline.os, 'killpg', killpg)
+    pipeline._terminate_group(SimpleNamespace(pid=123456, poll=lambda: 0))
+    assert signals == [15, 0, 9, 0]
+
+
+def test_rejected_single_step_does_not_overwrite_active_state(harness, monkeypatch):
+    client, _, _ = harness
+    writes = []
+    monkeypatch.setattr(pipeline, 'save_state', writes.append)
+    client.post('/api/run_test', json={'test_folder': 'one'})
+    assert client.post('/api/run', json={'step': 'execute', 'platform': 'ios'}).status_code == 409
+    assert writes == []
+
+
+def test_failed_worker_start_releases_admission(harness, monkeypatch):
+    client, _, _ = harness
+    class Thread:
+        def __init__(self, **kwargs): pass
+        def start(self): raise RuntimeError('no threads')
+    monkeypatch.setattr(pipeline, 'threading', SimpleNamespace(Thread=Thread))
+    with pytest.raises(RuntimeError, match='no threads'):
+        client.post('/api/run_test', json={'test_folder': 'one'})
+    assert not pipeline._execution_reservation
+
+
+def test_log_result_uses_its_run_not_latest_global_state(harness, monkeypatch, tmp_path):
+    from scripts.run_results import write_execution_result
+    client, _, _ = harness
+    monkeypatch.setattr(pipeline, 'PROJECT_ROOT', tmp_path)
+    monkeypatch.setattr(pipeline, 'read_state', lambda: {'execute_results': {'summary': {'passed': 99}}})
+    pipeline._test_runs['old.txt'] = {'key': 'old', 'run_id': 'run_android_old', 'done': True, 'returncode': 0}
+    own = {'passed': ['one'], 'errors': [], 'summary': {'passed': 1, 'failed': 0, 'total': 1}}
+    write_execution_result(tmp_path, 'run_android_old', {'execute_results': own, 'status': 'passed', 'exit_code': 0})
+    result = client.post('/api/run_log', json={'log': 'old.txt'}).json()['result']
+    assert all(result[key] == value for key, value in own.items())
+    pipeline._test_runs['missing.txt'] = {'key': 'new', 'run_id': 'run_android_new', 'done': True, 'returncode': 1}
+    assert client.post('/api/run_log', json={'log': 'missing.txt'}).json()['result']['summary'] == {}
+
+@pytest.mark.parametrize('quick', [False, True])
+@pytest.mark.parametrize('heal_code,executions', [(1, 2), (-15, 1), (143, 1)])
+def test_partial_heal_is_reexecuted_but_signalled_heal_is_not(harness, monkeypatch, quick, heal_code, executions):
+    client, jobs, commands = harness
+    base = pipeline.subprocess.Popen
+    attempts = []
+    class Process(base):
+        def __init__(self, command, **kwargs):
+            super().__init__(command, **kwargs); self.command = command
+        def wait(self, timeout=None):
+            self.returncode = 0
+            if '05_execute.py' in self.command[2]:
+                attempts.append(True)
+                self.returncode = 1 if len(attempts) == 1 else 0
+            elif '06_heal.py' in self.command[2]:
+                self.returncode = heal_code
+            return self.returncode
+    monkeypatch.setattr(pipeline.subprocess, 'Popen', Process)
+    if quick:
+        client.post('/api/run_test', json={'test_folder': 'one'})
+    else:
+        client.post('/api/run_all', json={'tc_folders': ['one'], 'from_tc_studio': True})
+    jobs[0]()
+    assert len(attempts) == executions
+
+
+def test_next_folder_preflight_log_never_inherits_previous_result(harness, monkeypatch):
+    client, jobs, commands = harness
+    base = pipeline.subprocess.Popen
+    class Process(base):
+        def __init__(self, command, **kwargs):
+            super().__init__(command, **kwargs); self.command = command
+        def wait(self, timeout=None):
+            self.returncode = int('02_generate.py' in self.command[2] and 'android/two' in self.command)
+            return self.returncode
+    monkeypatch.setattr(pipeline.subprocess, 'Popen', Process)
+    client.post('/api/run_all', json={'tc_folders': ['one', 'two'], 'from_tc_studio': True})
+    jobs[0]()
+    assert pipeline._test_runs['run_generate.txt']['run_id'] is None
+    assert client.post('/api/run_log', json={'log': 'run_generate.txt'}).json()['result']['summary'] == {}
+
+
+def test_cancel_finalizes_run_owned_result_and_keeps_measurements(harness, monkeypatch, tmp_path):
+    from scripts.run_results import read_execution_result, write_execution_result
+    client, jobs, _ = harness
+    client.post('/api/run_test', json={'test_folder': 'one'})
+    run_id = pipeline._test_runs['run_test_android_one.txt']['run_id']
+    measured = {'passed': ['measured'], 'errors': [], 'summary': {'total': 1, 'passed': 1, 'failed': 0}}
+    write_execution_result(tmp_path, run_id, {'status': 'running', 'execute_results': measured})
+    assert client.post('/api/cancel', json={'step': 'folder:android:one'}).status_code == 200
+    jobs[0]()
+    result = read_execution_result(tmp_path, run_id)
+    assert result['status'] == 'cancelled' and result['exit_code'] == -15
+    assert result['execute_results'] == {**measured, 'exit_code': -15}
+    response = client.post('/api/run_log', json={'log': 'run_test_android_one.txt'}).json()
+    assert response['result']['status'] == 'cancelled'
+
+
+def test_spawn_exception_finalizes_failed_result_with_reason(harness, monkeypatch, tmp_path):
+    from scripts.run_results import read_execution_result
+    client, jobs, _ = harness
+    def fail(*args, **kwargs): raise OSError('spawn unavailable')
+    monkeypatch.setattr(pipeline.subprocess, 'Popen', fail)
+    response = client.post('/api/run_test', json={'test_folder': 'one'})
+    jobs[0]()
+    meta = pipeline._test_runs[response.json()['log']]
+    result = read_execution_result(tmp_path, meta['run_id'])
+    assert result['status'] == 'failed' and result['exit_code'] == -1
+    assert result['error'] == 'spawn unavailable'
+    polled = client.post('/api/run_log', json={'log': response.json()['log']}).json()
+    assert polled['result']['error'] == 'spawn unavailable'
+    assert polled['result']['summary'] == {}
+
+
+def test_analyze_spawn_exception_does_not_create_execution_record(harness, monkeypatch, tmp_path):
+    client, _, _ = harness
+    def fail(*args, **kwargs): raise OSError('spawn unavailable')
+    monkeypatch.setattr(pipeline.subprocess, 'Popen', fail)
+    with pytest.raises(OSError):
+        client.post('/api/run', json={'step': 'analyze'})
+    assert not (tmp_path / 'state' / 'runs').exists()
+
+
+def test_standalone_heal_reuses_owned_run_and_target(harness, monkeypatch, tmp_path):
+    from scripts.run_results import write_execution_result
+    client, jobs, commands = harness
+    run_id = 'run_android_previous'
+    write_execution_result(tmp_path, run_id, {'status': 'failed', 'platform': 'android', 'device_mode': 'real_device', 'device_udid': 'phone-1'})
+    monkeypatch.setattr(pipeline, 'read_state', lambda: {'last_run_id': run_id})
+    response = client.post('/api/run', json={'step': 'heal', 'platform': 'android'})
+    assert response.status_code == 200
+    env = commands[0][1]
+    assert env['QA_RUN_ID'] == run_id
+    assert env['DEVICE_MODE'] == 'real_device'
+    assert env['DEVICE_UDID'] == 'phone-1'
+    jobs[0]()
+
+
+@pytest.mark.parametrize('change', ['missing', 'platform', 'mode', 'device', 'unknown_device'])
+def test_standalone_heal_rejects_missing_or_different_execution(harness, monkeypatch, tmp_path, change):
+    from scripts.run_results import write_execution_result
+    client, jobs, commands = harness
+    run_id = 'run_android_previous'
+    if change != 'missing':
+        write_execution_result(tmp_path, run_id, {'status': 'failed', 'platform': 'android', 'device_mode': 'real_device', 'device_udid': '' if change == 'unknown_device' else 'phone-1'})
+    monkeypatch.setattr(pipeline, 'read_state', lambda: {'last_run_id': run_id})
+    body = {'step': 'heal', 'platform': 'android'}
+    if change == 'platform': body['platform'] = 'ios'
+    if change == 'mode': body['mode'] = 'emulator'
+    if change == 'device': body['device_udid'] = 'other-phone'
+    assert client.post('/api/run', json=body).status_code == 409
+    assert commands == []
+    assert not pipeline._execution_reservation

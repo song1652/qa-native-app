@@ -19,8 +19,11 @@ Usage:
 import argparse
 import ast
 import json
+import os
+from functools import wraps
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
@@ -30,6 +33,7 @@ SCRIPTS_DIR = Path(__file__).parent
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 from locator_registry import find_unique_web_candidate, load_registry, save_registry
+from run_results import read_execution_result
 
 ROOT = Path(__file__).parent.parent
 CONFIG_DIR = ROOT / "config"
@@ -207,16 +211,31 @@ def _screen_name_from_path(file_path: str) -> str:
     return stem
 
 
-def _find_sel_constants(source: str) -> list:
-    """소스에서 SEL_* 상수 정의를 추출한다.
+def _assignments(source: str) -> dict:
+    """Top-level generated assignments, independent of quote and line formatting."""
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return {}
+    return {node.targets[0].id: node for node in tree.body
+            if isinstance(node, ast.Assign) and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)}
 
-    반환: [{"const": "SEL_FOO", "value": "some_value"}, ...]
-    """
-    pattern = re.compile(r'^(SEL_\w+)\s*=\s*"([^"]+)"', re.MULTILINE)
-    return [
-        {"const": m.group(1), "value": m.group(2)}
-        for m in pattern.finditer(source)
-    ]
+
+def _replace_node(source: str, node: ast.AST, replacement: str) -> str:
+    # AST columns are UTF-8 byte offsets (not character offsets).
+    lines = source.encode("utf-8").splitlines(keepends=True)
+    start = sum(map(len, lines[:node.lineno - 1])) + node.col_offset
+    end = sum(map(len, lines[:node.end_lineno - 1])) + node.end_col_offset
+    original = b"".join(lines)
+    return (original[:start] + replacement.encode("utf-8") + original[end:]).decode("utf-8")
+
+
+def _find_sel_constants(source: str) -> list:
+    return [{"const": name, "value": node.value.value}
+            for name, node in _assignments(source).items()
+            if name.startswith("SEL_") and isinstance(node.value, ast.Constant)
+            and isinstance(node.value.value, str)]
 
 
 # ---------------------------------------------------------------------------
@@ -305,19 +324,19 @@ def _find_best_match(sel_value: str, elements: list) -> dict:
 
 
 def _target_ref_for_const(source: str, const_name: str) -> str:
-    inline_pattern = re.compile(
-        rf'^{re.escape(const_name)}\s*=.*# target_ref:\s*([^/\s]+)',
-        re.MULTILINE,
-    )
-    match = inline_pattern.search(source)
-    if match:
-        return match.group(1)
-    preceding_pattern = re.compile(
-        rf'^# target_ref:\s*([^/\s]+).*\n{re.escape(const_name)}\s*=',
-        re.MULTILINE,
-    )
-    match = preceding_pattern.search(source)
-    return match.group(1) if match else ""
+    assignment = _assignments(source).get(const_name)
+    if assignment is None:
+        return ""
+    lines = source.splitlines()
+    for index in range(assignment.lineno - 1, -1, -1):
+        line = lines[index]
+        # Generator inserts a strategy comment between target_ref and SEL_*.
+        if index != assignment.lineno - 1 and line.strip() and not line.lstrip().startswith("#"):
+            break
+        match = re.search(r"# target_ref:\s*([^/\s]+)", line)
+        if match:
+            return match.group(1)
+    return ""
 
 
 # ---------------------------------------------------------------------------
@@ -343,11 +362,18 @@ def _replace_sel_value_and_strategy(
     else:
         final_value = new_value
 
-    def_pattern = re.compile(
-        r'^(' + re.escape(const_name) + r'\s*=\s*)"[^"]*"',
-        re.MULTILINE,
-    )
-    source = def_pattern.sub(r'\g<1>"' + final_value + '"', source)
+    assignment = _assignments(source).get(const_name)
+    if assignment is None:
+        return source
+    original_value = ast.literal_eval(assignment.value)
+    source = _replace_node(source, assignment.value, repr(final_value))
+    # Generated runtime maps are keyed by the selector value, not its name.
+    surfaces = _assignments(source).get("LOCATOR_SURFACES")
+    if surfaces is not None:
+        specs = ast.literal_eval(surfaces.value)
+        if original_value in specs:
+            specs[final_value] = specs.pop(original_value)
+            source = _replace_node(source, surfaces.value, repr(specs))
 
     # 2) AppiumBy 전략 교체 — 어떤 전략이든 new_strategy로 교체
     strategy_pattern = re.compile(
@@ -363,24 +389,19 @@ def _replace_sel_value_and_strategy(
 def _replace_webview_runtime_spec(source: str, native_value: str,
                                   webview: dict) -> str:
     """생성 파일의 runtime surface map을 안전하게 갱신한다."""
-    pattern = re.compile(r"^LOCATOR_SURFACES\s*=\s*(\{.*\})$", re.MULTILINE)
-    match = pattern.search(source)
-    if not match:
+    assignment = _assignments(source).get("LOCATOR_SURFACES")
+    if assignment is None:
         return source
     try:
-        specs = ast.literal_eval(match.group(1))
+        specs = ast.literal_eval(assignment.value)
     except (SyntaxError, ValueError):
         return source
     if native_value not in specs:
         return source
     specs[native_value]["surface"] = "webview"
     specs[native_value]["webview"] = webview
-    return pattern.sub(f"LOCATOR_SURFACES = {specs!r}", source, count=1)
+    return _replace_node(source, assignment.value, repr(specs))
 
-
-# ---------------------------------------------------------------------------
-# Fallback: 전략만 교체 (dom_info 없을 때)
-# ---------------------------------------------------------------------------
 
 def _current_strategy(source: str, const_name: str) -> str:
     """소스에서 특정 상수가 사용된 AppiumBy 전략을 감지한다."""
@@ -416,6 +437,7 @@ def _run_pytest_single(file_path: str) -> bool:
         capture_output=True,
         text=True,
         cwd=ROOT,
+        env=os.environ.copy(),
     )
     return result.returncode == 0
 
@@ -427,9 +449,12 @@ def _refresh_inspector_snapshot(platform: str) -> dict:
     자동 수집한다. 디바이스가 없으면 기존 snapshot을 유지한다.
     """
     analyzer = ROOT / "scripts" / "01_analyze.py"
+    mode = os.environ.get("DEVICE_MODE") or ("simulator" if platform == "ios" else "emulator")
+    cmd = [sys.executable, str(analyzer), "--platform", platform, "--mode", mode]
+    if os.environ.get("DEVICE_UDID"):
+        cmd += ["--udid", os.environ["DEVICE_UDID"]]
     result = subprocess.run(
-        [sys.executable, str(analyzer), "--platform", platform],
-        cwd=ROOT, capture_output=True, text=True,
+        cmd, cwd=ROOT, capture_output=True, text=True, env=os.environ.copy(),
     )
     if result.returncode != 0:
         print("[06_heal] fresh Inspector snapshot 실패 — 기존 snapshot 사용")
@@ -442,6 +467,30 @@ def _refresh_inspector_snapshot(platform: str) -> dict:
 # Heal 로직 — XML 기반
 # ---------------------------------------------------------------------------
 
+def _rollback_failed_heal(function):
+    """Rollback this attempt, including exceptions; old backups are archival only."""
+    @wraps(function)
+    def attempt(file_path, *args, **kwargs):
+        source_path = Path(file_path)
+        registry_path = CONFIG_DIR / "locators.json"
+        source_before = source_path.read_bytes()
+        registry_before = registry_path.read_bytes() if registry_path.exists() else None
+        committed = False
+        try:
+            result = function(file_path, *args, **kwargs)
+            committed = "strategy" in result
+            return result
+        finally:
+            if not committed:
+                source_path.write_bytes(source_before)
+                if registry_before is None:
+                    registry_path.unlink(missing_ok=True)
+                else:
+                    registry_path.write_bytes(registry_before)
+    return attempt
+
+
+@_rollback_failed_heal
 def heal_file_xml(file_path: str, dom_info: dict, platform: str = "android") -> dict:
     """dom_info XML 기반으로 단일 TC 파일에 self-heal을 적용한다.
 
@@ -453,7 +502,8 @@ def heal_file_xml(file_path: str, dom_info: dict, platform: str = "android") -> 
         실패: {"file": ..., "reason": ...}
     """
     path = Path(file_path)
-    source = path.read_text(encoding="utf-8")
+    original_source = path.read_bytes()
+    source = original_source.decode("utf-8")
 
     sel_constants = _find_sel_constants(source)
     if not sel_constants:
@@ -489,6 +539,7 @@ def heal_file_xml(file_path: str, dom_info: dict, platform: str = "android") -> 
     # 1단계: 모든 SEL 상수에 대해 XML 매칭 후 일괄 적용
     healed_any = False
     heal_details = []
+    registry = load_registry()
 
     for sel in sel_constants:
         const_name = sel["const"]
@@ -497,7 +548,6 @@ def heal_file_xml(file_path: str, dom_info: dict, platform: str = "android") -> 
         print(f"[06_heal]   {const_name}: 값='{original_value}' 매칭 중...")
 
         target = _target_ref_for_const(source, const_name)
-        registry = load_registry()
         locator = registry.get("targets", {}).get(target, {}).get(platform, {})
         surface = locator.get("surface", "auto") if isinstance(locator, dict) else "auto"
 
@@ -522,7 +572,6 @@ def heal_file_xml(file_path: str, dom_info: dict, platform: str = "android") -> 
                 "confidence": match.get("confidence", "medium"),
                 "source": "webview_dom",
             }
-            save_registry(registry)
             web_spec = {key: value for key, value in match.items()
                         if key in {"strategy", "value", "role", "name"}}
             source = _replace_webview_runtime_spec(source, original_value, web_spec)
@@ -560,7 +609,6 @@ def heal_file_xml(file_path: str, dom_info: dict, platform: str = "android") -> 
                 "confidence": match.get("confidence", "medium"),
                 "source": "appium_page_source",
             }
-            save_registry(registry)
         healed_any = True
         heal_details.append({
             "sel_const": const_name,
@@ -581,6 +629,7 @@ def heal_file_xml(file_path: str, dom_info: dict, platform: str = "android") -> 
     print(f"[06_heal]   {len(heal_details)}개 SEL 일괄 적용 후 pytest 실행")
 
     if _run_pytest_single(file_path):
+        save_registry(registry)
         print(f"[06_heal]   성공: {len(heal_details)}개 SEL heal 완료")
         last = heal_details[-1]
         return {
@@ -594,9 +643,8 @@ def heal_file_xml(file_path: str, dom_info: dict, platform: str = "android") -> 
         }
 
     # pytest 실패 — 원본 복원
-    source_backup = backup_path.read_text(encoding="utf-8")
-    path.write_text(source_backup, encoding="utf-8")
-    print(f"[06_heal]   pytest 실패, 원본 복원 ({backup_path.name})")
+    path.write_bytes(original_source)
+    print("[06_heal]   pytest 실패, 이번 시도 직전 원본 복원")
 
     return {
         "file": file_path,
@@ -609,6 +657,7 @@ def heal_file_xml(file_path: str, dom_info: dict, platform: str = "android") -> 
 # Heal 로직 — 전략 교체 fallback
 # ---------------------------------------------------------------------------
 
+@_rollback_failed_heal
 def heal_file_fallback(file_path: str) -> dict:
     """dom_info 없을 때 AppiumBy 전략만 교체하는 fallback heal.
 
@@ -617,7 +666,8 @@ def heal_file_fallback(file_path: str) -> dict:
         실패: {"file": ..., "reason": ...}
     """
     path = Path(file_path)
-    source = path.read_text(encoding="utf-8")
+    original_source = path.read_bytes()
+    source = original_source.decode("utf-8")
 
     sel_constants = _find_sel_constants(source)
     if not sel_constants:
@@ -662,9 +712,8 @@ def heal_file_fallback(file_path: str) -> dict:
                     "matched_attr": "",
                 }
 
-            source_backup = backup_path.read_text(encoding="utf-8")
-            path.write_text(source_backup, encoding="utf-8")
-            source = source_backup
+            path.write_bytes(original_source)
+            source = original_source.decode("utf-8")
 
     return {
         "file": file_path,
@@ -685,6 +734,8 @@ def main():
         "--platform", default="android", choices=["android", "ios"]
     )
     args = parser.parse_args()
+    # Dashboard cancellation must unwind provisional edits before exiting.
+    signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(128 + signum))
 
     print(f"[06_heal] platform={args.platform}")
 
@@ -697,7 +748,18 @@ def main():
             " fallback(전략 교체) 모드로 진행합니다."
         )
 
-    execute_results = state.get("execute_results", {})
+    run_id = os.environ.get("QA_RUN_ID", "").strip()
+    if run_id:
+        owned_result = read_execution_result(ROOT, run_id)
+        if not owned_result or not isinstance(owned_result.get("execute_results"), dict):
+            print(f"[06_heal] Missing execution result for {run_id}; refusing stale errors")
+            sys.exit(1)
+        execute_results = owned_result["execute_results"]
+        if owned_result.get("exit_code") != 0 and not execute_results.get("errors"):
+            print(f"[06_heal] Run {run_id} failed without healable test errors")
+            sys.exit(1)
+    else:
+        execute_results = state.get("execute_results", {})
     errors = execute_results.get("errors", [])
 
     if not errors:
@@ -720,6 +782,7 @@ def main():
     fresh_dom_info = _refresh_inspector_snapshot(args.platform)
     if fresh_dom_info:
         dom_info = fresh_dom_info
+        state["dom_info"] = fresh_dom_info
 
     print(f"[06_heal] {len(failed_files)}개 실패 TC 처리 시작")
 

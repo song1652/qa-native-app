@@ -13,12 +13,16 @@ import struct
 import subprocess
 import sys
 import time
+import uuid
 import xml.etree.ElementTree as ET
 from datetime import datetime
 from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
 STATE_DIR = ROOT / "state"
+if str(Path(__file__).parent) not in sys.path:
+    sys.path.insert(0, str(Path(__file__).parent))
+from run_results import execution_result_path, write_execution_result
 
 
 def _find_adb() -> str:
@@ -394,19 +398,59 @@ def main():
     # run_id 발급 (QA_RUN_ID가 이미 설정된 경우 — pipeline.py에서 발급 — 재사용)
     run_id = os.environ.get("QA_RUN_ID", "").strip() or f"run_{platform}_{report_stamp}"
 
+    execute_results = {"exit_code": None, "errors": [], "passed": [],
+                       "summary": {"total": 0, "passed": 0, "failed": 0}}
+    outcome = {
+        "status": "running", "exit_code": None, "execute_results": execute_results,
+        "platform": platform,
+        "device_mode": args.mode or os.environ.get("DEVICE_MODE") or (
+            "simulator" if platform == "ios" else "emulator"
+        ),
+        "device_udid": args.udid or os.environ.get("DEVICE_UDID", ""),
+    }
+    write_execution_result(ROOT, run_id, outcome)
+    try:
+        exit_code = _execute(args, run_id, report_stamp, outcome)
+    except Exception as exc:
+        exit_code = 1
+        outcome["error"] = str(exc)
+        print(f"[05_execute] ERROR: {exc}")
+    outcome.update(status="passed" if exit_code == 0 else "failed", exit_code=exit_code)
+    outcome["execute_results"]["exit_code"] = exit_code
+    write_execution_result(ROOT, run_id, outcome)
+    # Compatibility only: log-specific consumers read the run-owned file above.
+    state = load_state()
+    state.update(step="executed", execute_results=outcome["execute_results"],
+                 last_exit_code=exit_code, last_run_id=run_id)
+    state.pop("report_path", None)
+    if outcome.get("report_path"):
+        state["report_path"] = outcome["report_path"]
+    save_state(state)
+    sys.exit(exit_code)
+
+
+def _execute(args, run_id, report_stamp, outcome):
+    platform = args.platform
+    invocation_dir = execution_result_path(ROOT, run_id).parent / "execute" / uuid.uuid4().hex
+    invocation_dir.mkdir(parents=True)
+    junit_xml = invocation_dir / "pytest_report.xml"
+    json_report = invocation_dir / "pytest_report.json"
+
     # 디바이스 연결 가드
     if args.platform == "android":
         if not check_android_device():
             print("[05_execute] ERROR: Android device/emulator not connected.")
             print("  Run: adb devices")
-            sys.exit(1)
+            raise RuntimeError("Android device/emulator not connected")
 
     if not check_appium_server():
         print("[05_execute] ERROR: Appium server not running.")
-        print("  Run: appium --address 0.0.0.0 --port 4723")
-        sys.exit(1)
+        print("  Run: appium --address 127.0.0.1 --port 4723")
+        raise RuntimeError("Appium server not running")
 
     state = load_state()
+    for key in ("report_path", "video_path", "execute_results"):
+        state.pop(key, None)
 
     # 플랫폼 전환 시 이전 실행 아티팩트 초기화
     prev_platform = state.get("platform")
@@ -420,31 +464,31 @@ def main():
 
     if not test_dir.exists():
         print(f"[05_execute] No tests found at {test_dir}")
-        sys.exit(1)
+        raise RuntimeError(f"No tests found at {test_dir}")
 
     if args.test_file:
         candidate = (TESTS_DIR / platform / args.test_file).resolve()
         if candidate.suffix != ".py" or not candidate.is_file() or not candidate.is_relative_to((TESTS_DIR / platform).resolve()):
             print(f"[05_execute] Invalid test file: {args.test_file}")
-            sys.exit(1)
+            raise RuntimeError(f"Invalid test file: {args.test_file}")
         test_target = candidate
     else:
         test_target = sorted(test_dir.glob("tc_*.py")) if args.tc_root_only else test_dir
         if not test_target:
             print(f"[05_execute] No root tests found at {test_dir}")
-            sys.exit(1)
+            raise RuntimeError(f"No root tests found at {test_dir}")
 
     use_json_report = _has_json_report_plugin()
     cmd = [
         sys.executable, "-m", "pytest",
         *([str(path) for path in test_target] if isinstance(test_target, list)
           else [str(test_target)]), "-v",
-        f"--junit-xml={JUNIT_XML}",
+        f"--junit-xml={junit_xml}",
     ]
     if use_json_report:
         cmd += [
             "--json-report",
-            f"--json-report-file={JSON_REPORT}",
+            f"--json-report-file={json_report}",
         ]
         print("[05_execute] Using pytest-json-report for result parsing.")
 
@@ -510,18 +554,22 @@ def main():
             state["video_path"] = str(video_path)
 
     # Parse results: JSON report preferred, JUnit XML as fallback
-    if use_json_report and JSON_REPORT.exists():
+    if use_json_report and json_report.exists():
         print("[05_execute] Parsing JSON report results...")
-        report_data = parse_json_report(JSON_REPORT)
+        report_data = parse_json_report(json_report)
     else:
         print("[05_execute] Parsing JUnit XML results...")
-        report_data = parse_junit_xml(JUNIT_XML)
+        report_data = parse_junit_xml(junit_xml)
     execute_results = {
         "exit_code": result.returncode,
         "errors": report_data["errors"],
         "passed": report_data["passed"],
         "summary": report_data["summary"],
     }
+
+    outcome["execute_results"] = execute_results
+    if result.returncode:
+        outcome["error"] = f"pytest exited with code {result.returncode}"
 
     state["step"] = "executed"
     state["execute_results"] = execute_results
@@ -543,7 +591,9 @@ def main():
     if not args.no_report:
         _generate_html_report(state, platform, video_path, report_stamp)
 
-    sys.exit(result.returncode)
+        outcome["report_path"] = state.get("report_path")
+
+    return result.returncode
 
 
 def _generate_html_report(state: dict, platform: str,

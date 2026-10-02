@@ -35,9 +35,11 @@ def test_stop_prevents_queued_batch_from_starting_next_folder(monkeypatch, tmp_p
         def terminate(self):
             signals.append('terminate')
             self.returncode = -15
+    monkeypatch.setattr(pipeline, '_execution_reservation', {})
     monkeypatch.setattr(pipeline, '_running', {})
     monkeypatch.setattr(pipeline, '_test_runs', {})
     monkeypatch.setattr(pipeline, '_pipeline_batches', {})
+    monkeypatch.setattr(pipeline, 'PROJECT_ROOT', tmp_path)
     monkeypatch.setattr(pipeline, 'LOGS_DIR', tmp_path)
     monkeypatch.setattr(pipeline, 'list_tc_folders', lambda _: ['one', 'two'])
     monkeypatch.setattr(pipeline, 'is_capture_active', lambda _: False)
@@ -63,7 +65,11 @@ def test_stop_prevents_queued_batch_from_starting_next_folder(monkeypatch, tmp_p
     monkeypatch.setattr(pipeline, 'threading', SimpleNamespace(Thread=Thread))
     monkeypatch.setattr(pipeline.subprocess, 'Popen', Process)
     monkeypatch.setattr(pipeline.os, 'getpgid', lambda pid: pid)
-    monkeypatch.setattr(pipeline.os, 'killpg', lambda *_: signals.append('killpg'))
+    def killpg(_pid, signal):
+        if signal == 0:
+            raise ProcessLookupError
+        signals.append('killpg')
+    monkeypatch.setattr(pipeline.os, 'killpg', killpg)
     app = FastAPI()
     app.include_router(pipeline.router)
     client = TestClient(app)
@@ -82,4 +88,4 @@ def test_stop_prevents_queued_batch_from_starting_next_folder(monkeypatch, tmp_p
     assert pipeline._pipeline_batches[batch_id]['ok'] is False
 
     if when == 'running':
-        assert signals == ['terminate' if action == 'reset' else 'killpg']
+        assert signals == ['killpg']

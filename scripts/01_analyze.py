@@ -11,6 +11,7 @@ Usage:
 """
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 from hybrid_runtime import HybridSession
@@ -102,10 +103,13 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--platform", default="android",
                         choices=["android", "ios"])
-    parser.add_argument("--mode", default="emulator",
+    parser.add_argument("--mode", default=None,
                         choices=["emulator", "real_device", "simulator"])
+    parser.add_argument("--udid", default=None, help="Exact device UDID/serial")
     parser.add_argument("--screen", default=None, help="특정 화면만 수집")
     args = parser.parse_args()
+    args.mode = args.mode or os.environ.get("DEVICE_MODE") or ("simulator" if args.platform == "ios" else "emulator")
+    args.udid = args.udid or os.environ.get("DEVICE_UDID", "")
 
     screens = json.loads((CONFIG_DIR / "screens.json").read_text())
     test_data = json.loads((CONFIG_DIR / "test_data.json").read_text())
@@ -117,7 +121,7 @@ def main():
         from drivers.ios_driver import create_driver
 
     print(f"[01_analyze] platform={args.platform} mode={args.mode}")
-    driver = create_driver(mode=args.mode)
+    driver = create_driver(mode=args.mode, udid=args.udid)
 
     try:
         target_screens = (

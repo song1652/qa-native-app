@@ -27,6 +27,7 @@ from shared import (  # noqa: E402
     _state_lock,
     _process_lock,
     _running,
+    execution_active_locked,
 )
 
 
@@ -97,7 +98,7 @@ def is_capture_active(platform: str | None = None) -> bool:
 def is_pipeline_active() -> bool:
     """파이프라인 실행 중인지 확인."""
     with _process_lock:
-        return any(p.poll() is None for p in _running.values())
+        return execution_active_locked()
 
 
 # ── 파일 목록 ─────────────────────────────────────────────────

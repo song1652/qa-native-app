@@ -339,3 +339,40 @@ def test_new_capture_start_does_not_overwrite_active_session():
     assert json.loads(response.body)['code'] == 'capture_session_active'
     resolve.assert_not_called()
     save.assert_not_called()
+
+
+def test_capture_admission_rechecks_execution_after_device_resolution(tmp_path):
+    import shared
+    with (
+        patch.object(capture, 'is_pipeline_active', return_value=False),
+        patch.object(capture, 'is_capture_active', return_value=False),
+        patch.object(capture, 'load_capture_session', return_value={}),
+        patch.object(capture, 'resolve_capture_device', return_value={'ok': True, 'udid': 'emulator-5556', 'device_name': 'Virtual'}),
+        patch.object(shared, 'execution_active_locked', return_value=True),
+        patch.object(capture, 'save_capture_session') as save,
+        patch.object(capture, 'CAPTURES_DIR', tmp_path / 'captures'),
+        patch.object(capture, 'PROJECT_ROOT', tmp_path),
+        patch.object(capture, 'get_capture_driver', return_value=None),
+    ):
+        response = _run_async(capture.capture_start_session(_JsonRequest({'platform': 'android'})))
+    assert response.status_code == 409
+    save.assert_not_called()
+
+
+def test_capture_reconnect_cannot_revive_session_replaced_during_resolution():
+    original = {'session_id': 'old', 'platform': 'android', 'target': 'emulator', 'udid': 'emulator-5554'}
+    with (
+        patch.object(capture, 'is_pipeline_active', return_value=False),
+        patch.object(capture, 'load_capture_session', side_effect=[original, {'session_id': 'new', 'active': True}]),
+        patch.object(capture, 'resolve_capture_device', return_value={'ok': True, 'udid': 'emulator-5554', 'device_name': 'Virtual'}),
+        patch.object(capture, 'save_capture_session') as save,
+    ):
+        response = _run_async(capture.capture_start_session(_JsonRequest({'session_id': 'old', 'platform': 'android'})))
+    assert response.status_code == 409
+    save.assert_not_called()
+
+
+def test_pipeline_active_includes_reserved_work_between_processes():
+    import shared
+    with patch.dict(shared._execution_reservation, {'run': {'step': 'execute'}}), patch.dict(shared._running, {}, clear=True):
+        assert dashboard_state.is_pipeline_active()

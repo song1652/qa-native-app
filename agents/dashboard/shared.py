@@ -202,6 +202,13 @@ _state_lock   = threading.Lock()
 _process_lock = threading.Lock()
 _running:    dict[str, subprocess.Popen] = {}
 _test_runs:  dict[str, dict]             = {}
+# ponytail: serialize execution while pipeline state and generated files are shared.
+_execution_reservation: dict = {}
+
+
+def execution_active_locked() -> bool:
+    """Caller holds _process_lock; includes queued work and gaps between stages."""
+    return bool(_execution_reservation) or any(p.poll() is None for p in _running.values())
 
 # ── 서버 재시작 후 고아 프로세스 복구 ────────────────────────────
 
