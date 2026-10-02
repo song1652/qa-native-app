@@ -78,19 +78,21 @@
   <main class="app-main dashboard-view">
   <div id="tc-studio-root" class="view-hidden"></div>
   <div id="view-overview" class="overview-view">
-    <div class="overview-heading-row"><div class="overview-heading">Dashboard</div><button id="overview-reset-btn" class="overview-reset" type="button" onclick="resetOverviewDashboard()">↻ 대시보드 초기화</button></div>
-    <div class="overview-hero">
-      <div class="overview-card overview-hero-main">
-        <div class="overview-donut-wrap">
-          <svg class="overview-donut" viewBox="0 0 120 120"><circle class="overview-donut-bg" cx="60" cy="60" r="48"></circle><circle id="overview-donut-fill" class="overview-donut-fill" cx="60" cy="60" r="48" stroke-dasharray="0 302"></circle></svg>
-          <div class="overview-donut-center"><div class="overview-donut-pct"><span id="overview-rate">0</span><span class="overview-donut-unit">%</span></div><div class="overview-donut-label-html">PASS RATE</div></div>
-        </div>
-        <div><div class="overview-context" id="overview-context">최근 실행 없음</div><div class="overview-hero-stats"><div class="overview-stat"><b id="overview-total">0</b><small>Total</small></div><div class="overview-stat"><b id="overview-passed" style="color:var(--pass)">0</b><small>Passed</small></div><div class="overview-stat"><b id="overview-failed" style="color:var(--fail)">0</b><small>Failed</small></div></div><div class="overview-hero-legend"><span class="overview-legend-item"><i class="overview-legend-dot" style="background:var(--pass)"></i>통과</span><span class="overview-legend-item"><i class="overview-legend-dot" style="background:var(--fail)"></i>실패</span><span class="overview-legend-item"><i class="overview-legend-dot" style="background:var(--warn)"></i>경고 (80%↑)</span></div></div>
+    <div class="overview-heading-row"><div><h2 class="overview-heading">대시보드</h2><p class="overview-context" id="overview-context">최근 실행 없음</p></div><button id="overview-reset-btn" class="overview-reset" type="button" onclick="resetOverviewDashboard()">대시보드 초기화</button></div>
+    <section class="overview-summary" aria-label="실행 요약">
+      <div><span>마지막 실행 통과율</span><strong><b id="overview-rate">0</b>%</strong><small>전체 <b id="overview-total">0</b> · 통과 <b id="overview-passed">0</b> · 실패 <b id="overview-failed">0</b></small></div>
+      <div><span>생성된 테스트</span><strong id="overview-generated">0개</strong><small>Android · iOS</small></div>
+      <div><span>자동 복구</span><strong id="overview-healing">0회</strong><small>현재 파이프라인 기준</small></div>
+      <div><span>빠른 실행</span><strong class="overview-quick-summary" id="overview-quick">실행 없음</strong><button class="text-link" onclick="selectView('tests',document.querySelector('.sidebar-item[data-view=tests]'))">빠른 실행 열기</button></div>
+    </section>
+    <div class="overview-columns">
+      <section class="overview-card"><div class="overview-section-head"><h3>최근 실행</h3><button class="text-link" onclick="selectView('history',document.querySelector('.sidebar-item[data-view=history]'))">전체 기록 보기</button></div><div id="overview-trend" class="overview-trend-empty">실행 이력 없음</div></section>
+      <div class="overview-side">
+        <section class="overview-card"><div class="overview-section-head"><h3>환경</h3></div><div class="overview-environment"><span>Appium 서버</span><strong id="overview-appium">확인 중</strong></div></section>
+        <section class="overview-card"><div class="overview-log-head"><h3>최근 로그</h3><div class="overview-log-tabs"><button type="button" class="overview-log-tab active" data-overview-log="pipeline" onclick="setOverviewLog('pipeline')">파이프라인</button><button type="button" class="overview-log-tab" data-overview-log="quick" onclick="setOverviewLog('quick')">빠른 실행</button></div><button class="log-clear" aria-label="로그 새로고침" onclick="refreshOverview()">↻</button></div><div class="overview-log" id="overview-log">로그 없음</div></section>
       </div>
-      <div class="overview-card"><div class="overview-trend-title">Run History</div><div class="overview-trend-empty" id="overview-trend">실행 이력 없음</div></div>
     </div>
-    <div class="overview-kpi-row"><div class="overview-kpi"><span class="overview-kpi-icon">◆</span><div><div class="overview-kpi-label">Appium</div><div class="overview-kpi-value" id="overview-appium">확인 중</div></div></div><div class="overview-kpi"><span class="overview-kpi-icon">◆</span><div><div class="overview-kpi-label">Generated Tests</div><div class="overview-kpi-value" id="overview-generated">0개</div></div></div><div class="overview-kpi"><span class="overview-kpi-icon">◆</span><div><div class="overview-kpi-label">Healing</div><div class="overview-kpi-value" id="overview-healing">0회</div></div></div><div class="overview-kpi" onclick="selectView('tests',document.querySelector('.sidebar-item[data-view=tests]'))"><span class="overview-kpi-icon" style="color:var(--pass)">◆</span><div><div class="overview-kpi-label">빠른 실행</div><div class="overview-kpi-value" id="overview-quick">실행 없음</div></div></div></div>
-    <div class="overview-card"><div class="overview-log-head"><span>Recent Logs</span><div class="overview-log-tabs"><button type="button" class="overview-log-tab active" data-overview-log="pipeline" onclick="setOverviewLog('pipeline')">파이프라인 실행</button><button type="button" class="overview-log-tab" data-overview-log="quick" onclick="setOverviewLog('quick')">빠른 실행</button></div><button class="log-clear" onclick="refreshOverview()">↻</button></div><div class="overview-log" id="overview-log">로그 없음</div></div>
+    <svg class="view-hidden" aria-hidden="true"><circle id="overview-donut-fill" stroke-dasharray="0 302"></circle></svg>
   </div>
   <div class="grid">
 

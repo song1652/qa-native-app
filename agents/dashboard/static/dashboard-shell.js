@@ -63,40 +63,14 @@ function setOverviewLog(mode){
   refreshOverview();
 }
 function renderOverviewTrend(fallbackRate){
-  var allEntries=loadRunHistory().slice(0,8).reverse();
+  var allEntries=loadRunHistory().slice(0,8);
   if(!allEntries.length && fallbackRate>0) allEntries=[{rate:fallbackRate,executedAt:new Date().toISOString()}];
-  if(!allEntries.length) return '<div class="overview-trend-empty-message">실행 이력 없음</div>';
-  var w=320,h=130,padX=28,padY=18,padBot=18;
-  var chartH=h-padY-padBot;
-  var stepX=allEntries.length>1?(w-padX*2)/(allEntries.length-1):0;
-  var pointStr='', areaStr=padX+','+(padY+chartH)+' ', dots='', pctLabels='', tsLabels='';
-  var prevLabelY=-100, minGap=12;
-  var showEveryN=allEntries.length>5?2:1;
-  allEntries.forEach(function(entry,i){
+  if(!allEntries.length) return '<div class="overview-empty"><strong>실행 이력이 없습니다</strong><p>테스트를 실행하면 결과가 여기에 표시됩니다.</p><button class="btn" onclick="selectView(\'pipeline\',document.querySelector(\'[data-view=pipeline]\'))">파이프라인 열기</button></div>';
+  return '<table class="overview-history-table"><thead><tr><th>시작</th><th>플랫폼</th><th>유형</th><th>통과율</th><th>소요</th><th>결과</th></tr></thead><tbody>'+allEntries.map(function(entry){
     var rate=Math.max(0,Math.min(100,Number(entry.rate||0)));
-    var x=padX+stepX*i;
-    var y=padY+chartH-(rate/100)*chartH;
-    var color=rate>=100?'var(--pass)':rate>=80?'var(--warn)':'var(--fail)';
-    pointStr+=x+','+y+' ';
-    areaStr+=x+','+y+' ';
-    var ts=entry.executedAt?new Date(entry.executedAt).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false}):'';
-    dots+='<circle cx="'+x+'" cy="'+y+'" r="3.5" fill="'+color+'" stroke="rgba(8,7,27,0.6)" stroke-width="1.5" style="filter:drop-shadow(0 0 3px '+color+')"/>';
-    var labelY=y-8;
-    if(Math.abs(labelY-prevLabelY)<minGap){
-      labelY=prevLabelY<y?y+14:y-8-minGap+Math.abs(labelY-prevLabelY);
-    }
-    pctLabels+='<text x="'+x+'" y="'+labelY+'" text-anchor="middle" fill="'+color+'" font-size="9" font-weight="600" font-family="Inter">'+rate+'%</text>';
-    prevLabelY=labelY;
-    if(i===0||i===allEntries.length-1||i%showEveryN===0){
-      tsLabels+='<text x="'+x+'" y="'+(h-3)+'" text-anchor="middle" fill="var(--text3)" font-size="9" font-family="Inter">'+ts+'</text>';
-    }
-  });
-  areaStr+=padX+stepX*(allEntries.length-1)+','+(padY+chartH);
-  var gridLines=[100,80,60].map(function(v){
-    var gy=padY+chartH-(v/100)*chartH;
-    return '<line x1="'+padX+'" y1="'+gy+'" x2="'+(w-padX)+'" y2="'+gy+'" stroke="rgba(140,120,220,0.06)" stroke-width="0.5"/>';
-  }).join('');
-  return '<svg viewBox="0 0 '+w+' '+h+'" class="overview-trend-svg"><defs><linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--accent)" stop-opacity="0.2"/><stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>'+gridLines+'<polygon points="'+areaStr+'" fill="url(#areaGrad)"/><polyline points="'+pointStr+'" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px var(--accent))"/>'+dots+pctLabels+tsLabels+'</svg>';
+    var stamp=entry.executedAt?new Date(entry.executedAt).toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}):'—';
+    return '<tr><td>'+esc(stamp)+'</td><td>'+esc(entry.platform==='ios'?'iOS':'Android')+'</td><td>'+esc(entry.type==='pipeline'?'파이프라인':'빠른 실행')+'</td><td>'+rate+'%</td><td>'+esc(entry.duration||'—')+'</td><td><span class="result-badge '+(rate===100?'pass':'fail')+'">'+(rate===100?'통과':'실패')+'</span></td></tr>';
+  }).join('')+'</tbody></table>';
 }
 async function refreshOverview(){
   try{
@@ -161,9 +135,7 @@ async function refreshOverview(){
       var trendEntries=loadRunHistory();
       trend.className=(trendEntries.length||total)?'overview-trend-chart':'overview-trend-empty';
       var lastEntry=trendEntries.length?trendEntries[0]:null;
-      var footerLeft=lastEntry?(lastEntry.duration?lastEntry.duration+' · ':'')+(lastEntry.failed?'Failed':'First Pass'):'실행 추이';
-      trend.innerHTML=renderOverviewTrend(rate)
-        +'<div class="overview-trend-footer"><span>'+footerLeft+'</span><span class="overview-trend-legend"><span class="overview-legend-item"><i class="overview-legend-dot" style="background:var(--pass)"></i>100%</span><span class="overview-legend-item"><i class="overview-legend-dot" style="background:var(--warn)"></i>80%↑</span><span class="overview-legend-item"><i class="overview-legend-dot" style="background:var(--fail)"></i>80%↓</span></span></div>';
+      trend.innerHTML=renderOverviewTrend(rate);
     }
   }catch(_){
     // Dashboard remains usable when an optional status/log endpoint is unavailable.
