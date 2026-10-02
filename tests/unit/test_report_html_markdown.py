@@ -141,7 +141,44 @@ def test_case_row_expected_never_falls_back_to_error_text():
     )
 
     expected_val = re.search(
-        r'Expected</span>\s*<span class="detail-val">(.*?)</span>', rendered
+        r'기대 결과</span>\s*<span class="detail-val">(.*?)</span>', rendered
     ).group(1)
     assert expected_val == "-"
     assert html.escape(longrepr_like_error, quote=True) in rendered  # ERROR 필드에는 그대로 나와야 함
+
+
+def test_report_exposes_each_attempt_and_preserves_raw_error():
+    manifest = {'entries': [{'nodeid': 'tests/generated/android/demo/tc_x.py::TestX::test_x',
+        'attempts': [
+            {'n': 1, 'kept': True, 'screenshot': {'path': 'a.png'}, 'syslog': {'path': 'syslog.txt'}},
+            {'n': 2, 'kept': False},
+            {'n': 3, 'kept': True, 'video': {'path': 'v.mp4'}},
+        ]}]}
+    artifacts = report_html._obs_artifact_urls(manifest, 'run_demo',
+        'tests/generated/android/demo/tc_x.py', 'test_x')
+    assert [a['n'] for a in artifacts['attempts']] == [1, 2, 3]
+    assert 'attempt=1' in artifacts['attempts'][0]['screenshot_url']
+    assert 'attempt=1' in artifacts['attempts'][0]['syslog_url']
+    assert not artifacts['attempts'][1].get('screenshot_url')
+    rendered = report_html.case_row({'title': '예시', 'error': 'NoSuchElementException: <missing>',
+        **artifacts}, 'demo_0', 'failed')
+    assert '화면에서 요소를 찾지 못했습니다' in rendered
+    assert '<summary>전체 오류 보기</summary>' in rendered
+    assert 'NoSuchElementException: &lt;missing&gt;' in rendered
+    for number in (1, 2, 3):
+        assert f'data-attempt="{number}"' in rendered
+    assert '보존된 증거가 없습니다' in rendered
+    assert '시스템 로그' in rendered
+
+
+def test_pipeline_report_keeps_attempts_through_case_projection(monkeypatch, tmp_path):
+    monkeypatch.setattr(report_html, 'REPORTS_DIR', tmp_path)
+    monkeypatch.setattr(report_html, '_load_run_manifest', lambda _: {'entries': [{
+        'nodeid': 'tests/generated/android/demo/tc_x.py::TestX::test_x',
+        'attempts': [{'n': 1, 'kept': False}, {'n': 2, 'kept': False}],
+    }]})
+    groups = report_html.parse_pipeline_to_groups({'last_run_id': 'run_demo',
+        'execute_results': {'errors': [{'file': 'tests/generated/android/demo/tc_x.py',
+            'test': 'test_x', 'error': 'NoSuchElementException'}]}})
+    assert 'data-attempt="1"' in groups[0]['rows_html']
+    assert 'data-attempt="2"' in groups[0]['rows_html']
