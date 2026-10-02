@@ -232,10 +232,19 @@ def parse_json_report(json_path: Path) -> dict:
                 "summary": {"total": 0, "passed": 0, "failed": 0}}
 
     seen_files: dict = {}
+    recovered_passes = 0
 
     for test in data.get("tests", []):
         nodeid = test.get("nodeid", "")
         outcome = test.get("outcome", "")
+        # pytest-json-report retains "rerun" at test level even after a retry
+        # passes. Its stage records describe the final attempt instead.
+        if outcome == "rerun" and all(
+            (test.get(phase) or {}).get("outcome") == "passed"
+            for phase in ("setup", "call", "teardown")
+        ):
+            outcome = "passed"
+            recovered_passes += 1
 
         # nodeid 형식: tests/generated/android/tc_001_login.py::test_func
         if "::" in nodeid:
@@ -274,6 +283,8 @@ def parse_json_report(json_path: Path) -> dict:
     total = summary_block.get("total", len(seen_files))
     failed_count = summary_block.get("failed", 0) + summary_block.get("error", 0)
     passed_count = summary_block.get("passed", total - failed_count)
+    if "passed" in summary_block:
+        passed_count += recovered_passes
 
     return {
         "errors": errors,
