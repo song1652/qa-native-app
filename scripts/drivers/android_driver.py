@@ -29,9 +29,9 @@ def check_device_connected() -> bool:
     return len(connected) > 0
 
 
-def _get_default_device(platform: str, mode: str) -> dict:
+def _get_default_device(platform: str, mode: str, config_dir: Path | None = None) -> dict:
     """devices.json에서 default:true 항목 반환 (배열·dict 모두 호환)."""
-    data = json.loads((CONFIG_DIR / "devices.json").read_text(encoding="utf-8"))
+    data = json.loads(((config_dir or CONFIG_DIR) / "devices.json").read_text(encoding="utf-8"))
     section = data.get(platform, {}).get(mode)
     if isinstance(section, dict):
         return section

@@ -489,6 +489,8 @@ def _build_driver() -> webdriver.Remote:
 
     caps = {{k: v for k, v in _raw.items() if k not in _NON_APPIUM_KEYS}}
     caps["platformName"] = "iOS"
+    if "wdaLaunchTimeout" not in caps and "appium:wdaLaunchTimeout" not in caps:
+        caps["wdaLaunchTimeout"] = 180000
     _uid = os.environ.get("DEVICE_UDID", "")
     if _uid:
         caps["udid"] = _uid

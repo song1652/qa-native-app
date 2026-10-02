@@ -117,7 +117,29 @@ function csActionStepText(a) {
   }
 }
 
+function csPersistActionDraft() {
+  if(!_cs.sessionId) return;
+  try { sessionStorage.setItem('capture-draft:' + _cs.sessionId, JSON.stringify(_cs.actions)); }
+  catch(error) { /* Storage may be unavailable or full; keep the in-memory steps. */ }
+}
+
+function csRestoreActionDraft(sessionId, serverActions) {
+  try {
+    var draft = JSON.parse(sessionStorage.getItem('capture-draft:' + sessionId));
+    if(Array.isArray(draft) && draft.every(function(action){
+      return action && typeof action === 'object' && !Array.isArray(action);
+    })) return draft;
+  } catch(error) { /* A missing or invalid draft falls back to the server record. */ }
+  return serverActions || [];
+}
+
+function csRemoveActionDraft(sessionId) {
+  try { sessionStorage.removeItem('capture-draft:' + sessionId); }
+  catch(error) { /* Storage access must not block ending the session. */ }
+}
+
 function csRenderTimeline() {
+  csPersistActionDraft();
   var el = document.getElementById('cs-timeline');
   if (!_cs.actions.length) {
     el.innerHTML = '<span id="cs-timeline-empty" style="color:var(--text3)">트리에서 요소를 선택하고 스텝을 추가하세요.</span>';
@@ -148,6 +170,7 @@ function csRenderTimeline() {
 function csSetStepExpected(idx, value) {
   if (_cs.actions[idx] !== undefined) {
     _cs.actions[idx].expected = value;
+    csPersistActionDraft();
   }
 }
 
@@ -380,21 +403,24 @@ function csReLaunchFromSetup() {
     return;
   }
   _cs.launching = true;
-  var _rfsIsIos = (_cs.screenshotMode === 'poll');
-  var _rfsTimeout = _rfsIsIos ? 180000 : 45000;
+  var sessionId = _cs.sessionId;
+  var _rfsIsIos = (_cs.platform === 'ios' || _cs.screenshotMode === 'poll');
+  var _rfsTimeout = _rfsIsIos ? 420000 : 45000;
   var _rfsStartTs = Date.now();
   if(statusEl){ statusEl.textContent = ' 앱 재실행 중...'; statusEl.style.color='var(--accent)'; }
   var _rfsProgress = setInterval(function(){
+    if(sessionId !== _cs.sessionId) { clearInterval(_rfsProgress); return; }
     var s = Math.round((Date.now() - _rfsStartTs) / 1000);
-    if(statusEl) statusEl.textContent = ' 앱 재실행 중… (' + s + '초 경과' + (_rfsIsIos ? ' / 최대 180초' : '') + ')';
+    if(statusEl) statusEl.textContent = ' 앱 재실행 중… (' + s + '초 경과' + (_rfsIsIos ? ' / 서버 응답 대기 최대 420초' : '') + ')';
   }, 2000);
   var _ctrl = new AbortController();
   var _ctrlTimer = setTimeout(function(){ _ctrl.abort(); }, _rfsTimeout);
   fetch('/capture/launch', {
     method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({session_id: _cs.sessionId}),
+    body: JSON.stringify({session_id: sessionId}),
     signal: _ctrl.signal
   }).then(function(r){ clearTimeout(_ctrlTimer); clearInterval(_rfsProgress); return r.json(); }).then(function(d){
+    if(sessionId !== _cs.sessionId) return;
     _cs.launching = false;
     if(d.ok){
       document.getElementById('cs-setup').style.display='none';
@@ -409,8 +435,9 @@ function csReLaunchFromSetup() {
       if(statusEl){ statusEl.textContent = ' 재실행 실패: ' + (d.error||'알 수 없는 오류'); statusEl.style.color='var(--fail)'; }
     }
   }).catch(function(err){
-    _cs.launching = false;
     clearTimeout(_ctrlTimer); clearInterval(_rfsProgress);
+    if(sessionId !== _cs.sessionId) return;
+    _cs.launching = false;
     var s2 = Math.round((Date.now() - _rfsStartTs) / 1000);
     var msg = err && err.name==='AbortError'
       ? ' ' + s2 + '초 초과 — Appium/디바이스 상태를 확인하세요'
@@ -421,14 +448,18 @@ function csReLaunchFromSetup() {
 
 // 이전 세션 버리고 새 세션 시작
 function csForceNewSession() {
+  var draftSessionId = _cs.sessionId;
+  csMirrorDisconnect();
   fetch('/capture/end', {
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({session_id: _cs.sessionId})
+  }).then(function(r){ return r.json(); }).then(function(d){
+    if(d.ok) csRemoveActionDraft(draftSessionId);
   }).catch(function(){}).finally(function(){
-    if(_cs.pollTimer){ clearInterval(_cs.pollTimer); _cs.pollTimer = null; }
     csStopScreenWatcher();
     csMcpStopPoll();
     _cs.sessionId = '';
+    _cs.launching = false;
     _cs.actions = [];
     _cs.recording = false;
     _cs.approvedLocators = [];
@@ -446,14 +477,17 @@ function csForceNewSession() {
 
 async function csEndSession() {
   if(!await dashboardConfirm('Capture 세션을 종료하시겠습니까? 저장하지 않은 기록은 유실됩니다.')) return;
+  var draftSessionId = _cs.sessionId;
+  csMirrorDisconnect();
   fetch('/capture/end', {
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({session_id: _cs.sessionId})
   }).then(function(r){ return r.json(); }).then(function(d){
-    if(_cs.pollTimer){ clearInterval(_cs.pollTimer); _cs.pollTimer = null; }
+    if(d.ok) csRemoveActionDraft(draftSessionId);
     csStopScreenWatcher();
     csMcpStopPoll();
     _cs.sessionId = '';
+    _cs.launching = false;
     _cs.actions = [];
     _cs.recording = false;
     _cs.screenshotMode = 'mjpeg';

@@ -60,6 +60,28 @@ def test_ios_capture_does_not_boot_stopped_simulator_or_pick_real_device(monkeyp
     clear.assert_not_called()
 
 
+def test_ios_capture_uses_supported_wda_launch_timeout(monkeypatch):
+    remote = Mock(return_value=SimpleNamespace(
+        session_id='ios-mocked', get_screenshot_as_base64=lambda: 'image',
+    ))
+    monkeypatch.setattr(driver_adapter, 'resolve_capture_device', lambda _: {
+        'ok': True, 'udid': 'SELECTED-SIM', 'device_name': 'Selected iPhone',
+    })
+    monkeypatch.setattr(driver_adapter, '_get_appium_import', lambda: (SimpleNamespace(Remote=remote), None))
+    monkeypatch.setattr(driver_adapter, 'clear_capture_driver', lambda: None)
+    monkeypatch.setattr(driver_adapter, 'set_capture_driver', lambda _: None)
+    monkeypatch.setattr(driver_adapter._time, 'sleep', lambda _: None)
+    monkeypatch.setattr(driver_adapter, '_take_hierarchy_snapshot', lambda *_: 'snapshot')
+    result = driver_adapter._do_start_ios_session({
+        'session_id': 'mocked', 'target': 'emulator', 'bundle_id': 'com.apple.Preferences',
+    })
+    assert result['ok']
+    caps = remote.call_args.kwargs['options'].to_capabilities()
+    assert caps['appium:wdaLaunchTimeout'] == 180000
+    assert 'appium:webDriverAgentStartupTimeout' not in caps
+    assert caps['appium:udid'] == 'SELECTED-SIM'
+
+
 def test_android_capture_launch_and_forward_use_selected_emulator(monkeypatch):
     class Options:
         def __init__(self):

@@ -1,6 +1,9 @@
 """Capture respects the selected device kind; all device/network actions are mocked."""
 from pathlib import Path
 
+import pytest
+from playwright.sync_api import expect
+
 SCRIPT = Path(__file__).resolve().parents[2] / 'agents/dashboard/static/capture-studio.js'
 VIRTUAL = {'mode': 'emulator', 'udid': 'emulator-5554', 'deviceName': 'Virtual', 'connected': True}
 REAL = {'mode': 'real_device', 'udid': 'usb-1', 'deviceName': 'Phone', 'connected': True}
@@ -14,6 +17,141 @@ def setup_capture(page, devices):
         <div id="cs-setup-status"></div><button id="cs-start-btn" disabled>Start</button>''')
     page.evaluate('devices => {window.devices = devices; window.requests = []; window.fetch = async (url, options) => { requests.push({url, body: options && JSON.parse(options.body)}); return {json: async () => url.startsWith("/api/devices") ? {devices: window.devices} : url === "/capture/session" ? {ok:false,error:"mock session response"} : {ok:true}}; };}', devices)
     page.add_script_tag(path=str(SCRIPT))
+
+
+def setup_launch(page, outcome):
+    setup_capture(page, [dict(VIRTUAL, mode='simulator')])
+    page.evaluate('''outcome => {
+      document.body.insertAdjacentHTML('beforeend', '<div id="cs-setup"></div><div id="cs-workspace" style="display:none"><span id="cs-save-status"></span><img id="cs-mirror-img"><div id="cs-mirror-placeholder"></div></div><span id="cs-session-badge"></span><div id="cs-info-strip"><span id="cs-info-device-label"></span><span id="cs-info-group-label"></span><span id="cs-info-conn-label">연결됨</span><span id="cs-info-conn-dot"></span></div>');
+      window.csRenderTimeline = () => {}; window.csMcpStartPoll = () => {};
+      const original = fetch;
+      window.fetch = (url, options) => {
+        if(url === '/capture/session') return Promise.resolve({json:async()=>({ok:true,session_id:'launch-audit',screenshot_mode:'poll'})});
+        if(url === '/capture/launch') {
+          requests.push({url});
+          return outcome === 'abort' ? Promise.reject(Object.assign(new Error('timed out'),{name:'AbortError'}))
+            : Promise.resolve({json:async()=>({ok:false,error:'WDA initialization failed: original evidence'})});
+        }
+        return original(url, options);
+      };
+    }''', outcome)
+    page.add_script_tag(path=str(SCRIPT.parent / 'capture-livetail.js'))
+    page.evaluate('csMcpStartPoll = () => {}')
+    page.select_option('#cs-platform', 'ios')
+    page.wait_for_function('document.getElementById("cs-device-name").options.length === 1')
+
+
+@pytest.mark.parametrize('outcome', ['failure', 'abort'])
+def test_failed_launch_is_visible_in_workspace_without_connecting_mirror(page, outcome):
+    setup_launch(page, outcome)
+    page.evaluate('csStartSession()')
+    page.wait_for_function('!_cs.launching && document.getElementById("cs-workspace").style.display === "block"')
+    expect(page.locator('#cs-save-status')).to_contain_text('WDA initialization failed: original evidence' if outcome == 'failure' else '초과')
+    expect(page.locator('#cs-mirror-placeholder')).to_contain_text('세션 재연결')
+    expect(page.locator('#cs-info-conn-label')).not_to_have_text('연결됨')
+    assert not page.evaluate('_cs.mirrorConnected')
+    assert not page.evaluate('requests.some(r => r.url === "/capture/screenshot")')
+    assert page.evaluate('_cs.sessionId') == 'launch-audit'
+
+
+def test_mirror_is_connected_only_after_receiving_a_frame(page):
+    setup_launch(page, 'failure')
+    page.evaluate('''()=>{
+      _cs.screenshotMode='poll';
+      window.fetch=()=>new Promise(resolve=>window.finishFrame=()=>resolve({json:async()=>({ok:true,data:'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jN5cAAAAASUVORK5CYII='})}));
+      csMirrorConnect();
+    }''')
+    assert not page.evaluate('_cs.mirrorConnected')
+    expect(page.locator('#cs-info-conn-label')).not_to_have_text('연결됨')
+    page.evaluate('finishFrame()')
+    expect(page.locator('#cs-info-conn-label')).to_have_text('연결됨')
+    assert page.evaluate('_cs.mirrorConnected')
+
+
+def test_pending_frame_cannot_reconnect_after_launch_failure_or_erase_records(page):
+    setup_launch(page, 'failure')
+    page.evaluate('''()=>{
+      _cs.screenshotMode='poll';_cs.sessionId='kept-session';_cs.actions=[{type:'tap',label:'original action'}];
+      window.fetch=()=>new Promise(resolve=>window.finishFrame=()=>resolve({json:async()=>({ok:true,data:'old frame'})}));
+      csMirrorConnect();csLaunchFailed('original backend error');
+    }''')
+    page.evaluate('finishFrame()')
+    expect(page.locator('#cs-save-status')).to_have_text('original backend error')
+    expect(page.locator('#cs-info-conn-label')).not_to_have_text('연결됨')
+    assert not page.evaluate('_cs.mirrorConnected')
+    assert page.evaluate('_cs.pollTimer') is None
+    assert page.evaluate('_cs.sessionId') == 'kept-session'
+    assert page.evaluate('_cs.actions') == [{'type':'tap','label':'original action'}]
+
+
+def test_relaunch_failure_clears_previous_connected_indicator(page):
+    setup_launch(page, 'failure')
+    page.evaluate("_cs.platform='ios';_cs.mirrorConnected=true;csReLaunch()")
+    page.wait_for_function('!_cs.launching')
+    expect(page.locator('#cs-save-status')).to_contain_text('WDA initialization failed: original evidence')
+    expect(page.locator('#cs-info-conn-label')).not_to_have_text('연결됨')
+    assert not page.evaluate('_cs.mirrorConnected')
+
+
+@pytest.mark.parametrize('entry', ['csEndSession', 'csForceNewSession'])
+def test_pending_frame_cannot_reconnect_after_session_ends(page, entry):
+    setup_launch(page, 'failure')
+    page.add_script_tag(path=str(SCRIPT.parent / 'capture-actions.js'))
+    page.evaluate('''entry=>{
+      window.dashboardConfirm=async()=>true;window.csMcpStopPoll=()=>{};
+      _cs.sessionId='end-me';_cs.screenshotMode='poll';
+      window.fetch=(url)=>url==='/capture/screenshot'
+        ? new Promise(resolve=>window.finishFrame=()=>resolve({json:async()=>({ok:true,data:'late frame'})}))
+        : Promise.resolve({json:async()=>({ok:true})});
+      csMirrorConnect();window[entry]();
+    }''',entry)
+    page.wait_for_function('_cs.sessionId === ""',timeout=3000)
+    page.evaluate('finishFrame()')
+    assert not page.evaluate('_cs.mirrorConnected')
+    expect(page.locator('#cs-info-conn-label')).not_to_have_text('연결됨')
+    assert page.locator('#cs-mirror-img').get_attribute('src') is None
+
+
+@pytest.mark.parametrize('entry', ['csReLaunch', 'csReLaunchFromSetup'])
+def test_old_relaunch_response_cannot_change_new_session(page, entry):
+    setup_launch(page, 'failure')
+    page.add_script_tag(path=str(SCRIPT.parent / 'capture-actions.js'))
+    page.evaluate('''entry=>{
+      window.mirrorCalls=0;window.csMirrorConnect=()=>mirrorCalls++;
+      window.csRenderTimeline=()=>{};window.csRefreshHierarchy=()=>{};
+      _cs.sessionId='old';_cs.platform='ios';_cs.screenshotMode='poll';
+      window.fetch=()=>new Promise(resolve=>window.finishLaunch=()=>resolve({json:async()=>({ok:true})}));
+      window[entry]();
+      _cs.sessionId='new';document.getElementById('cs-save-status').textContent='new session status';document.getElementById('cs-setup-status').textContent='new setup status';
+    }''',entry)
+    page.evaluate('finishLaunch()')
+    expect(page.locator('#cs-save-status')).to_have_text('new session status')
+    expect(page.locator('#cs-setup-status')).to_have_text('new setup status')
+    assert page.evaluate('_cs.launching')
+    assert page.evaluate('mirrorCalls') == 0
+
+
+def test_repeat_relaunch_does_not_clear_the_in_progress_guard_after_three_seconds(page):
+    setup_launch(page, 'failure')
+    page.evaluate('''()=>{
+      window.relaunchTimers=[];window.setTimeout=(fn,ms)=>{relaunchTimers.push(ms);return 1;};
+      _cs.launching=true;csReLaunch();
+    }''')
+    assert page.evaluate('_cs.launching')
+    assert 3000 not in page.evaluate('relaunchTimers')
+
+
+@pytest.mark.parametrize('entry', ['csStartSession', 'csReLaunch', 'csReLaunchFromSetup'])
+def test_ios_launch_waits_for_both_wda_attempts_and_response_margin(page, entry):
+    setup_launch(page, 'failure')
+    page.add_script_tag(path=str(SCRIPT.parent / 'capture-actions.js'))
+    page.evaluate('''entry=>{
+      window.csRenderTimeline=()=>{}; window.launchTimers=[]; window.setTimeout=(fn,ms)=>{launchTimers.push(ms);return 1;};
+      window.fetch=(url)=>{requests.push({url});return url==='/capture/launch' ? new Promise(()=>{}) : Promise.resolve({json:async()=>url.startsWith('/api/devices')?{devices}: {ok:true,session_id:'launch-audit',screenshot_mode:'poll'}})};
+      _cs.platform='ios';_cs.screenshotMode='poll';window[entry]();
+    }''', entry)
+    page.wait_for_function('requests.some(r=>r.url==="/capture/launch")')
+    assert 420000 in page.evaluate('launchTimers')
 
 
 def test_stopped_virtual_does_not_enable_or_start_connected_real_device(page):
@@ -109,6 +247,7 @@ def test_stopped_ios_simulator_never_starts_connected_iphone(page):
 
 def test_restore_retains_real_target_and_saved_ios_device_name(page):
     setup_capture(page, [dict(VIRTUAL, mode='simulator'), dict(REAL, udid='usb-2', deviceName='Other'), REAL])
+    page.add_script_tag(path=str(SCRIPT.parent / 'capture-actions.js'))
     page.evaluate('''() => {
         window.csMcpStartPoll = () => {};
         document.getElementById('cs-device-name').innerHTML = '<option>Other</option>';

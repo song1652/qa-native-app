@@ -260,13 +260,11 @@ function _csSwipeRemoveArrow() {
 
 function _csSendSwipe(container, x1, y1, x2, y2) {
   var imgEl = container.querySelector('img') || container;
-  var rect  = imgEl.getBoundingClientRect();
-  var dw    = window._csDeviceWidth  || 1080;
-  var dh    = window._csDeviceHeight || 1920;
-  var scaleX = dw / rect.width;
-  var scaleY = dh / rect.height;
-  var devX1 = Math.round(x1 * scaleX), devY1 = Math.round(y1 * scaleY);
-  var devX2 = Math.round(x2 * scaleX), devY2 = Math.round(y2 * scaleY);
+  var start = _csMirrorDevicePoint(imgEl, x1, y1);
+  var end = _csMirrorDevicePoint(imgEl, x2, y2);
+  if(!start || !end) return;
+  var devX1 = start.x, devY1 = start.y;
+  var devX2 = end.x, devY2 = end.y;
 
   csLtAppend('user','scroll','','↕ ('+devX1+','+devY1+')→('+devX2+','+devY2+')', 'ok', '');
 

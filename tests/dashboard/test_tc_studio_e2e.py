@@ -336,13 +336,15 @@ def test_light_studio_profile_dialog_and_extra_columns_preserve_inputs(tc_server
             page.locator('[data-id="grid-cell-feature"]').wait_for()
             expected = page.locator('[data-id="grid-cell-expected"]').first
             assert expected.count() == 1
-            assert not expected.is_visible()
-            page.locator('#grid-extra-columns').click()
             assert expected.is_visible()
             assert expected.inner_text() == '설정 표시'
+            assert page.locator('#grid-extra-columns').inner_text() == '간략 표 보기'
             page.locator('#grid-extra-columns').click()
             assert not expected.is_visible()
             assert page.locator('[data-id="grid-cell-feature"]').first.is_visible()
+            assert page.locator('#grid-extra-columns').inner_text() == '전체 열 보기'
+            page.locator('#grid-extra-columns').click()
+            assert expected.is_visible()
             browser.close()
     with ThreadPoolExecutor(max_workers=1) as pool:
         pool.submit(check).result(timeout=60)

@@ -1,5 +1,6 @@
 """Dashboard static-asset integration contracts."""
 from pathlib import Path
+import os
 import re
 import sys
 
@@ -10,6 +11,7 @@ DASHBOARD = Path(__file__).parents[2] / "agents" / "dashboard"
 sys.path.insert(0, str(DASHBOARD))
 
 from serve import app  # noqa: E402
+from routes import api  # noqa: E402
 
 
 EXPECTED_SCRIPTS = [
@@ -41,11 +43,14 @@ EXPECTED_SCRIPTS = [
 def test_dashboard_assets_are_served_with_browser_content_types():
     with TestClient(app) as client:
         css = client.get("/static/dashboard.css")
+        tc_css = client.get("/static/tc-studio/tc-studio.css")
         javascript_responses = [client.get(path) for path in EXPECTED_SCRIPTS]
 
     assert css.status_code == 200
     assert css.headers["content-type"].startswith("text/css")
     assert css.text.strip()
+    for response in [css, tc_css, *javascript_responses]:
+        assert response.headers['cache-control'] == 'no-cache'
     for response in javascript_responses:
         assert response.status_code == 200
         assert "javascript" in response.headers["content-type"]
@@ -64,11 +69,46 @@ def test_dashboard_document_loads_external_assets_instead_of_inline_bundles():
         response = client.get("/")
 
     assert response.status_code == 200
-    assert '<link rel="stylesheet" href="/static/dashboard.css">' in response.text
-    assert '<link rel="stylesheet" href="/static/tc-studio/tc-studio.css">' in response.text
-    assert re.findall(r'<script src="([^"]+)"></script>', response.text) == EXPECTED_SCRIPTS
+    for path in ['/static/tokens.css', '/static/dashboard.css', '/static/tc-studio/tc-studio.css']:
+        stamp = (DASHBOARD / path.lstrip('/')).stat().st_mtime_ns
+        assert f'<link rel="stylesheet" href="{path}?v={stamp}">' in response.text
+    expected = [
+        f'{path}?v={(DASHBOARD / path.lstrip("/")).stat().st_mtime_ns}'
+        for path in EXPECTED_SCRIPTS
+    ]
+    assert re.findall(r'<script src="([^"]+)"></script>', response.text) == expected
+    assert response.headers['cache-control'] == 'no-cache'
     assert "<style>" not in response.text
     assert "<script>" not in response.text
+
+
+def test_html_asset_versions_change_after_file_update_on_both_entry_pages(monkeypatch, tmp_path):
+    static = tmp_path / 'static'
+    (static / 'tc-studio').mkdir(parents=True)
+    assets = ['dashboard.css', 'capture-studio.js', 'tc-studio/main.js']
+    (tmp_path / 'dashboard.html').write_text(
+        '<link href="/static/dashboard.css"><script src="/static/capture-studio.js"></script>'
+        '<script src="/static/tc-studio/main.js"></script>'
+    )
+    for asset in assets:
+        (static / asset).write_text('initial asset')
+    monkeypatch.setattr(api, 'HERE', tmp_path)
+    with TestClient(app) as client:
+        initial = {path: client.get(path) for path in ['/', '/tc-studio']}
+        old_stamp = (static / 'capture-studio.js').stat().st_mtime_ns
+        (static / 'capture-studio.js').write_text('updated asset')
+        os.utime(static / 'capture-studio.js', ns=(old_stamp + 1000000, old_stamp + 1000000))
+        for path, old_document in initial.items():
+            document = client.get(path)
+            assert document.headers['cache-control'] == 'no-cache'
+            assert f'/static/capture-studio.js?v={old_stamp}' in old_document.text
+            assert f'/static/capture-studio.js?v={old_stamp + 1000000}' in document.text
+            for asset in assets:
+                stamp = (static / asset).stat().st_mtime_ns
+                response = client.get(f'/static/{asset}?v={stamp}')
+                assert response.status_code == 200
+                assert response.headers['cache-control'] == 'no-cache'
+                assert response.text == (static / asset).read_text()
 
 
 def test_light_theme_tokens_are_served_before_component_styles():

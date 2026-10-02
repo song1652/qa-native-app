@@ -142,6 +142,8 @@ def generate_test_from_actions(
         ]
     else:
         lines += [
+            f"    if 'wdaLaunchTimeout' not in caps and 'appium:wdaLaunchTimeout' not in caps:",
+            f"        caps['wdaLaunchTimeout'] = 180000",
             (
                 f"    caps['bundleId'] = APP_ID"
                 if bundle_id

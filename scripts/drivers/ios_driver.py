@@ -3,6 +3,8 @@ import json
 import subprocess
 from pathlib import Path
 
+from .android_driver import _filter_appium_caps, _get_default_device
+
 CONFIG_DIR = Path(__file__).parent.parent.parent / "config"
 
 
@@ -30,10 +32,11 @@ def _check_device_connected(mode: str = "simulator") -> None:
 
 
 def get_capabilities(mode: str = "simulator") -> dict:
-    devices = json.loads((CONFIG_DIR / "devices.json").read_text())
     test_data = json.loads((CONFIG_DIR / "test_data.json").read_text())
-    caps = devices["ios"][mode].copy()
+    caps = _filter_appium_caps(_get_default_device("ios", mode, CONFIG_DIR))
     caps["platformName"] = "iOS"
+    if "wdaLaunchTimeout" not in caps and "appium:wdaLaunchTimeout" not in caps:
+        caps["wdaLaunchTimeout"] = 180000
     caps["bundleId"] = test_data["app"]["ios"]["bundle_id"]
     app_path = test_data["app"]["ios"]["app_path"]
     if app_path:

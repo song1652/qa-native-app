@@ -141,6 +141,28 @@ def test_generated_driver_allows_explicit_run_device_override(monkeypatch, tmp_p
     assert namespace["_build_driver"]()["udid"] == "usb-run-choice"
 
 
+@pytest.mark.parametrize('key,configured,expected', [
+    ('wdaLaunchTimeout', None, 180000),
+    ('wdaLaunchTimeout', 240000, 240000),
+    ('appium:wdaLaunchTimeout', 240000, 240000),
+])
+def test_generated_ios_driver_defaults_wda_timeout_without_overwriting_config(
+    monkeypatch, tmp_path, key, configured, expected,
+):
+    monkeypatch.delenv('DEVICE_MODE', raising=False)
+    monkeypatch.delenv('DEVICE_UDID', raising=False)
+    device = {'udid': 'selected-simulator'}
+    if configured is not None:
+        device[key] = configured
+    namespace = generated_driver_namespace(tmp_path, 'ios',
+        {'target': 'emulator', 'udid': 'selected-simulator'},
+        {'ios': {'simulator': [device]}},
+    )
+    from appium.options.ios.xcuitest.base import XCUITestOptions
+    caps = XCUITestOptions().load_capabilities(namespace['_build_driver']()).to_capabilities()
+    assert caps['appium:wdaLaunchTimeout'] == expected
+
+
 def test_generated_driver_blocks_unidentified_real_device(monkeypatch, tmp_path):
     monkeypatch.delenv("DEVICE_MODE", raising=False)
     monkeypatch.delenv("DEVICE_UDID", raising=False)

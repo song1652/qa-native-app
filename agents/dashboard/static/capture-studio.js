@@ -8,6 +8,7 @@ var _cs = {
   approvedLocators: [],
   selectedNodeAttrs: null,
   mirrorConnected: false,
+  mirrorGeneration: 0,
   wsTimeline: null,
   screenshotMode: 'mjpeg',   // 'mjpeg' | 'poll'
   mjpegPort: 8093,           // MJPEG 포트 (iOS: 9100, Android: 8093)
@@ -121,7 +122,7 @@ function csInit() {
   fetch('/capture/session').then(function(r){ return r.json(); }).then(function(d){
     if(d.active && d.session){
       _cs.sessionId = d.session.session_id || '';
-      _cs.actions = d.session.actions || [];
+      _cs.actions = csRestoreActionDraft(_cs.sessionId, d.session.actions);
       _cs.platform = d.session.platform || 'android';
       var port = d.session.mjpeg_port || (_cs.platform === 'ios' ? 9100 : 8093);
       _cs.mjpegPort = port;
@@ -191,27 +192,28 @@ function csInit() {
 function csReLaunch() {
   var saveStatus = document.getElementById('cs-save-status');
   if(_cs.launching){
-    // 절전 복귀 후 stuck될 수 있으므로 3초 안내 후 강제 해제
-    if(saveStatus){ saveStatus.textContent = '진행 중... 계속 안 되면 다시 클릭하세요.'; saveStatus.style.color='var(--accent)'; }
-    setTimeout(function(){ _cs.launching = false; }, 3000);
+    if(saveStatus){ saveStatus.textContent = '앱 실행이 진행 중입니다. 서버 응답을 기다려 주세요.'; saveStatus.style.color='var(--accent)'; }
     return;
   }
   _cs.launching = true;
-  var _reIsIos = (_cs.screenshotMode === 'poll');
-  var _reTimeoutMs = _reIsIos ? 180000 : 45000;
+  var sessionId = _cs.sessionId;
+  var _reIsIos = (_cs.platform === 'ios' || _cs.screenshotMode === 'poll');
+  var _reTimeoutMs = _reIsIos ? 420000 : 45000;
   var _reStartTs = Date.now();
   saveStatus.textContent = ' 앱 재실행 중...'; saveStatus.style.color='var(--accent)';
   var _reProgressTimer = setInterval(function(){
+    if(sessionId !== _cs.sessionId) { clearInterval(_reProgressTimer); return; }
     var s = Math.round((Date.now() - _reStartTs) / 1000);
-    saveStatus.textContent = ' 앱 재실행 중… (' + s + '초 경과' + (_reIsIos ? ' / 최대 180초' : '') + ')';
+    saveStatus.textContent = ' 앱 재실행 중… (' + s + '초 경과' + (_reIsIos ? ' / 서버 응답 대기 최대 420초' : '') + ')';
   }, 2000);
   var _launchCtrl = new AbortController();
   var _launchTimer = setTimeout(function(){ _launchCtrl.abort(); }, _reTimeoutMs);
   fetch('/capture/launch', {
     method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({session_id: _cs.sessionId}),
+    body: JSON.stringify({session_id: sessionId}),
     signal: _launchCtrl.signal
   }).then(function(r){ clearTimeout(_launchTimer); clearInterval(_reProgressTimer); return r.json(); }).then(function(d){
+    if(sessionId !== _cs.sessionId) return;
     _cs.launching = false;
     if(d.ok){
       // 세션 만료 배너 제거
@@ -222,17 +224,18 @@ function csReLaunch() {
       csMirrorConnect();
       setTimeout(csRefreshHierarchy, 1500);
     } else {
-      saveStatus.textContent = ' 재실행 실패: ' + (d.error||'알 수 없는 오류');
-      saveStatus.style.color='var(--fail)';
+      csLaunchFailed(' 재실행 실패: ' + (d.error||'알 수 없는 오류'));
     }
   }).catch(function(err){
-    _cs.launching = false;
     clearTimeout(_launchTimer); clearInterval(_reProgressTimer);
+    if(sessionId !== _cs.sessionId) return;
+    _cs.launching = false;
     var s2 = Math.round((Date.now() - _reStartTs) / 1000);
     saveStatus.textContent = err && err.name==='AbortError'
-      ? ' 재실행 ' + s2 + '초 초과 — Appium/디바이스 상태를 확인하세요'
+      ? ' 재실행 ' + s2 + '초 초과 — 서버에서 실행이 계속 진행 중일 수 있습니다. 상태를 확인한 후 재연결하세요.'
       : ' 오류: ' + err;
     saveStatus.style.color='var(--fail)';
+    csLaunchFailed(saveStatus.textContent);
   });
 }
 
@@ -419,16 +422,17 @@ function csStartSession() {
       csRenderTimeline();
 
       // ── 앱 실행 단계 ──
-      // iOS WDA 초기화는 최초 빌드 시 2~3분 소요 가능 → 180초 대기, Android는 45초
-      var _launchTimeoutMs = isIos ? 180000 : 45000;
+      // WDA 180초 대기 × 2회와 서버 응답 여유를 포함한다.
+      var _launchTimeoutMs = isIos ? 420000 : 45000;
       var _launchStartTs   = Date.now();
 
       // iOS 대기 중 경과 시간을 실시간으로 표시 (매 2초 갱신)
       var _launchProgressTimer = null;
       function _updateLaunchStatus() {
+        if(d.session_id !== _cs.sessionId) { clearInterval(_launchProgressTimer); return; }
         var elapsed = Math.round((Date.now() - _launchStartTs) / 1000);
         if (isIos) {
-          statusEl.textContent = ' iOS 앱 실행 중… WDA 초기화 대기 중 (' + elapsed + '초 경과 / 최대 180초)';
+          statusEl.textContent = ' iOS 앱 실행 중… WDA 초기화 대기 중 (' + elapsed + '초 경과 / 서버 응답 대기 최대 420초)';
         } else {
           statusEl.textContent = ' 앱 실행 중… (' + elapsed + '초 경과)';
         }
@@ -444,6 +448,7 @@ function csStartSession() {
         body: JSON.stringify({session_id: d.session_id}),
         signal: _launchCtrl.signal
       }).then(function(r2){ clearTimeout(_launchTimer); clearInterval(_launchProgressTimer); return r2.json(); }).then(function(d2){
+        if(d.session_id !== _cs.sessionId) return;
         _cs.launching = false;
         if(d2.ok){
           // launch 응답에서 MJPEG 포트 업데이트 (iOS: 9100, Android: 8093)
@@ -478,20 +483,18 @@ function csStartSession() {
           document.getElementById('cs-session-badge').style.display='';
           var _devLabel = isIos ? (document.getElementById('cs-device-name') ? document.getElementById('cs-device-name').value.trim() : '') : (d2.device_name || '');
           csInfoStripShow(platform, _devLabel, group);
-          document.getElementById('cs-save-status').textContent = ' Appium 미연결 — 오류 메시지를 확인하고 세션을 재시작하세요';
-          document.getElementById('cs-save-status').style.color = 'var(--warn)';
-          // 실패해도 미러링 자동 시도 (iOS polling은 WDA 준비 후 자동 복구)
-          csMirrorConnect();
+          csLaunchFailed(statusEl.textContent);
         }
       }).catch(function(err2){
-        _cs.launching = false;
         clearTimeout(_launchTimer);
         clearInterval(_launchProgressTimer);
+        if(d.session_id !== _cs.sessionId) return;
+        _cs.launching = false;
         var elapsed3 = Math.round((Date.now() - _launchStartTs) / 1000);
         var msg;
         if (err2 && err2.name === 'AbortError') {
           msg = isIos
-            ? ' iOS WDA 초기화 ' + elapsed3 + '초 초과 — Appium을 재시작하거나 시뮬레이터 이름(Device Name)을 확인하세요'
+            ? ' iOS WDA 초기화 ' + elapsed3 + '초 초과 — 서버에서 실행이 계속 진행 중일 수 있습니다. 상태를 확인한 후 재연결하세요.'
             : ' 앱 실행 ' + elapsed3 + '초 초과 — Appium 서버와 에뮬레이터 상태를 확인하세요';
         } else {
           msg = ' 앱 실행 오류: ' + err2;
@@ -504,8 +507,7 @@ function csStartSession() {
         var _devLabelCatch = isIos ? (document.getElementById('cs-device-name') ? document.getElementById('cs-device-name').value.trim() : '') : '';
         csInfoStripShow(platform, _devLabelCatch, group);
         document.getElementById('cs-start-btn').disabled = false;
-        // catch에서도 미러링 자동 시도
-        csMirrorConnect();
+        csLaunchFailed(msg);
       });
     } else {
       _cs.launching = false;
@@ -521,9 +523,44 @@ function csStartSession() {
   });
 }
 
+function csMirrorDisconnect() {
+  ++_cs.mirrorGeneration;
+  _cs.mirrorConnected = false;
+  if(_cs.pollTimer) { clearInterval(_cs.pollTimer); _cs.pollTimer = null; }
+  csSubStatusConn(false);
+  var img = document.getElementById('cs-mirror-img');
+  if(img) { img.onload = img.onerror = null; img.removeAttribute('src'); img.style.display = 'none'; }
+}
+
+function csLaunchFailed(message) {
+  csMirrorDisconnect();
+  csStopScreenWatcher();
+  var status = document.getElementById('cs-save-status');
+  if(status) { status.textContent = message; status.style.color = 'var(--fail)'; }
+  var placeholder = document.getElementById('cs-mirror-placeholder');
+  if(placeholder) {
+    placeholder.querySelectorAll('.cs-mirror-error, .cs-mirror-loading').forEach(function(el){ el.remove(); });
+    var error = document.createElement('div');
+    error.className = 'cs-mirror-error';
+    error.setAttribute('role', 'alert');
+    error.style.cssText = 'color:var(--fail);padding:12px;white-space:pre-wrap';
+    error.textContent = message + '\n';
+    var retry = document.createElement('button');
+    retry.className = 'cs-btn primary';
+    retry.textContent = '세션 재연결';
+    retry.onclick = csReLaunch;
+    error.appendChild(retry);
+    placeholder.appendChild(error);
+    placeholder.style.display = '';
+  }
+}
+
 function csMirrorConnect() {
   var img = document.getElementById('cs-mirror-img');
   var placeholder = document.getElementById('cs-mirror-placeholder');
+  var generation = ++_cs.mirrorGeneration;
+  _cs.mirrorConnected = false;
+  csSubStatusConn(false);
 
   // 기존 polling 타이머 정리
   if(_cs.pollTimer) { clearInterval(_cs.pollTimer); _cs.pollTimer = null; }
@@ -552,7 +589,10 @@ function csMirrorConnect() {
 
     function doPoll() {
       fetch('/capture/screenshot').then(function(r){ return r.json(); }).then(function(d){
+        if(generation !== _cs.mirrorGeneration) return;
         if(d.ok && d.data){
+          _cs.mirrorConnected = true;
+          csSubStatusConn(true);
           _pollFailCount = 0; // 성공 시 실패 카운터 초기화
           img.src = 'data:image/png;base64,' + d.data;
           // 첫 프레임 수신 시 로딩 제거 후 img 표시
@@ -560,7 +600,6 @@ function csMirrorConnect() {
             _firstFrame = false;
             var ld = placeholder.querySelector('.cs-mirror-loading');
             if(ld) ld.remove();
-            csSubStatusConn(true);
           }
           placeholder.style.display = 'none';
           img.style.display = 'block';
@@ -568,6 +607,8 @@ function csMirrorConnect() {
           var prev = placeholder.querySelector('.cs-mirror-error');
           if(prev) prev.remove();
         } else {
+          _cs.mirrorConnected = false;
+          csSubStatusConn(false);
           _pollFailCount++;
           // 임계값 초과 시에만 에러 UI 표시 (로딩 표시도 제거)
           if(_pollFailCount >= _POLL_FAIL_THRESHOLD){
@@ -590,12 +631,14 @@ function csMirrorConnect() {
           // 임계값 미만: 로딩 표시 유지, 에러 오버레이 없음
         }
       }).catch(function(){
+        if(generation !== _cs.mirrorGeneration) return;
+        _cs.mirrorConnected = false;
+        csSubStatusConn(false);
         _pollFailCount++;
       });
     }
     doPoll();
     _cs.pollTimer = setInterval(doPoll, 1200);
-    _cs.mirrorConnected = true;
 
   } else {
     // ── MJPEG / ffmpeg 스트리밍 ────────────────────────────────
@@ -612,6 +655,8 @@ function csMirrorConnect() {
     }
 
     img.onerror = function() {
+      _cs.mirrorConnected = false;
+      csSubStatusConn(false);
       img.style.display = 'none';
       placeholder.style.display = '';
       var prev = placeholder.querySelector('.cs-mirror-error');
@@ -629,32 +674,46 @@ function csMirrorConnect() {
       placeholder.appendChild(errDiv);
     };
     img.onload = function() {
+      if(generation !== _cs.mirrorGeneration) return;
+      _cs.mirrorConnected = true;
       placeholder.style.display = 'none';
       img.style.display = 'block';
       csSubStatusConn(true);
     };
     img.src = streamUrl;
-    img.style.display = 'block';
-    placeholder.style.display = 'none';
-    _cs.mirrorConnected = true;
+    img.style.display = 'none';
+    placeholder.style.display = '';
   }
+}
+
+function _csMirrorDevicePoint(img, x, y) {
+  var rect = img.getBoundingClientRect();
+  var dims = _csGetDeviceDimensions();
+  var width = img.naturalWidth || dims.w;
+  var height = img.naturalHeight || dims.h;
+  if(!rect.width || !rect.height || !width || !height) return null;
+  var scale = Math.min(rect.width / width, rect.height / height);
+  var visibleW = width * scale, visibleH = height * scale;
+  x -= (rect.width - visibleW) / 2;
+  y -= (rect.height - visibleH) / 2;
+  if(x < 0 || y < 0 || x >= visibleW || y >= visibleH) return null;
+  return {x: Math.round(x * dims.w / visibleW), y: Math.round(y * dims.h / visibleH), w: dims.w};
 }
 
 function csMirrorClick(event) {
   var img = document.getElementById('cs-mirror-img');
   var rect = img.getBoundingClientRect();
-  var imgX = Math.round(event.clientX - rect.left);
-  var imgY = Math.round(event.clientY - rect.top);
-  var imgW = rect.width;
-  var imgH = rect.height;
+  var imgX = event.clientX - rect.left;
+  var imgY = event.clientY - rect.top;
+  var point = _csMirrorDevicePoint(img, imgX, imgY);
+  if(!point) return;
 
   // 십자선 표시
   var ch = document.getElementById('cs-crosshair');
   if (ch) { ch.style.display='block'; ch.style.left=imgX+'px'; ch.style.top=imgY+'px'; }
 
   // 디바이스 실제 너비: _csGetDeviceDimensions() 로 통합 읽기 (Android/iOS 공통)
-  var _dims = _csGetDeviceDimensions();
-  var displayW = _dims.w;
+  var displayW = point.w;
   var _hierLoaded = !!_csHierarchyDom;
 
   // hierarchy 미로드 시 좌표 기본값(1080) 사용 — 사용자에게 알림
@@ -662,10 +721,8 @@ function csMirrorClick(event) {
     csStatusMsg(' Hierarchy가 로드되지 않았습니다. 좌표가 부정확할 수 있습니다 — 잠시 후 Hierarchy 새로고침을 눌러주세요.');
   }
 
-  // 이미지 → 디바이스 좌표 (MJPEG aspect 유지 가정)
-  var scale = displayW / imgW;
-  var devX = Math.round(imgX * scale);
-  var devY = Math.round(imgY * scale);
+  var devX = point.x;
+  var devY = point.y;
 
   // Hierarchy에서 해당 좌표 노드 찾아 트리 하이라이트 + element detail 업데이트
   if (_csHierarchyDom) {
@@ -685,7 +742,8 @@ function csMirrorClick(event) {
   // 미러 클릭은 항상 Appium에 탭 전달 (녹화 상태 무관)
   fetch('/capture/tap', {
     method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({session_id:_cs.sessionId, x:imgX, y:imgY, img_width:Math.round(imgW), display_width:displayW, context:_cs.context})
+    // 이미 디바이스 좌표로 변환했으므로 서버의 추가 배율은 1이다.
+    body: JSON.stringify({session_id:_cs.sessionId, x:devX, y:devY, img_width:displayW, display_width:displayW, context:_cs.context})
   }).then(function(r){ return r.json(); }).then(function(d){
     if (_tapOverlay && _tapOverlayTimer) { clearTimeout(_tapOverlayTimer); _tapOverlay.style.display = 'none'; }
     if (!d.ok) {

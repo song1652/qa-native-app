@@ -75,18 +75,29 @@ _DASHBOARD_ASSETS = {
 }
 
 
+def _dashboard_document() -> HTMLResponse:
+    html = (HERE / "dashboard.html").read_text(encoding="utf-8")
+
+    def version_asset(match):
+        path = HERE / match.group(2).lstrip("/")
+        if not path.is_file():
+            return match.group(0)
+        return f'{match.group(1)}="{match.group(2)}?v={path.stat().st_mtime_ns}"'
+
+    html = re.sub(r'(src|href)="(/static/[^"?]+\.(?:css|js))"', version_asset, html)
+    return HTMLResponse(content=html, headers={"Cache-Control": "no-cache"})
+
+
 @router.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     if request.query_params.get("view") == "import":
         return RedirectResponse(url="/tc-studio?import=1", status_code=307)
-    # 개발 중 수정사항 즉시 반영을 위해 매 요청마다 파일 읽기
-    html = (HERE / "dashboard.html").read_text(encoding="utf-8")
-    return HTMLResponse(content=html)
+    return _dashboard_document()
 
 
 @router.get("/tc-studio", response_class=HTMLResponse)
 async def tc_studio_page():
-    return HTMLResponse(content=(HERE / "dashboard.html").read_text(encoding="utf-8"))
+    return _dashboard_document()
 
 
 @router.get("/static/{asset_name}", include_in_schema=False)
@@ -98,7 +109,7 @@ async def dashboard_static_asset(asset_name: str):
     asset_path = HERE / "static" / asset_name
     if not asset_path.is_file():
         return Response(status_code=404)
-    return FileResponse(str(asset_path), media_type=media_type)
+    return FileResponse(str(asset_path), media_type=media_type, headers={"Cache-Control": "no-cache"})
 
 
 @router.get("/static/tc-studio/{asset_name}", include_in_schema=False)
@@ -109,7 +120,8 @@ async def tc_studio_static_asset(asset_name: str):
                           "reference-variables.css", "reference-layout.css"}:
         return Response(status_code=404)
     path = HERE / "static" / "tc-studio" / asset_name
-    return FileResponse(str(path), media_type="text/css" if asset_name.endswith(".css") else "text/javascript")
+    return FileResponse(str(path), media_type="text/css" if asset_name.endswith(".css") else "text/javascript",
+                        headers={"Cache-Control": "no-cache"})
 
 
 @router.get("/api/state")

@@ -629,6 +629,8 @@ async function refreshStatus(){
     var runBtns = document.querySelectorAll('.run-btn, [id^="btn-run"], [id^="btn-all"]');
     runBtns.forEach(function(btn){ btn.disabled = captureActive; });
     if(captureActive){
+      var inactiveBanner = document.getElementById('cs-expired-banner');
+      if(inactiveBanner) inactiveBanner.remove();
       var existingWarn = document.getElementById('capture-pipeline-warn');
       if(!existingWarn){
         var warnEl = document.createElement('div');
@@ -642,19 +644,17 @@ async function refreshStatus(){
       var existingWarn = document.getElementById('capture-pipeline-warn');
       if(existingWarn) existingWarn.remove();
 
-      // ── 30분 세션 만료 감지 ──
-      // Capture 워크스페이스가 열려 있는데 서버가 capture_active=false로 바꿨으면 만료
+      // 저장·수동 종료·만료 모두 비활성 상태이므로 종료 원인을 단정하지 않는다.
       var _workspace = document.getElementById('cs-workspace');
       if(_cs.sessionId && _workspace && _workspace.style.display !== 'none') {
         var _expiredBanner = document.getElementById('cs-expired-banner');
         if(!_expiredBanner){
           var _banner = document.createElement('div');
           _banner.id = 'cs-expired-banner';
-          _banner.style.cssText = 'background:var(--fail-bg);border:1px solid var(--fail);color:var(--fail);' +
+          _banner.style.cssText = 'background:var(--surface-sub);border:1px solid var(--border);color:var(--text2);' +
             'padding:10px 16px;border-radius:8px;font-size:12px;margin-bottom:10px;display:flex;align-items:center;gap:10px;';
-          _banner.innerHTML = 'Capture 세션이 30분 비활동으로 자동 종료됐습니다. 기록은 보존됩니다.' +
-            '<button class="cs-btn" onclick="csForceNewSession()" style="padding:3px 10px;font-size:11px;flex-shrink:0">새 세션 시작</button>' +
-            '<button class="cs-btn" onclick="csReLaunch()" style="padding:3px 10px;font-size:11px;flex-shrink:0"> 재연결</button>';
+          _banner.innerHTML = 'Capture 세션이 종료되었습니다. 저장한 TC와 기록을 확인하세요.' +
+            '<button class="cs-btn" onclick="csForceNewSession()" style="padding:3px 10px;font-size:11px;flex-shrink:0">새 세션 시작</button>';
           _workspace.insertBefore(_banner, _workspace.firstChild);
         }
       }

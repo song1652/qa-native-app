@@ -21,6 +21,42 @@ def controls(page):
     return page
 
 
+def setup_capture_status(page):
+    page.route('**/api/status?*', lambda route: route.fulfill(json={
+        'appium':True,'device_count':1,'devices':['audit-device'],'capture_active':False}))
+    page.route('**/api/state', lambda route: route.fulfill(json={'step':'init'}))
+    page.evaluate('''()=>{
+      window._cs={sessionId:'saved-session'};
+      window.csInfoStripHide=()=>{};window.csInfoStripShow=()=>{};
+      document.getElementById('cs-workspace').style.display='block';
+      window.newSessionCalls=0;window.csForceNewSession=()=>newSessionCalls++;
+    }''')
+
+
+def test_inactive_capture_banner_does_not_claim_a_timeout_or_offer_invalid_reconnection(controls):
+    page = controls
+    setup_capture_status(page)
+    page.evaluate('refreshStatus()')
+    banner=page.locator('#cs-expired-banner')
+    assert '30분' not in banner.inner_text()
+    assert '비활동' not in banner.inner_text()
+    assert '세션이 종료되었습니다' in banner.inner_text()
+    assert banner.get_by_role('button').all_text_contents() == ['새 세션 시작']
+    banner.get_by_role('button',name='새 세션 시작').click()
+    assert page.evaluate('newSessionCalls') == 1
+
+
+def test_new_active_capture_removes_the_previous_inactive_banner(controls):
+    page = controls
+    setup_capture_status(page)
+    page.evaluate('refreshStatus()')
+    assert page.locator('#cs-expired-banner').count() == 1
+    page.route('**/api/status?*',lambda route: route.fulfill(json={
+        'appium':True,'device_count':1,'devices':['audit-device'],'capture_active':True}))
+    page.evaluate('refreshStatus()')
+    assert page.locator('#cs-expired-banner').count() == 0
+
+
 def test_individual_execute_sends_selected_evidence_policy(controls):
     page = controls
     requests = []

@@ -12,13 +12,14 @@
 | [history.png](history.png) | 실행 기록 |
 | [environment.png](environment.png) | Appium·Android·iOS 환경 설정 |
 | [capture.png](capture.png) | 화면 캡처로 작성 |
+| [capture-ios.png](capture-ios.png) | iPhone 17 · iOS 27.0 시뮬레이터에서 설정 앱 실제 연결·미러링·Native 트리 |
 | [capture-emulator-unavailable.png](capture-emulator-unavailable.png) | 설명용 상태 예시: 에뮬레이터가 꺼지고 실기기만 연결된 경우 시작 차단 |
 | [tc-studio.png](tc-studio.png) | TC 스튜디오 기획 정보·생성 |
-| [tc-library.png](tc-library.png) | TC 스튜디오 라이브러리 |
+| [tc-library.png](tc-library.png) | TC 스튜디오 라이브러리 — 야핏무브 926건, 전체 열 기본 엑셀형 표(같은 날 재촬영) |
 | [tc-review.png](tc-review.png) | TC 스튜디오 초안 검토 |
 | [tc-export.png](tc-export.png) | TC 스튜디오 내보내기 |
 
-현재 저장된 결과와 조회된 환경 상태를 그대로 표시했습니다. 리포트 미리보기는 2026-10-02 11:08 실행의 실제 저장 결과(3건 중 1건 통과, 2건 실패)입니다. 이 캡처를 위해 테스트 실행, TC 생성·저장·삭제, 기기 시작·종료를 하지 않았습니다. 실행 기록은 브라우저의 로컬 저장 이력에 따라 비어 있을 수 있습니다.
+현재 저장된 결과와 조회된 환경 상태를 그대로 표시했습니다. 리포트 미리보기는 2026-10-02 11:08 실행의 실제 저장 결과(3건 중 1건 통과, 2건 실패)입니다. 초기 안내 화면은 조회 상태로 촬영했습니다. 이후 추가한 `capture-ios.png`는 제품의 환경 설정에서 시뮬레이터를 부팅하고 실제 Capture 세션을 시작해 촬영했습니다. 실행 기록은 서버에 저장된 실행 증거와 리포트에서 조회하며, 기록 초기화 시점 이전 실행은 표시하지 않습니다.
 
 화면의 기기명·파일명·상태·결과 수는 촬영 시점의 값이며 사용 환경마다 달라집니다.
 

@@ -38,7 +38,7 @@
           <button class="btn-sm" data-id="lib-filter-reset" id="lib-filter-reset">초기화</button>
 
           <button class="btn-sm" data-id="tree-toggle" id="tree-toggle" aria-pressed="false" title="계층 트리를 숨겨 그리드를 넓게 봅니다">트리 숨기기</button>
-          <button class="btn-sm" id="grid-extra-columns" aria-pressed="false">추가 열 보기</button><span class="crumbpath" id="grid-crumb"></span>
+          <button class="btn-sm" id="grid-extra-columns" aria-pressed="true" aria-controls="grid">간략 표 보기</button><span class="crumbpath" id="grid-crumb"></span>
           <span id="grid-count" class="num"></span>
           <span class="spacer"></span>
           <span class="faint">더블클릭 또는 Enter로 셀 편집 · <span class="kbd">⌘</span><span class="kbd">↵</span> 저장 · <span class="kbd">Esc</span> 취소</span>
@@ -60,14 +60,14 @@
       <div class="center">
         <div id="lib-banners"></div>
         <div class="grid-wrap" id="grid-wrap">
-          <table class="grid" id="grid" data-id="lib-grid" aria-label="케이스 그리드">
+          <table class="grid show-extra-columns" id="grid" data-id="lib-grid" aria-label="케이스 그리드">
             <colgroup><col style="width:34px"><col style="width:20px"><col style="width:44px"><col style="width:96px"><col class="c-l2" style="width:96px"><col class="c-l3" style="width:96px"><col style="width:200px"><col style="width:150px"><col style="width:200px"><col style="width:240px"><col style="width:74px"><col class="web-result" style="width:100px"><col class="app-result" style="width:92px"><col class="app-result" style="width:92px"><col style="width:130px"></colgroup>
             <thead><tr>
               <th><input type="checkbox" id="grid-check-all" data-id="grid-check-all" aria-label="전체 선택"></th>
               <th></th><th class="no"><span class="xl">A</span>No.</th>
               <th><span class="xl">B</span>대분류</th><th><span class="xl">C</span>중분류</th><th><span class="xl">D</span>소분류</th>
-              <th><span class="xl">E</span>ID · 제목</th><th><span class="xl">F</span>사전 조건</th><th><span class="xl">G</span>테스트 단계</th>
-              <th><span class="xl">H</span>기대 결과</th><th><span class="xl">I</span>우선순위</th><th class="web-result">실행 결과</th><th class="app-result">And</th><th class="app-result">iOS</th><th><span class="xl">M</span>검토</th>
+              <th><span class="xl">E</span>제목</th><th><span class="xl">F</span>사전 조건</th><th><span class="xl">G</span>Test Step</th>
+              <th><span class="xl">H</span>Expected Result</th><th><span class="xl">I</span>우선순위</th><th class="web-result">실행 결과</th><th class="app-result">And</th><th class="app-result">iOS</th><th><span class="xl">M</span>검토</th>
             </tr></thead>
             <tbody id="grid-body"></tbody>
           </table>
@@ -497,7 +497,7 @@
     $('#grid-extra-columns', root).addEventListener('click', (e) => {
       const expanded = $('#grid', root).classList.toggle('show-extra-columns');
       e.currentTarget.setAttribute('aria-pressed', expanded);
-      e.currentTarget.textContent = expanded ? '추가 열 숨기기' : '추가 열 보기';
+      e.currentTarget.textContent = expanded ? '간략 표 보기' : '전체 열 보기';
     });
     const onFilter = (id, k, map = (v) => v) => $(id, root).addEventListener('change', (e) => {
       state.filters[k] = map(e.target.value);

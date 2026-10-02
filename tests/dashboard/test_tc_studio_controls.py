@@ -52,6 +52,44 @@ def test_excel_modal_escape_closes_and_restores_opener(page, tc_server):
     expect(opener).to_be_focused()
 
 
+def test_library_defaults_to_excel_columns_and_optional_compact_view(page, tc_server):
+    import _tc_library as lib
+    from _tc_model import new_case
+    lib.import_cases('excel-columns', ['Sheet'], [new_case(case_id='COL_0001', sheet='Sheet',
+        path=['대분류 값','중분류 값','소분류 값'], feature='열 확인 케이스',
+        precondition='앱 실행 완료', steps=['메뉴를 누른다'], expected='메뉴 화면 표시')], 'seed')
+    lib.import_cases('empty-classifications', ['Sheet'], [new_case(case_id='COL_0002', sheet='Sheet',
+        path=['대분류 값','',''], feature='하위 분류 없음')], 'seed')
+    studio(page, tc_server)
+    page.locator('#suite-select').select_option('excel-columns')
+    expect(page.locator('#grid-body tr[data-case]')).to_have_count(1)
+    expect(page.locator('#detail')).to_be_hidden()
+    for column in [4,5,6,7,8,9,10]:
+        expect(page.locator(f'#grid th:nth-child({column})')).to_be_visible()
+        expect(page.locator(f'#grid-body td:nth-child({column})')).to_be_visible()
+    expect(page.locator('#grid-body')).to_contain_text('앱 실행 완료')
+    expect(page.locator('#grid-body')).to_contain_text('1. 메뉴를 누른다')
+    expect(page.locator('#grid-body')).to_contain_text('메뉴 화면 표시')
+    toggle=page.locator('#grid-extra-columns')
+    expect(toggle).to_have_text('간략 표 보기')
+    toggle.click()
+    expect(page.locator('#grid th:nth-child(4)')).to_be_hidden()
+    expect(toggle).to_have_text('전체 열 보기')
+    toggle.click()
+    expect(page.locator('#grid th:nth-child(4)')).to_be_visible()
+    page.locator('#grid-body [data-edit="feature"]').click()
+    expect(page.locator('#detail')).to_be_visible()
+    page.locator('#detail-close').click()
+    expect(page.locator('#detail')).to_be_hidden()
+    page.locator('#suite-select').select_option('empty-classifications')
+    expect(page.locator('#grid-body')).to_contain_text('하위 분류 없음')
+    for column in [4,5,6]:
+        expect(page.locator(f'#grid th:nth-child({column})')).to_be_visible()
+    page.set_viewport_size({'width':390,'height':844})
+    assert page.evaluate('document.documentElement.scrollWidth') == 390
+    assert page.locator('#grid-wrap').evaluate('(el)=>el.scrollWidth>el.clientWidth')
+
+
 def test_excel_import_mapping_filter_and_history_rollback(page, tc_server, tmp_path):
     studio(page, tc_server)
     page.locator('#btn-import-xlsx').click()

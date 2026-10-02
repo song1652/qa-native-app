@@ -302,7 +302,7 @@ def _do_start_ios_session(session: dict) -> dict:
     opts.set_capability("forceAppLaunch", True)
     opts.set_capability("newCommandTimeout", 300)
     # WDA 첫 빌드(build-for-testing)는 60초를 초과할 수 있음 → 180초로 확장
-    opts.set_capability("webDriverAgentStartupTimeout", 180000)
+    opts.set_capability("wdaLaunchTimeout", 180000)
     # WDA 내장 MJPEG 서버 활성화 — 시뮬레이터에서 localhost:{port}로 직접 접근 가능
     opts.set_capability("mjpegServerPort", mjpeg_port)
     opts.set_capability("mjpegScalingFactor", 35)           # 35%로 축소 → 프레임 크기 감소
