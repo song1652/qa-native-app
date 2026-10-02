@@ -663,3 +663,25 @@ def test_workspace_stacks_columns_on_narrow_viewport(workspace_page):
     assert page.locator(".obs-run-list-panel").evaluate(
         "element => getComputedStyle(element).position"
     ) == "static"
+
+
+def test_explicit_run_link_with_quick_view_keeps_historical_run(workspace_page, live_server):
+    page = workspace_page
+    page.goto(f'{live_server}/?view=tests#obs/{RUN_ID}', wait_until='domcontentloaded')
+    page.locator(f'.obs-run-workspace[data-run-id="{RUN_ID}"]').wait_for()
+    page.wait_for_timeout(1000)
+    assert page.locator('.obs-run-workspace').get_attribute('data-run-id') == RUN_ID
+    assert page.url.endswith(f'#obs/{RUN_ID}')
+
+
+def test_quick_menu_click_replaces_pinned_run_with_latest_server_data(workspace_page):
+    page = workspace_page
+    page.locator(f'.obs-run-workspace[data-run-id="{RUN_ID}"]').wait_for()
+    latest_id = 'run_android_20261002_120000_001'
+    manifest = page.evaluate('JSON.parse(JSON.stringify(_obsWorkspace.manifest))')
+    manifest['run_id'] = latest_id
+    page.route('**/api/status?platform=android', lambda route: route.fulfill(json={'obs_last_run_id': latest_id}))
+    page.route(f'**/api/run_artifacts/{latest_id}', lambda route: route.fulfill(json=manifest))
+    page.locator('.sidebar-item[data-view="tests"]').click()
+    page.locator(f'.obs-run-workspace[data-run-id="{latest_id}"]').wait_for()
+    assert page.url.endswith(f'#obs/{latest_id}')

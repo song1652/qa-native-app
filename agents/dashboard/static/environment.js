@@ -6,7 +6,7 @@ var _envAppiumActionBusy = false;
 var _envAppiumLogState = null;
 
 function pollEnvStatus() {
-  fetch('/api/env/status')
+  return fetch('/api/env/status')
     .then(function(r){ return r.json(); })
     .then(function(d){
       _envOverviewSnapshot=d;

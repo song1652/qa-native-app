@@ -11,9 +11,9 @@ function setQuickPlatform(platform){
   loadDevicePicker(platform, 'quick');
 }
 
-async function refreshGenerated(){
+async function refreshGenerated(options){
   if(window._quickRunActive) return;
-  if(window._quickRunResultVisible && !window._quickRunActive) return;
+  if(window._quickRunResultVisible && !(options && options.navigation)) return;
   try{
     var res=await fetch('/api/generated?platform='+encodeURIComponent(_quickPlatform)); var data=await res.json();
     window._generatedTests = data;
@@ -37,8 +37,18 @@ async function refreshGenerated(){
     var staleHtml=staleFiles.length
       ? '<div class="env-error-banner"> 구버전 테스트 '+staleFiles.length+'개가 감지되었습니다. Capture Studio에서 다시 저장·생성한 뒤 실행하세요.</div>'
       : '';
-    var folderHtml=groups.map(function(key){ return '<label class="quick-group-item"><input type="checkbox" class="quick-group-cb" value="'+esc(key)+'" checked onchange="syncQuickSelection()">'
+    var existingList=document.querySelector('.quick-group-list');
+    var selected=existingList?Array.from(existingList.querySelectorAll('.quick-group-cb:checked')).map(function(cb){return cb.value;}):null;
+    var folderHtml=groups.map(function(key){ return '<label class="quick-group-item"><input type="checkbox" class="quick-group-cb" value="'+esc(key)+'" '+(!selected||selected.indexOf(key)!==-1?'checked':'')+' onchange="syncQuickSelection()">'
       +'<span class="quick-group-name">'+esc(key.split(':').slice(1).join(':'))+'</span><span class="quick-group-count">'+groupMap[key].length+'개 파일</span></label>'; }).join('');
+    if(options && options.navigation && existingList){
+      existingList.innerHTML=folderHtml||'<div class="tc-folder-empty">생성된 테스트 폴더가 없습니다.</div>';
+      var runButton=document.getElementById('quick-generated-run');
+      if(runButton) runButton.disabled=!groups.length;
+      syncQuickSelection();
+      loadDevicePicker(_quickPlatform, 'quick');
+      return;
+    }
     // Legacy result cards are no longer restored; the observability workspace
     // is reconstructed from the latest server-side run manifest instead.
     try{ localStorage.removeItem('qa-native-app.quick-result-v3.'+_quickPlatform); }catch(_){ }
@@ -245,7 +255,7 @@ function executeGeneratedFile(platform,file,heal,folder){
   return new Promise(async function(resolve){
     try{
     var res=await fetch('/api/run_test',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(Object.assign({platform:platform,heal:heal,obs_keep:_obsKeep},folder?{test_folder:folder}:{test_file:file},getSelectedDeviceParams()))});
+      body:JSON.stringify(Object.assign({platform:platform,heal:heal,obs_keep:_obsKeep},folder?{test_folder:folder}:{test_file:file},getSelectedDeviceParams(platform)))});
     var data=await res.json();
     if(!data.ok){
       if(window._quickRunLogEl) window._quickRunLogEl.textContent='[오류] '+(data.error||'실행 실패');

@@ -12,7 +12,7 @@
     }
   }
   if(['dashboard','config','import','capture','pipeline','tests','reports','history','tc_studio'].includes(initialView)){
-    selectView(initialView, document.querySelector('.sidebar-item[data-view="'+initialView+'"]'));
+    selectView(initialView, document.querySelector('.sidebar-item[data-view="'+initialView+'"]'), {preserveRun:location.hash.indexOf('#obs/')===0});
   }
   initReportControls();
   renderRunHistory();

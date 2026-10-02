@@ -20,7 +20,9 @@ var _tcStudioFolder = new URLSearchParams(location.search).get('tc_folder') || '
 var _fromTcStudio = new URLSearchParams(location.search).get('from_tc_studio') === '1';
 
 // ── 디바이스 선택 상태 ──
-var _selectedDevice = null; // {mode, deviceName, udid, connected}
+var _selectedDevice = null; // Fallback for callers without a platform.
+var _selectedDevices = {};
+var _devicePickerPlatforms = {};
 
 var _devicePickerData = {};
 
@@ -30,12 +32,13 @@ function _renderDeviceList(containerId, hintId, devices, captureSession, platfor
   if(!container) return;
 
   _devicePickerData[containerId] = devices;
+  _devicePickerPlatforms[containerId] = platform;
 
   var sessionUdid   = captureSession && captureSession.active ? (captureSession.udid || '') : '';
   var sessionTarget = captureSession && captureSession.active ? (captureSession.target || '') : '';
 
   var autoSelect = null;
-  if(sessionUdid) autoSelect = devices.find(function(d){ return d.udid === sessionUdid; });
+  if(sessionUdid) autoSelect = devices.find(function(d){ return d.connected && d.udid === sessionUdid; });
   if(!autoSelect && sessionTarget) {
     var modeKey = sessionTarget === 'emulator' ? 'emulator' : 'real_device';
     autoSelect = devices.find(function(d){ return d.mode === modeKey && d.connected; });
@@ -44,9 +47,13 @@ function _renderDeviceList(containerId, hintId, devices, captureSession, platfor
     autoSelect = devices.find(function(d){ return d.connected && d.default; })
               || devices.find(function(d){ return d.connected; });
   }
-  if(autoSelect && (!_selectedDevice || !devices.find(function(d){ return d.udid === _selectedDevice.udid; }))) {
-    _selectedDevice = autoSelect;
-  }
+  var previous = _selectedDevices[platform];
+  var selected = previous && devices.find(function(d){
+    return d.connected && d.udid === previous.udid && d.deviceName === previous.deviceName;
+  });
+  selected = selected || autoSelect || null;
+  _selectedDevices[platform] = selected;
+  _selectedDevice = selected;
 
   if(hintEl) {
     if(autoSelect && captureSession && captureSession.active) {
@@ -64,7 +71,7 @@ function _renderDeviceList(containerId, hintId, devices, captureSession, platfor
   var realDevices = devices.filter(function(d){ return d.mode === 'real_device'; });
 
   function cardHtml(d, globalIdx) {
-    var isSelected = _selectedDevice && _selectedDevice.udid === d.udid && _selectedDevice.deviceName === d.deviceName;
+    var isSelected = selected && selected.udid === d.udid && selected.deviceName === d.deviceName;
     var realCls = d.mode === 'real_device' ? ' real' : '';
     var disCls  = d.connected ? '' : ' disconnected';
     var selCls  = isSelected ? ' selected' : '';
@@ -73,38 +80,61 @@ function _renderDeviceList(containerId, hintId, devices, captureSession, platfor
           ? '<span class="device-badge running">실행 중</span>'
           : '<span class="device-badge connected">연결됨</span>')
       : '<span class="device-badge offline">미연결</span>';
-    var clickAttr = d.connected
-      ? ' onclick="selectDeviceCard(this,\'' + containerId + '\',' + globalIdx + ')"'
-      : '';
-    return '<div class="device-card'+selCls+realCls+disCls+'"'+clickAttr+'>'
-      +'<div class="device-radio"><div class="device-radio-dot"></div></div>'
+    return '<label class="device-card'+selCls+realCls+disCls+'">'
+      +'<input class="device-radio" type="radio" name="'+containerId+'" value="'+globalIdx+'"'
+      +(isSelected?' checked':'')+(d.connected?'':' disabled')
+      +' onchange="selectDeviceCard(this.closest(\'.device-card\'),\''+containerId+'\','+globalIdx+')">'
       +'<div class="device-info">'
         +'<div class="device-name">'+esc(d.deviceName || d.udid || '알 수 없음')+'</div>'
         +'<div class="device-meta">'+esc(d.udid || '')+(d.platformVersion?' · '+(platform==='ios'?'iOS':'Android')+' '+esc(d.platformVersion):'')+'</div>'
-      +'</div>'+badge+'</div>';
+      +'</div>'+badge+'</label>';
   }
 
   var html = '';
   if(emulators.length) {
     html += '<div class="device-divider">'+(platform==='ios'?'시뮬레이터':'에뮬레이터')+'</div>';
-    html += emulators.map(function(d,i){ return cardHtml(d, i); }).join('');
+    html += emulators.map(function(d,i){ return cardHtml(d, devices.indexOf(d)); }).join('');
   }
   if(realDevices.length) {
     html += '<div class="device-divider">실기기</div>';
-    html += realDevices.map(function(d,i){ return cardHtml(d, emulators.length + i); }).join('');
+    html += realDevices.map(function(d,i){ return cardHtml(d, devices.indexOf(d)); }).join('');
   }
   if(!html) html = '<div style="font-size:11px;color:var(--text3)">연결된 디바이스 없음</div>';
   container.innerHTML = html;
+  syncDevicePickers(platform, devices);
 }
 
 function selectDeviceCard(el, containerId, idx) {
   var devices = _devicePickerData[containerId];
-  if(!devices || idx >= devices.length) return;
+  if(!devices || !devices[idx] || !devices[idx].connected) return;
   var d = devices[idx];
+  var platform = _devicePickerPlatforms[containerId];
   _selectedDevice = d;
-  var picker = el.closest('.device-picker');
-  if(picker) picker.querySelectorAll('.device-card').forEach(function(c){ c.classList.remove('selected'); });
-  el.classList.add('selected');
+  _selectedDevices[platform] = d;
+  syncDevicePickers(platform);
+}
+
+function syncDevicePickers(platform, latestDevices) {
+  var selected = _selectedDevices[platform];
+  Object.keys(_devicePickerPlatforms).forEach(function(id){
+    if(_devicePickerPlatforms[id] !== platform) return;
+    var list = document.getElementById(id);
+    if(!list) return;
+    list.querySelectorAll('.device-radio').forEach(function(radio){
+      var candidate = _devicePickerData[id][Number(radio.value)];
+      if(latestDevices){
+        var fresh = latestDevices.find(function(d){
+          return d.udid === candidate.udid && d.deviceName === candidate.deviceName;
+        });
+        candidate.connected = !!(fresh && fresh.connected);
+      }
+      radio.disabled = !candidate.connected;
+      radio.checked = !!(candidate.connected && selected && candidate.udid === selected.udid && candidate.deviceName === selected.deviceName);
+      var card = radio.closest('.device-card');
+      card.classList.toggle('selected', radio.checked);
+      card.classList.toggle('disconnected', radio.disabled);
+    });
+  });
 }
 
 function refreshDevicePicker() {
@@ -118,12 +148,12 @@ function refreshDevicePicker() {
 
 // target: 'pipeline' | 'quick' | 없으면 둘 다
 function loadDevicePicker(platform, target) {
-  fetch('/api/devices?platform=' + platform)
+  return fetch('/api/devices?platform=' + platform)
     .then(function(r){ return r.json(); })
     .catch(function(){ return {ok:false, devices:[]}; })
     .then(function(data) {
       var devices = (data.ok && data.devices) ? data.devices : [];
-      fetch('/capture/session').then(function(r){ return r.json(); }).catch(function(){ return {}; })
+      return fetch('/capture/session').then(function(r){ return r.json(); }).catch(function(){ return {}; })
         .then(function(sess) {
           var s = sess.session || null;
           if(!target || target === 'pipeline') {
@@ -136,11 +166,12 @@ function loadDevicePicker(platform, target) {
     });
 }
 
-function getSelectedDeviceParams() {
-  if(!_selectedDevice) return {};
+function getSelectedDeviceParams(platform) {
+  var selected = platform ? _selectedDevices[platform] : _selectedDevice;
+  if(!selected || !selected.connected) return {};
   return {
-    mode: _selectedDevice.mode,
-    device_udid: _selectedDevice.udid || '',
+    mode: selected.mode,
+    device_udid: selected.udid || '',
   };
 }
 
@@ -170,7 +201,7 @@ async function runAll(){
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(Object.assign({platform: platform, tc_folders: tcFolders, obs_keep: _obsKeep,
-        from_tc_studio: _fromTcStudio}, getSelectedDeviceParams()))
+        from_tc_studio: _fromTcStudio}, getSelectedDeviceParams(platform)))
     });
     var data = await res.json();
     if(!data.ok){
@@ -391,7 +422,7 @@ async function runStep(step){
     var res = await fetch('/api/run',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(Object.assign({step, platform, tc_folder: tcFolder}, getSelectedDeviceParams()))
+      body:JSON.stringify(Object.assign({step, platform, tc_folder: tcFolder}, getSelectedDeviceParams(platform)))
     });
     var data = await res.json();
     if(!data.ok){

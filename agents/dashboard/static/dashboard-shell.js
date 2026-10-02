@@ -242,12 +242,31 @@ function updateTcFolderCount(){
 }
 
 var _tcStudioMounted = false;
+async function refreshSelectedView(view, options){
+  if(view === 'dashboard') return refreshOverview();
+  if(view === 'reports') return refreshReports();
+  if(view === 'import') return refreshImportFiles();
+  if(view === 'history') return renderRunHistory();
+  if(view === 'config') return pollEnvStatus();
+  if(view === 'pipeline') return Promise.all([refreshStatus(),refreshTcFolders(),loadDevicePicker(getPlatform(), 'pipeline')]);
+  if(view === 'capture'){
+    pollEnvStatus();
+    csMcpStatusPoll();
+    if(!_csInitialized){ _csInitialized=true; csInit(); }
+    return;
+  }
+  if(view === 'tests'){
+    await Promise.all([refreshStatus(),refreshGenerated({navigation:true})]);
+    if(!window._quickRunActive && !(options && options.preserveRun)) await _obsRenderCompletedQuickRun(_quickPlatform, true);
+  }
+  if(view === 'tc_studio' && _tcStudioMounted && window.TCS.refresh) return TCS.refresh();
+}
 function selectView(view, item, options){
   options = options || {};
   if(view !== 'tc_studio' && document.body.classList.contains('tc-studio-mode') &&
       !options.skipConfirm && window.TCS_NS && TCS_NS.detail){
     Promise.resolve(TCS_NS.detail.confirmLeave()).then(function(allowed){
-      if(allowed) selectView(view, item, {skipConfirm:true, fromHistory:options.fromHistory});
+      if(allowed) selectView(view, item, {skipConfirm:true, fromHistory:options.fromHistory, preserveRun:options.preserveRun});
       else if(options.fromHistory) history.pushState({}, '', '/tc-studio');
     });
     return;
@@ -262,6 +281,8 @@ function selectView(view, item, options){
   }
   document.querySelectorAll('.sidebar-item').forEach(function(el){
     el.classList.toggle('active', el === item);
+    if(el === item) el.setAttribute('aria-current','page');
+    else el.removeAttribute('aria-current');
   });
   var grid=document.querySelector('.app-main > .grid');
   var pipeline=document.getElementById('view-pipeline');
@@ -297,16 +318,18 @@ function selectView(view, item, options){
       studio.textContent = 'TC Studio를 불러오지 못했습니다: '+error.message;
       _tcStudioMounted = false;
     });
+  }else{
+    refreshSelectedView(view, options).catch(function(error){
+      if(view === 'tc_studio' && window.TCS_NS) TCS_NS.toast(error.message, 'err');
+    });
   }
-  if(view === 'dashboard') refreshOverview();
-  if(view === 'tests') refreshStatus();
   if(main) main.scrollTo({top:0, behavior:'smooth'});
 }
 
 window.addEventListener('popstate', function(){
   var view = location.pathname === '/tc-studio' ? 'tc_studio' :
     (new URLSearchParams(location.search).get('view') || 'dashboard');
-  selectView(view, document.querySelector('.sidebar-item[data-view="'+view+'"]'), {fromHistory:true});
+  selectView(view, document.querySelector('.sidebar-item[data-view="'+view+'"]'), {fromHistory:true, preserveRun:location.hash.indexOf('#obs/')===0});
 });
 
 function loadRunHistory(){
@@ -314,7 +337,7 @@ function loadRunHistory(){
 }
 function renderRunHistory(){
   var entries=loadRunHistory(), list=document.getElementById('history-list');
-  if(!list||!entries.length)return;
+  if(!list)return;
   list.innerHTML=entries.map(function(entry){
     var date=new Date(entry.executedAt||Date.now()), dateText=date.toLocaleDateString('ko-KR').replace(/\. /g,'-').replace(/\.$/,'');
     var time=date.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
@@ -326,8 +349,8 @@ function renderRunHistory(){
       +'<div><span class="history-count">'+entry.passed+'<small> / '+entry.total+'</small></span></div><div class="history-duration">'+esc(entry.duration||'-')+'</div>'
       +'<div><span class="history-type">'+(entry.type==='pipeline'?'파이프라인 실행':'빠른 실행')+'</span></div><div><span class="history-platform '+esc(entry.platform||'android')+'">'+(entry.platform==='ios'?'iOS':'Android')+'</span></div>'
       +'<div class="history-groups">'+groups+'</div><div><span class="history-result" style="color:'+(ok?'var(--pass)':'var(--fail)')+';border-color:'+(ok?'var(--pass)':'var(--fail)')+'">'+(ok?'첫 시도 통과':'실패')+'</span></div></div>';
-  }).join('');
-  var total=entries.length, passedRate=Math.round(entries.reduce(function(sum,item){return sum+(item.rate||0);},0)/total);
+  }).join('')||'<div class="history-empty">실행 이력이 없습니다.</div>';
+  var total=entries.length, passedRate=total?Math.round(entries.reduce(function(sum,item){return sum+(item.rate||0);},0)/total):0;
   var passedFirst=entries.filter(function(item){return !item.failed&&item.rate===100;}).length;
   document.getElementById('history-total').textContent=total;
   document.getElementById('history-rate').textContent=passedRate+'%';

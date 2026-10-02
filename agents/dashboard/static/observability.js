@@ -653,7 +653,7 @@ async function _obsResolveLatestRunId(platform){
   return runId;
 }
 
-async function _obsRenderCompletedQuickRun(platform){
+async function _obsRenderCompletedQuickRun(platform, refresh){
   var root=document.getElementById('quick-generated-result');
   var runId=await _obsResolveLatestRunId(platform);
   if(!runId){
@@ -661,11 +661,11 @@ async function _obsRenderCompletedQuickRun(platform){
     return false;
   }
   try{history.replaceState(null,'','#obs/'+encodeURIComponent(runId));}catch(_){}
-  await _obsInjectEvidenceButtons(runId);
+  await _obsInjectEvidenceButtons(runId, refresh);
   return !!document.querySelector('.obs-run-workspace[data-run-id="'+runId+'"]');
 }
 
-async function _obsInjectEvidenceButtons(runId){
+async function _obsInjectEvidenceButtons(runId, refresh){
   if(!runId) return;
   var pinnedHash=window.location.hash||'';
   if(pinnedHash.indexOf('#obs/')===0){
@@ -673,7 +673,7 @@ async function _obsInjectEvidenceButtons(runId){
       var pinnedRunId=decodeURIComponent(pinnedHash.slice(5));
       if(pinnedRunId&&pinnedRunId!==runId) return;
       var activeWorkspace=document.querySelector('.obs-run-workspace');
-      if(pinnedRunId===runId&&activeWorkspace&&activeWorkspace.dataset.runId===runId) return;
+      if(!refresh&&pinnedRunId===runId&&activeWorkspace&&activeWorkspace.dataset.runId===runId) return;
     }catch(_){ return; }
   }
   try{
@@ -707,7 +707,7 @@ async function _obsOpenHash(){
     });
     if(!entry) return;
     var nav=document.querySelector('.sidebar-item[data-view="tests"]');
-    if(nav) selectView('tests',nav);
+    if(nav) selectView('tests',nav,{preserveRun:true});
     _obsRenderWorkspace(runId,manifest,entry.nodeid);
   }catch(_){}
 }

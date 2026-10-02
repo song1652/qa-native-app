@@ -117,6 +117,8 @@ def appium_page(page, appium_live_server):
     page.wait_for_function(
         "document.getElementById('env-appium-badge').textContent.includes('중지됨')"
     )
+    # 초기 조회와 메뉴 진입 시 새 조회가 모두 끝난 뒤 렌더링 상태를 직접 주입한다.
+    page.wait_for_load_state("networkidle")
     return page
 
 

@@ -336,5 +336,12 @@
     if (NS.importModal && new URLSearchParams(window.location.search).get('import') === '1') NS.importModal.open();
   }
 
-  window.TCS = { init };
+  async function refresh() {
+    // Refresh server lists without remounting the authoring form or detail draft.
+    await NS.library.refresh();
+    await NS.refreshCounts();
+    if (state.screen === 'review' && NS.reviewView) NS.reviewView.onShow();
+  }
+
+  window.TCS = { init, refresh };
 })(window.TCS_NS = window.TCS_NS || {});
