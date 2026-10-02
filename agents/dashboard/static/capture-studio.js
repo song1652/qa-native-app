@@ -164,7 +164,7 @@ function csReLaunch() {
   var saveStatus = document.getElementById('cs-save-status');
   if(_cs.launching){
     // 절전 복귀 후 stuck될 수 있으므로 3초 안내 후 강제 해제
-    if(saveStatus){ saveStatus.textContent = '⏳ 진행 중... 계속 안 되면 다시 클릭하세요.'; saveStatus.style.color='var(--accent)'; }
+    if(saveStatus){ saveStatus.textContent = '진행 중... 계속 안 되면 다시 클릭하세요.'; saveStatus.style.color='var(--accent)'; }
     setTimeout(function(){ _cs.launching = false; }, 3000);
     return;
   }
@@ -473,7 +473,7 @@ function csMirrorConnect() {
       _loadDiv = document.createElement('div');
       _loadDiv.className = 'cs-mirror-loading';
       _loadDiv.style.cssText = 'color:var(--text3);text-align:center;padding:12px;font-size:11px';
-      _loadDiv.innerHTML = '⏳ iOS 화면 로딩 중...<br><span style="font-size:10px">WDA 안정화 대기</span>';
+      _loadDiv.innerHTML = 'iOS 화면 로딩 중...<br><span style="font-size:10px">WDA 안정화 대기</span>';
       placeholder.appendChild(_loadDiv);
     }
     placeholder.style.display = '';

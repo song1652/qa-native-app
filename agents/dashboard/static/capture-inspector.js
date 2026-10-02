@@ -120,7 +120,7 @@ function csRenderLocatorCards(attrs) {
   if (!cards.length) return '<span style="color:var(--text3)">locator 없음</span>';
   var maxStars = Math.max.apply(null, cards.map(function(c){ return c.stars; }));
   return cards.map(function(c) {
-    var stars = ''.repeat(c.stars) + ''.repeat(5 - c.stars);
+    var stars = c.stars + ' / 5';
     var badge = c.stars >= 4 ? 'stable' : (c.stars >= 3 ? 'medium' : 'low');
     var badgeLabel = c.stars >= 4 ? '안정' : (c.stars >= 3 ? '보통' : '낮음');
     var rec = c.stars === maxStars;
@@ -568,7 +568,7 @@ function csHighlightNodeInTree(xmlNode) {
 function csRefreshHierarchy(retryCount) {
   retryCount = retryCount || 0;
   var treeEl = document.getElementById('cs-hierarchy-tree');
-  if(treeEl && retryCount === 0) treeEl.innerHTML = '<span style="color:var(--text3);font-size:11px">⏳ 로딩 중...</span>';
+  if(treeEl && retryCount === 0) treeEl.innerHTML = '<span style="color:var(--text3);font-size:11px">로딩 중...</span>';
 
   // 드라이버가 살아있으면 fresh snapshot → 파일 로드, 없으면 바로 파일 로드
   if(!_cs.sessionId){ _csLoadHierarchyFromFile(retryCount); return; }
@@ -609,7 +609,7 @@ function _csLoadHierarchyFromFile(retryCount) {
         }
       } else if (retryCount < 3) {
         // hierarchy 없음 → 드라이버 준비 중일 수 있으므로 재시도
-        treeEl.innerHTML = '<span style="color:var(--text3)">⏳ hierarchy 대기 중... (' + (retryCount + 1) + '/3)</span>';
+        treeEl.innerHTML = '<span style="color:var(--text3)">hierarchy 대기 중... (' + (retryCount + 1) + '/3)</span>';
         setTimeout(function(){ csRefreshHierarchy(retryCount + 1); }, 3000);
       } else {
         treeEl.innerHTML = '<span style="color:var(--text3)">hierarchy 없음</span>';

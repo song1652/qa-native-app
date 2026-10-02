@@ -111,7 +111,7 @@ function csToggleLivetail() {
 function csLtAppend(source, type, platform, summary, result, ms) {
   var now = new Date();
   var ts = now.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
-  var icon = source === 'user' ? '\u{1F464}' : source === 'mcp' ? '\u{1F916}' : '';
+  var icon = source === 'user' ? '사용자' : source === 'mcp' ? 'MCP' : '실행';
   var row = {ts:ts, source:source, icon:icon, type:type, platform:platform, summary:summary, result:result, ms:ms};
   _csLtRows.push(row);
   if (_csLtRows.length > 200) _csLtRows.shift();
@@ -129,7 +129,7 @@ function csLtRenderRow(row) {
   var div = document.createElement('div');
   div.className = 'lt-ov-row' + (row.source === 'pipeline' ? ' lt-pipe' : '');
   var resClass = row.result === 'ok' ? 'ok' : row.result === 'warn' ? 'wn' : 'fl';
-  var resIcon  = row.result === 'ok' ? '' : row.result === 'warn' ? '' : '';
+  var resIcon  = row.result === 'ok' ? '성공' : row.result === 'warn' ? '주의' : '실패';
   var msStr    = row.ms ? ' ' + row.ms : '';
   div.innerHTML =
     '<div class="lt-ov-t">' + row.ts + '</div>' +

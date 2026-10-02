@@ -608,7 +608,7 @@ async function refreshStatus(){
         var warnEl = document.createElement('div');
         warnEl.id = 'capture-pipeline-warn';
         warnEl.style.cssText='background:var(--accent-bg);border:1px solid var(--accent);color:var(--accent);padding:8px 14px;border-radius:8px;font-size:12px;margin:8px 0;';
-        warnEl.textContent='⚠️ Capture Studio 세션이 실행 중입니다. 파이프라인 실행이 비활성화되었습니다.';
+        warnEl.textContent=' Capture Studio 세션이 실행 중입니다. 파이프라인 실행이 비활성화되었습니다.';
         var mainArea = document.querySelector('.tab-panel.active') || document.querySelector('.main-area');
         if(mainArea) mainArea.insertBefore(warnEl, mainArea.firstChild);
       }
@@ -626,9 +626,9 @@ async function refreshStatus(){
           _banner.id = 'cs-expired-banner';
           _banner.style.cssText = 'background:var(--fail-bg);border:1px solid var(--fail);color:var(--fail);' +
             'padding:10px 16px;border-radius:8px;font-size:12px;margin-bottom:10px;display:flex;align-items:center;gap:10px;';
-          _banner.innerHTML = '⏰ Capture 세션이 30분 비활동으로 자동 종료됐습니다. 기록은 보존됩니다.' +
+          _banner.innerHTML = 'Capture 세션이 30분 비활동으로 자동 종료됐습니다. 기록은 보존됩니다.' +
             '<button class="cs-btn" onclick="csForceNewSession()" style="padding:3px 10px;font-size:11px;flex-shrink:0">새 세션 시작</button>' +
-            '<button class="cs-btn" onclick="csReLaunch()" style="padding:3px 10px;font-size:11px;flex-shrink:0">🔄 재연결</button>';
+            '<button class="cs-btn" onclick="csReLaunch()" style="padding:3px 10px;font-size:11px;flex-shrink:0"> 재연결</button>';
           _workspace.insertBefore(_banner, _workspace.firstChild);
         }
       }

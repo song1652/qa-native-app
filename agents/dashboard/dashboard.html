@@ -47,7 +47,7 @@
       </a>
       <a class="sidebar-item" data-view="tc_import" href="/tc-studio?import=1"><span>엑셀 가져오기</span></a>
       <div class="sidebar-item" data-view="capture" onclick="selectView('capture',this)" id="sidebar-capture">
-        <span class="sidebar-dot" style="background:rgba(167,139,250,.4)"></span><span>화면 캡처로 작성</span>
+        <span class="sidebar-dot" style="background:var(--accent-bg)"></span><span>화면 캡처로 작성</span>
       </div>
     </div>
     <div class="sidebar-section">
@@ -92,7 +92,7 @@
         <section class="overview-card"><div class="overview-log-head"><h3>최근 로그</h3><div class="overview-log-tabs"><button type="button" class="overview-log-tab active" data-overview-log="pipeline" onclick="setOverviewLog('pipeline')">파이프라인</button><button type="button" class="overview-log-tab" data-overview-log="quick" onclick="setOverviewLog('quick')">빠른 실행</button></div><button class="log-clear" aria-label="로그 새로고침" onclick="refreshOverview()">↻</button></div><div class="overview-log" id="overview-log">로그 없음</div></section>
       </div>
     </div>
-    <svg class="view-hidden" aria-hidden="true"><circle id="overview-donut-fill" stroke-dasharray="0 302"></circle></svg>
+    <svg class="view-hidden" aria-hidden="true"><circle id="overview-donut-fill" stroke-dasharray="0 302"></circle><g id="areaGrad"></g></svg>
   </div>
   <div class="grid">
 
@@ -203,7 +203,7 @@
       <div class="step-row">
         <div class="step-num" id="sn-execute">4</div>
         <button class="btn primary" id="btn-execute" onclick="runStep('execute')">
-          <span>테스트 실행 <span style="color:rgba(255,255,255,.5);font-size:10px">05_execute</span></span>
+          <span>테스트 실행 <span style="color:var(--text);font-size:10px">05_execute</span></span>
           <div class="btn-right">
             <span class="btn-tag">pytest</span>
             <div class="spinner"></div>
@@ -216,7 +216,7 @@
       <div class="step-row">
         <div class="step-num" id="sn-heal">5</div>
         <button class="btn heal-btn" id="btn-heal" onclick="runStep('heal')">
-          <span>자동 복구 <span style="color:rgba(245,158,11,.5);font-size:10px">06_heal</span></span>
+          <span>자동 복구 <span style="color:var(--warn);font-size:10px">06_heal</span></span>
           <div class="btn-right">
             <span class="btn-tip" style="color:var(--warn)">실패 시 자동 패치</span>
             <div class="spinner"></div>
@@ -229,8 +229,8 @@
 
     <!-- 결과 요약 -->
     <div id="step-summary" style="display:none;margin-top:12px;padding:8px 12px;
-      border-radius:9px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);
-      font-size:11px;color:#94a3b8;font-family:monospace"></div>
+      border-radius:9px;background:var(--surface-sub);border:1px solid var(--border);
+      font-size:11px;color:var(--text-2);font-family:monospace"></div>
     <!-- 다음 액션 가이드 배너 -->
     <div id="guide-banner" style="display:none;margin-top:10px;padding:10px 14px;
       border-radius:9px;font-size:12px;font-weight:600;position:relative"></div>
@@ -250,7 +250,7 @@
     <!-- 실패 TC 요약 -->
     <div class="fail-summary" id="fail-summary">
       <div class="fail-title">
-        <span>⚠</span><span id="fail-count"></span>개 실패
+        <span>실패 요약</span><span id="fail-count"></span>개 실패
       </div>
       <div id="fail-list"></div>
     </div>

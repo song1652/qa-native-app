@@ -58,11 +58,11 @@ function renderRealDevices(containerId, realDevices, platform) {
     var sub = dev.serial || dev.udid || '';
     var wifiBtns = '';
     if (dev.wifi_ip) {
-      var btnStyle = 'padding:3px 10px;font-size:11px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text1);cursor:pointer;';
+      var btnStyle = 'padding:3px 10px;font-size:11px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;';
       if (dev.connected) {
-        wifiBtns = '<button onclick="envAndroidRealDisconnect()" style="' + btnStyle + '">&#9986; 해제</button>';
+        wifiBtns = '<button onclick="envAndroidRealDisconnect()" style="' + btnStyle + '">Wi-Fi 해제</button>';
       } else {
-        wifiBtns = '<button onclick="envAndroidRealConnect()" style="' + btnStyle + '">&var(--accent); WiFi</button>';
+        wifiBtns = '<button onclick="envAndroidRealConnect()" style="' + btnStyle + '">Wi-Fi 연결</button>';
       }
     }
     var isLastReal = realDevices.length <= 1;

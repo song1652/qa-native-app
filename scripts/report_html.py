@@ -487,7 +487,7 @@ button,a{font:inherit}button{cursor:pointer;white-space:nowrap}button:focus-visi
 .sidebar{position:sticky;top:24px;min-width:0}.sidebar-logo{margin-bottom:20px;padding:0 12px}.logo-text{font-size:15px;font-weight:600}.logo-sub{font-size:12px;color:var(--text-3);overflow-wrap:anywhere}
 .nav-label{font-size:12px;color:var(--text-3);padding:0 12px 6px}.nav-section ul{list-style:none;display:grid;gap:2px}
 .nav-item{display:flex;gap:8px;padding:8px 12px;align-items:center;border-radius:6px;font-size:13px;cursor:pointer;overflow-wrap:anywhere}
-.nav-item.active{background:var(--accent-bg);color:var(--accent);font-weight:600}.nav-count{margin-left:auto;font:12px var(--font-mono);white-space:nowrap}
+.nav-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.nav-item.active{background:var(--accent-bg);color:var(--accent);font-weight:600}.nav-count{margin-left:auto;font:12px var(--font-mono);white-space:nowrap}
 .nav-dot,.group-dot,.case-dot{height:7px;width:7px;flex-shrink:0;border-radius:50%}.pass.nav-dot,.pass.group-dot,.pass.case-dot{background:var(--pass)}.fail.nav-dot,.fail.group-dot,.fail.case-dot{background:var(--fail)}.warn.nav-dot,.warn.group-dot,.skip.case-dot{background:var(--warn)}
 .main{min-width:0;display:grid;gap:20px}.stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));background:var(--surface);border:1px solid var(--border);border-radius:8px}
 .stat-card{padding:14px 16px;display:flex;flex-direction:column-reverse;border-left:1px solid var(--border)}.stat-card:first-child{border:0}.stat-num{font:600 24px var(--font-mono);margin-top:4px}.stat-lbl{font-size:13px;color:var(--text-2);white-space:nowrap}
@@ -689,7 +689,7 @@ def build_report(groups_data: list, summary: dict,
         nav_items += (
             f'<li class="nav-item" id="nav_{lbl}" data-nav="{lbl}">'
             f'<span class="nav-dot {dot_cls}"></span>'
-            f'{_esc(lbl)}'
+            f'<span class="nav-name" title="{_esc(lbl)}">{_esc(lbl)}</span>'
             f'<span class="nav-count">{g["pass_cnt"]}/{g_non_skip}{skip_label}</span>'
             f'</li>\n'
         )
@@ -729,7 +729,7 @@ def build_report(groups_data: list, summary: dict,
   <aside class="sidebar">
     <div class="sidebar-logo">
       <div class="logo-text">QA App</div>
-      <div class="logo-sub">{subtitle}</div>
+      <div class="logo-sub">{_esc({"ANDROID Test Report": "Android 테스트 리포트", "IOS Test Report": "iOS 테스트 리포트", "App Test Report": "앱 테스트 리포트"}.get(subtitle, subtitle))}</div>
     </div>
     <nav class="nav-section">
       <div class="nav-label">그룹</div>
