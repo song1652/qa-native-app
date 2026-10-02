@@ -51,7 +51,7 @@ serve = _ServeCompat()
 
 def test_dashboard_html_contains_core_shell():
     assert "<!DOCTYPE html>" in serve.DASHBOARD_HTML
-    assert "QA CONTROL CENTER" in serve.DASHBOARD_HTML
+    assert "QA Control Center" in serve.DASHBOARD_HTML
     assert "/api/status" in serve.DASHBOARD_HTML
     assert "quick-mode') ? _quickPlatform : getPlatform()" in serve.DASHBOARD_HTML
     assert "Promise.all([refreshStatus(),refreshGenerated()])" in serve.DASHBOARD_HTML
@@ -63,7 +63,7 @@ def test_dashboard_html_contains_core_shell():
     assert "is-stage-preview" in serve.DASHBOARD_HTML
     assert "setImportPreviewFilter" in serve.DASHBOARD_HTML
     assert "analyze: null, generate:null" in serve.DASHBOARD_HTML
-    assert '<span>TC Studio</span>' in serve.DASHBOARD_HTML
+    assert '<span>TC 스튜디오</span>' in serve.DASHBOARD_HTML
 
 
 def test_parse_failed_tcs_deduplicates_summary_entries():

@@ -14,11 +14,8 @@
 </head>
 <body class="dashboard-mode">
 
-<div class="title-row">
-  <div><h1>QA CONTROL CENTER</h1><div class="subtitle">Appium 기반 모바일 자동화</div></div>
-</div>
-
-<!-- 상단 고정 상태바 -->
+<header class="title-row">
+  <div class="product-brand"><span class="product-mark" aria-hidden="true"></span><h1>QA Control Center</h1></div>
 <div class="status-bar" aria-label="실행 상태">
   <div class="si"><span class="dot" id="dot-appium"></span><span id="txt-appium">확인 중...</span></div>
   <div class="sdiv"></div>
@@ -30,6 +27,8 @@
   <div class="sdiv"></div>
   <div class="si" id="heal-row" style="display:none">힐링: <span id="heal-cnt" style="color:var(--warn);font-weight:700;margin-left:3px"></span>회</div>
 </div>
+  <button class="header-run" type="button" onclick="selectView('pipeline',document.querySelector('.sidebar-item[data-view=pipeline]'))">파이프라인 실행</button>
+</header>
 
 <!-- 메인 그리드 -->
 <div class="app-layout">
@@ -38,40 +37,41 @@
     <div class="sidebar-section">
       <div class="sidebar-label">개요</div>
       <div class="sidebar-item active" data-view="dashboard" onclick="selectView('dashboard',this)">
-        <span class="sidebar-dot"></span><span>Dashboard</span>
-      </div>
-    </div>
-    <div class="sidebar-section">
-      <div class="sidebar-label">환경</div>
-      <div class="sidebar-item" data-view="config" onclick="selectView('config',this)">
-        <span class="sidebar-dot"></span><span>환경 설정</span>
+        <span class="sidebar-dot"></span><span>대시보드</span>
       </div>
     </div>
     <div class="sidebar-section">
       <div class="sidebar-label">TC 작성</div>
       <a class="sidebar-item" data-view="tc_studio" href="/tc-studio" onclick="event.preventDefault();selectView('tc_studio',this)" style="text-decoration:none">
-        <span class="sidebar-dot"></span><span>TC Studio</span>
+        <span class="sidebar-dot"></span><span>TC 스튜디오</span>
       </a>
+      <a class="sidebar-item" data-view="tc_import" href="/tc-studio?import=1"><span>엑셀 가져오기</span></a>
       <div class="sidebar-item" data-view="capture" onclick="selectView('capture',this)" id="sidebar-capture">
-        <span class="sidebar-dot" style="background:rgba(167,139,250,.4)"></span><span>Capture Studio</span>
+        <span class="sidebar-dot" style="background:rgba(167,139,250,.4)"></span><span>화면 캡처로 작성</span>
       </div>
     </div>
     <div class="sidebar-section">
-      <div class="sidebar-label">파이프라인</div>
+      <div class="sidebar-label">실행</div>
       <div class="sidebar-item" data-view="pipeline" onclick="selectView('pipeline',this)">
-        <span class="sidebar-dot"></span><span>파이프라인 실행</span>
+        <span class="sidebar-dot"></span><span>파이프라인</span>
       </div>
       <div class="sidebar-item" data-view="tests" onclick="selectView('tests',this)">
         <span class="sidebar-dot"></span><span>빠른 실행</span>
       </div>
     </div>
     <div class="sidebar-section">
-      <div class="sidebar-label">테스트 결과</div>
+      <div class="sidebar-label">결과</div>
       <div class="sidebar-item" data-view="reports" onclick="selectView('reports',this)">
-        <span class="sidebar-dot"></span><span>리포트 목록</span>
+        <span class="sidebar-dot"></span><span>리포트</span>
       </div>
       <div class="sidebar-item" data-view="history" onclick="selectView('history',this)">
-        <span class="sidebar-dot"></span><span>실행 히스토리</span>
+        <span class="sidebar-dot"></span><span>실행 기록</span>
+      </div>
+    </div>
+    <div class="sidebar-section sidebar-bottom">
+
+      <div class="sidebar-item" data-view="config" onclick="selectView('config',this)">
+        <span class="sidebar-dot"></span><span>환경 설정</span>
       </div>
     </div>
   </aside>

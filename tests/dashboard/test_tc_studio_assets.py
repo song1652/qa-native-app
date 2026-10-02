@@ -32,7 +32,7 @@ def test_tc_studio_header_uses_dashboard_title_without_extra_label():
     from fastapi.testclient import TestClient
     from agents.dashboard.serve import app
     studio = TestClient(app).get('/tc-studio').text
-    assert 'QA CONTROL CENTER' in dashboard
-    assert 'QA CONTROL CENTER' in studio
+    assert 'QA Control Center' in dashboard
+    assert 'QA Control Center' in studio
     assert 'APP TC STUDIO' not in studio
-    assert '<div class="title-row">' in studio
+    assert '<header class="title-row">' in studio

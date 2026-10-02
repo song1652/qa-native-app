@@ -176,7 +176,7 @@ def _check_studio_status(tc_server):
         }))
         page.goto(f'{tc_server}/tc-studio')
         assert page.title() == 'App QA Dashboard'
-        assert page.locator('.sidebar-item[data-view="tc_studio"]').inner_text() == 'TC Studio'
+        assert page.locator('.sidebar-item[data-view="tc_studio"]').inner_text() == 'TC 스튜디오'
         page.wait_for_selector('.page-title')
         assert page.locator('.page-title').inner_text() == 'TC Studio'
         page.wait_for_function("document.querySelector('#txt-step')?.textContent === 'generated'")
@@ -260,7 +260,7 @@ def _check_browser(tc_server):
         assert page.url.endswith('/tc-studio')
         assert page.locator('.status-bar').is_visible()
         studio_box = page.locator('.tc-studio .studio').bounding_box()
-        assert abs(studio_box['x'] - 308) <= 2 and abs(studio_box['y'] - 148) <= 2
+        assert abs(studio_box['x'] - 264) <= 2 and abs(studio_box['y'] - 84) <= 2
         assert page.locator('#btn-import-xlsx').bounding_box()['width'] < 160
         for suite in ("one", "two"):
             page.locator("#suite-select").select_option(suite)

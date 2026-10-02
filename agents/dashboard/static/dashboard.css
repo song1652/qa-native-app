@@ -69,7 +69,7 @@ h1{font-size:21px;font-weight:800;letter-spacing:.2px;
 .sidebar-item.active .sidebar-dot{background:var(--accent);border-color:var(--accent);
   box-shadow:0 0 7px rgba(139,92,246,.6)}
 .app-main{flex:1;min-width:0;min-height:0;overflow-y:auto;padding:24px 32px 48px}
-.app-main.tc-studio-view{padding:24px 24px 48px}
+.app-main.tc-studio-view{padding:28px 32px}
 .app-main::before{content:'Dashboard';display:none;font-size:29px;font-weight:800;margin:0 0 10px 0;
   letter-spacing:-.7px;color:#f0eff5}
 .app-main.dashboard-view::before{display:none}
@@ -815,3 +815,35 @@ button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(
         .env-appium-log{display:none;margin-top:18px;padding-top:15px;border-top:1px solid var(--border)}.env-appium-log-head{display:flex;align-items:center;gap:7px;margin-bottom:8px}.env-appium-log-title{margin-right:auto;color:var(--text2);font-size:11px;font-weight:700}.env-appium-log-tool{padding:3px 7px;border:1px solid var(--border);border-radius:5px;background:rgba(255,255,255,.025);color:var(--text3);font:600 9px inherit;cursor:pointer}.env-appium-log-tool:hover{border-color:rgba(139,92,246,.38);color:var(--text2)}.env-appium-log-output{min-height:64px;max-height:190px;overflow:auto;margin:0;padding:12px;border:1px solid rgba(140,120,220,.14);border-radius:9px;background:#060512;color:#9de9c2;font:10px/1.65 monospace;white-space:pre-wrap;word-break:break-word}.env-appium-log-path{display:block;margin-top:7px;color:var(--text3);font:9px/1.4 monospace;text-align:right}
         .env-appium-log-modal{display:none;position:fixed;inset:0;z-index:1200;align-items:center;justify-content:center;padding:28px;background:rgba(3,2,13,.78);backdrop-filter:blur(5px)}.env-appium-log-dialog{width:min(900px,96vw);max-height:82vh;display:flex;flex-direction:column;overflow:hidden;border:1px solid rgba(139,92,246,.3);border-radius:12px;background:#100d24;box-shadow:0 24px 80px rgba(0,0,0,.55)}.env-appium-log-dialog-head{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--border)}.env-appium-log-dialog-head strong{margin-right:auto;font-size:12px}.env-appium-log-dialog-head code{color:var(--text3);font-size:9px}.env-appium-log-modal-output{min-height:280px;overflow:auto;margin:14px;padding:14px;border:1px solid var(--border);border-radius:8px;background:#060512;color:#9de9c2;font:10px/1.7 monospace;white-space:pre-wrap;word-break:break-word}
         @media(max-width:760px){.env-appium-card{padding:17px}.env-appium-head{align-items:flex-start;flex-wrap:wrap}.env-appium-badge{margin-left:55px;margin-top:-12px}.env-appium-details{grid-template-columns:repeat(2,minmax(0,1fr))}.env-device-row{grid-template-columns:1fr}.env-device-actions{padding-left:16px}.env-device-summary{display:none}}
+
+/* Shared shell — Main / TcGenerate mockups. */
+.title-row{height:56px;gap:28px;background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;backdrop-filter:none;-webkit-backdrop-filter:none}
+.title-row::before,.title-row::after{display:none}
+.title-row .product-brand{gap:10px;flex-shrink:0}
+.product-mark{width:22px;height:22px;border-radius:5px;background:var(--text)}
+.title-row h1{font-size:15px;font-weight:600;letter-spacing:0;color:var(--text)}
+.status-bar{flex:1;min-width:0;height:auto;gap:16px;flex-wrap:nowrap;padding:0;background:var(--surface);border:0;backdrop-filter:none;-webkit-backdrop-filter:none}
+.si{font-size:13px;white-space:nowrap;min-width:0}.si span{overflow:hidden;text-overflow:ellipsis}
+.status-bar .sdiv{display:none}.status-bar .step-badge,.status-bar .automation-badge{background:none;border:0;border-radius:0;padding:0;font-weight:400;color:var(--text-2)}
+.dot.on{box-shadow:none}.header-run{height:36px;flex-shrink:0;padding:0 16px;border:0;border-radius:var(--radius-control);background:var(--accent);color:var(--on-accent);font:600 14px var(--font-sans);cursor:pointer;white-space:nowrap}
+.app-layout,body.dashboard-mode .app-layout,body.tc-studio-mode .app-layout,.quick-mode .app-layout,.report-mode .app-layout{height:calc(100vh - 56px);min-height:calc(100vh - 56px)}
+.sidebar{width:232px;height:calc(100vh - 56px);display:flex;flex-direction:column;background:var(--surface);padding:16px 12px;backdrop-filter:none;-webkit-backdrop-filter:none;border-right:1px solid var(--border)}
+.sidebar-section{padding:0 0 12px;border:0}.sidebar-bottom{margin-top:auto;padding-bottom:0}
+.sidebar-label{padding:8px 12px 6px;font-size:12px;font-weight:400;letter-spacing:0;text-transform:none;opacity:1;color:var(--text-3)}
+.sidebar-item{padding:8px 12px;border:0;border-radius:var(--radius-control);font-size:14px;color:var(--text);font-weight:400;white-space:nowrap}
+.sidebar-item:hover{background:var(--surface-sub);color:var(--text)}.sidebar-item.active{background:var(--accent-bg);color:var(--accent);font-weight:600;border:0;box-shadow:none}
+.sidebar-item.active::before,.sidebar-dot{display:none}
+.app-main{min-width:0;padding:28px 32px}
+@media(max-width:1100px){.status-bar .si:nth-last-child(-n+3){display:none}.title-row{gap:16px}}
+
+.sidebar a{text-decoration:none}
+
+.tc-studio-view #tc-studio-root > .tc-studio{padding:0}
+@media(max-width:900px){
+ .title-row{height:auto;min-height:56px;flex-wrap:wrap;padding:12px;gap:8px}
+ .title-row .product-brand{margin-right:auto;gap:6px}.title-row h1{font-size:13px}.product-mark{width:16px;height:16px}
+ .header-run{font-size:12px;padding:0 10px}.status-bar{order:3;flex-basis:100%;min-height:24px;padding:0;overflow:hidden}
+ .app-layout,body.dashboard-mode .app-layout,body.tc-studio-mode .app-layout,.quick-mode .app-layout,.report-mode .app-layout{display:block;height:auto;min-height:0}
+ .sidebar{position:static;width:100%;height:auto;max-width:100%;flex-direction:row;overflow-x:auto;padding:4px}
+ .sidebar-section{flex-shrink:0}.sidebar-bottom{margin:0}.app-main{padding:20px;max-width:100%}
+}
