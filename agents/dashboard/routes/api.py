@@ -234,7 +234,7 @@ async def serve_report(name: str):
     scripts_path = str(PROJECT_ROOT / "scripts")
     if scripts_path not in sys.path:
         sys.path.insert(0, scripts_path)
-    from report_html import report_css
+    from report_html import report_css, report_display_script
 
     if not fpath.is_file():
         fname = html_escape(name, quote=True)
@@ -256,11 +256,11 @@ async def serve_report(name: str):
         )
         return HTMLResponse(content=body, status_code=404)
 
-    # Historical QA reports keep their original evidence and script; only the
-    # response stylesheet adopts the current theme. Saved artifacts stay intact.
+    # Saved QA reports adopt the current display layout in the response.
+    # Original evidence, handlers, and artifact files stay intact.
     document = fpath.read_text(encoding="utf-8")
     style = re.search(r"<style\b[^>]*>.*?</style>", document, re.DOTALL | re.IGNORECASE)
-    if "<title>App QA Report</title>" in document and style and "--bg-gradient:" in style.group():
+    if "<title>App QA Report</title>" in document and style:
         compatibility = (
             ".main>.topbar{padding:0;margin:0;width:100%;max-width:none;flex-wrap:wrap}"
             ".main>.topbar .overall-badge{align-self:flex-start}"
@@ -268,7 +268,7 @@ async def serve_report(name: str):
             ".nav-count{white-space:normal;text-align:right;flex-shrink:0}"
             ".case-detail>.detail-row+.detail-row{margin-top:18px}"
         )
-        document = document[:style.start()] + f"<style>{report_css()}{compatibility}</style>" + document[style.end():]
+        document = document[:style.start()] + f"<style>{report_css()}{compatibility}</style><script>{report_display_script()}</script>" + document[style.end():]
         return HTMLResponse(content=document)
     return FileResponse(str(fpath), media_type="text/html")
 

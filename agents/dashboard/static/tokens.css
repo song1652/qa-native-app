@@ -15,7 +15,8 @@
   --on-accent: #FFFFFF;
   --pass: #15803D;  --pass-bg: #E6F4EA;   /* 통과·연결됨 */
   --fail: #B91C1C;  --fail-bg: #FDECEC;   /* 실패·삭제·오류 */
-  --warn: #92400E;  --warn-bg: #FEF3C7;   /* 중단·주의 */
+  --warn: #8A6500;  --warn-bg: #FEF9C3;   /* 중단·주의: 황금색 계열 */
+  --warn-indicator: #CA8A04; /* 주의 상태 점·차트 (3:1 대비) */
   --log-bg: #F8F9FB;        /* 로그·코드 블록 */
   --backdrop: rgb(17 24 39 / .45);
   --shadow-modal: 0 12px 32px rgb(17 24 39 / .18);

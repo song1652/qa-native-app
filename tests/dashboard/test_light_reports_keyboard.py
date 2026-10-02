@@ -1,13 +1,13 @@
-"""Report row shortcuts must not swallow keyboard actions inside its menu."""
+"""Report row shortcuts must not swallow keyboard actions on its action buttons."""
 from pathlib import Path
 
 STATIC = Path(__file__).resolve().parents[2] / 'agents/dashboard/static'
 
 
-def test_report_menu_and_row_are_independently_keyboard_operable(page):
+def test_report_actions_and_row_are_independently_keyboard_operable(page):
     page.set_content('''<div id="report-list"></div><span id="report-count"></span>
         <span id="report-selection-count"></span><span id="report-page"></span>
-        <button id="report-prev"></button><button id="report-next"></button>
+        <button id="report-delete-selected"></button><button id="report-prev"></button><button id="report-next"></button>
         <input type="checkbox" id="report-select-all">''')
     page.evaluate('''() => {
         window.esc = value => {const el=document.createElement('span');el.textContent=value;return el.innerHTML;};
@@ -22,22 +22,18 @@ def test_report_menu_and_row_are_independently_keyboard_operable(page):
         renderReports();
     }''')
     row = page.locator('.report-item')
-    menu = row.locator('details')
-    summary = menu.locator('summary')
-    summary.focus()
-    summary.press('Enter')
-    assert menu.get_attribute('open') is not None
+    actions = row.locator('.report-actions')
+    actions.get_by_role('button', name='열기', exact=True).focus()
     assert page.evaluate('openedReports') == []
-    menu.get_by_role('button', name='열기', exact=True).focus()
     page.keyboard.press('Enter')
     assert page.evaluate('openedReports') == ['report_android_example.html']
-    menu.get_by_role('button', name='삭제', exact=True).focus()
+    actions.get_by_role('button', name='삭제', exact=True).focus()
     page.keyboard.press('Enter')
     assert page.evaluate('deletedReports') == [['report_android_example.html']]
     assert page.evaluate('openedReports.length') == 1
-    summary.focus()
-    summary.press('Space')
-    assert menu.get_attribute('open') is None
+    actions.get_by_role('button', name='삭제', exact=True).press('Space')
+    assert page.evaluate('deletedReports.length') == 2
+    assert page.evaluate('openedReports.length') == 1
     row.focus()
     row.press('Enter')
     assert page.evaluate('openedReports') == ['report_android_example.html'] * 2

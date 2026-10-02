@@ -1,15 +1,16 @@
-var _reports=[], _reportSelected=new Set(), _reportPage=1, _reportSort='newest', _reportSearch='', _reportPlatform='all';
+var _reports=[], _reportSelected=new Set(), _reportPage=1, _reportSort='newest', _reportSearch='';
 function renderReports(){
   var list=document.getElementById('report-list'); if(!list) return;
-  var filtered=_reports.filter(function(r){return r.name.toLowerCase().includes(_reportSearch.toLowerCase()) && (_reportPlatform==='all'||(r.platform||(/^report_(android|ios)_/.exec(r.name)||[])[1])===_reportPlatform);}).sort(function(a,b){
+  var filtered=_reports.filter(function(r){return r.name.toLowerCase().includes(_reportSearch.toLowerCase());}).sort(function(a,b){
     if(_reportSort==='name') return a.name.localeCompare(b.name);
     var d=new Date(b.modified_at)-new Date(a.modified_at); return _reportSort==='oldest'?-d:d;
   });
   var pages=Math.max(1,Math.ceil(filtered.length/8)); _reportPage=Math.min(_reportPage,pages);
   var pageItems=filtered.slice((_reportPage-1)*8,_reportPage*8);
-  list.innerHTML=pageItems.map(function(r){return '<div class="report-item" data-name="'+esc(r.name)+'" tabindex="0" onclick="openReportFromRow(event,this)" onkeydown="openReportFromRow(event,this)"><input type="checkbox" '+(_reportSelected.has(r.name)?'checked':'')+' onchange="toggleReportSelection(this.dataset.name,this.checked);showReport(this.dataset.name)" data-name="'+esc(r.name)+'"><div class="report-info"><div class="report-name" title="'+esc(r.name)+'">'+esc(r.name)+'</div><div class="report-meta">'+new Date(r.modified_at).toLocaleString('ko-KR')+' · '+Math.round(r.size/1024)+' KB</div></div><div class="report-actions"><a href="/reports/'+encodeURIComponent(r.name)+'" target="_blank">새 탭</a><details><summary aria-label="리포트 작업">⋯</summary><div><button onclick="showReport(this.closest(\'.report-item\').dataset.name)">열기</button><button class="report-danger" onclick="deleteReports([this.closest(\'.report-item\').dataset.name])">삭제</button></div></details></div></div>';}).join('')||'<div class="report-empty">검색 결과가 없습니다.</div>';
+  list.innerHTML=pageItems.map(function(r){return '<div class="report-item" data-name="'+esc(r.name)+'" tabindex="0" onclick="openReportFromRow(event,this)" onkeydown="openReportFromRow(event,this)"><input type="checkbox" '+(_reportSelected.has(r.name)?'checked':'')+' onchange="toggleReportSelection(this.dataset.name,this.checked)" data-name="'+esc(r.name)+'"><div class="report-info"><div class="report-name" title="'+esc(r.name)+'">'+esc(r.name)+'</div><div class="report-meta">'+new Date(r.modified_at).toLocaleString('ko-KR')+' · '+Math.round(r.size/1024)+' KB</div></div><div class="report-actions"><button type="button" onclick="showReport(this.closest(\'.report-item\').dataset.name)">열기</button><a href="/reports/'+encodeURIComponent(r.name)+'" target="_blank" rel="noopener">새 탭</a><button type="button" class="report-danger" onclick="deleteReports([this.closest(\'.report-item\').dataset.name])">삭제</button></div></div>';}).join('')||'<div class="report-empty">검색 결과가 없습니다.</div>';
   document.getElementById('report-count').textContent=filtered.length+'개 리포트';
   document.getElementById('report-selection-count').textContent=_reportSelected.size+'개 선택';
+  document.getElementById('report-delete-selected').disabled=_reportSelected.size===0;
   document.getElementById('report-page').textContent=_reportPage+' / '+pages;
   document.getElementById('report-prev').disabled=_reportPage<=1; document.getElementById('report-next').disabled=_reportPage>=pages;
   var all=document.getElementById('report-select-all'); all.checked=!!filtered.length && filtered.every(function(r){return _reportSelected.has(r.name);}); all.indeterminate=filtered.some(function(r){return _reportSelected.has(r.name);})&&!all.checked;
@@ -37,12 +38,11 @@ function reportConfirmDelete(names){
 }
 async function deleteReports(names){if(!names.length||!(await reportConfirmDelete(names)))return;try{var res=await fetch('/api/reports/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({names:names})});var data=await res.json();if(!res.ok||!data.ok)throw new Error(data.error||'삭제 실패');names.forEach(function(n){_reportSelected.delete(n);});refreshReports();closeReport();}catch(e){alert(e.message);}}
 function initReportControls(){
-  document.querySelectorAll('[data-report-platform]').forEach(function(button){button.onclick=function(){_reportPlatform=button.dataset.reportPlatform;_reportPage=1;document.querySelectorAll('[data-report-platform]').forEach(function(item){item.setAttribute('aria-pressed',String(item===button));});renderReports();};});
   var search=document.getElementById('report-search-input'), sort=document.getElementById('report-sort');
   if(search) search.oninput=function(){_reportSearch=this.value;_reportPage=1;renderReports();};
   if(sort) sort.onchange=function(){_reportSort=this.value;_reportPage=1;renderReports();};
   document.getElementById('report-refresh').onclick=function(){refreshReports();};
   document.getElementById('report-delete-selected').onclick=function(){deleteReports(Array.from(_reportSelected));};
-  document.getElementById('report-select-all').onchange=function(){var q=_reports.filter(function(r){return r.name.toLowerCase().includes(_reportSearch.toLowerCase()) && (_reportPlatform==='all'||(r.platform||(/^report_(android|ios)_/.exec(r.name)||[])[1])===_reportPlatform);});q.forEach(function(r){this.checked?_reportSelected.add(r.name):_reportSelected.delete(r.name);},this);renderReports();};
+  document.getElementById('report-select-all').onchange=function(){var q=_reports.filter(function(r){return r.name.toLowerCase().includes(_reportSearch.toLowerCase());});q.forEach(function(r){this.checked?_reportSelected.add(r.name):_reportSelected.delete(r.name);},this);renderReports();};
   document.getElementById('report-prev').onclick=function(){_reportPage--;renderReports();};document.getElementById('report-next').onclick=function(){_reportPage++;renderReports();};
 }

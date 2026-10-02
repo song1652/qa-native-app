@@ -142,3 +142,22 @@ def test_studio_menu_reloads_library_and_retains_unsaved_detail(tc_server, page)
     assert page.locator('#d-dirty').is_visible()
     assert page.locator('#suite-select').input_value() == 'navigation'
     assert page.locator('#src-paste').input_value() == '저장하지 않은 기획 문서'
+
+
+def test_report_actions_and_selection_remain_separate(navigation_page):
+    page = navigation_page
+    page.route('**/api/reports', lambda route: route.fulfill(json=[{
+        'name': 'report_android_new.html', 'modified_at': '2026-10-02', 'size': 1000,
+    }]))
+    page.evaluate('initReportControls()')
+    page.locator('[data-view="reports"]').click()
+    page.locator('.report-name').wait_for()
+    assert page.locator('#report-delete-selected').is_disabled()
+    page.locator('.report-item input').check()
+    assert not page.locator('#report-delete-selected').is_disabled()
+    assert page.locator('#report-iframe').get_attribute('src') is None
+    page.locator('.report-actions button').filter(has_text='열기').click()
+    assert page.locator('#report-iframe').get_attribute('src') == '/reports/report_android_new.html'
+    assert page.locator('.report-actions a').get_attribute('target') == '_blank'
+    page.locator('.report-item input').uncheck()
+    assert page.locator('#report-delete-selected').is_disabled()

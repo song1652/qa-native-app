@@ -88,7 +88,7 @@
     <div class="overview-columns">
       <div class="overview-primary">
         <section class="overview-card overview-recent-card"><div class="overview-section-head"><h3>최근 실행</h3><button class="text-link" onclick="selectView('history',document.querySelector('.sidebar-item[data-view=history]'))">전체 기록 보기</button></div><div id="overview-trend" class="overview-trend-empty">실행 이력 없음</div></section>
-        <section class="overview-card overview-chart-card"><div class="overview-section-head"><h3>통과율 추이</h3><details class="overview-filter-menu"><summary>플랫폼</summary><div class="overview-platform-filter" role="group" aria-label="플랫폼"><button type="button" aria-pressed="true" onclick="setOverviewPlatform('all')">전체</button><button type="button" aria-pressed="false" onclick="setOverviewPlatform('android')">Android</button><button type="button" aria-pressed="false" onclick="setOverviewPlatform('ios')">iOS</button></div></details></div><div id="overview-rate-chart"></div><div class="overview-chart-footer"><span id="overview-chart-context">실행 이력 없음</span><span class="overview-chart-legend"><span class="pass">● 통과</span><span class="warn">● 주의</span><span class="fail">● 실패</span></span></div></section>
+        <section class="overview-card overview-chart-card"><div class="overview-section-head"><h3>통과율 추이</h3><details class="overview-filter-menu"><summary>플랫폼</summary><div class="overview-platform-filter" role="group" aria-label="플랫폼"><button type="button" aria-pressed="true" onclick="setOverviewPlatform('all')">전체</button><button type="button" aria-pressed="false" onclick="setOverviewPlatform('android')">Android</button><button type="button" aria-pressed="false" onclick="setOverviewPlatform('ios')">iOS</button></div></details></div><div id="overview-rate-chart"></div><div class="overview-chart-footer"><span id="overview-chart-context">실행 이력 없음</span><span class="overview-chart-legend"><span class="pass">통과</span><span class="warn">주의</span><span class="fail">실패</span></span></div></section>
       </div>
       <div class="overview-side">
         <section class="overview-card"><div class="overview-section-head"><h3>파이프라인 상태</h3></div><dl class="overview-environment"><div><dt>파이프라인</dt><dd id="overview-pipeline-status">정보 없음</dd></div><div><dt>빠른 실행</dt><dd id="overview-quick-status">실행 없음</dd></div><div><dt>최근 리포트</dt><dd id="overview-report-status">정보 없음</dd></div></dl></section>
@@ -290,7 +290,7 @@
         <div class="report-controls">
           <input class="report-search" id="report-search-input" type="text" placeholder="리포트 이름 검색">
           <select id="report-sort"><option value="newest">최신순</option><option value="oldest">오래된순</option><option value="name">파일명순</option></select>
-          <div class="report-platform-filter" role="group" aria-label="리포트 플랫폼"><button type="button" data-report-platform="all" aria-pressed="true">전체</button><button type="button" data-report-platform="android" aria-pressed="false">Android</button><button type="button" data-report-platform="ios" aria-pressed="false">iOS</button></div><button type="button" id="report-refresh">새로고침</button>
+          <button type="button" id="report-refresh">새로고침</button>
           <button type="button" id="report-delete-selected" class="report-danger">선택 삭제</button>
           <span class="report-count" id="report-count">0개 리포트</span>
         </div>

@@ -57,3 +57,38 @@ def test_missing_report_is_light_responsive_and_escapes_filename(tmp_path, monke
     assert '<missing>' not in document
     assert 'background:#08071b' not in document
     assert "href='/?view=reports'" in document
+
+
+def test_saved_light_report_adopts_chip_layout_without_changing_saved_evidence(tmp_path, monkeypatch, page):
+    import re
+    from scripts import report_html
+
+    row = report_html.case_row({'title': '저장된 실제 결과 제목'}, 'settings_0', 'passed')
+    original = report_html.build_report([{
+        'label': 'settings', 'rows_html': row, 'pass_cnt': 1,
+        'total_cnt': 1, 'all_pass': True, 'has_tests': True,
+    }], {'passed': 1}, '2026-10-02')
+    # Recreate the previous saved-light layout: sidebar inside the layout,
+    # header actions, filters inside the group heading, and collapsed group.
+    sidebar = re.search(r'  <aside class="sidebar">.*?</aside>', original, re.DOTALL).group()
+    original = original.replace(sidebar, '').replace('<div class="layout">', '<div class="layout">' + sidebar)
+    original = original.replace('</header>', '<div class="report-actions"><a href="/?view=reports">대시보드에서 보기</a><button>인쇄 · PDF</button></div></header>')
+    original = original.replace('<div class="report-actions">', '<div class="topbar"><div class="report-actions">').replace('</button></div></header>', '</button></div></div></header>')
+    original = original.replace('    </div>\n  </div>\n  <div class="filter-bar"', '    </div>\n  <div class="filter-bar"')
+    original = original.replace('  </div>\n  <div class="group-body"', '  </div>\n  </div>\n  <div class="group-body"')
+    original = original.replace('toggleGroup("settings");', '')
+    artifact = tmp_path / 'saved-light.html'
+    artifact.write_text(original)
+    monkeypatch.setattr(api, 'REPORTS_DIR', tmp_path)
+    response = _serve_report(artifact.name)
+    document = response.body.decode()
+    assert document.split('</head>', 1)[1] == original.split('</head>', 1)[1]
+    assert artifact.read_text() == original
+    page.set_viewport_size({'width': 856, 'height': 1000})
+    page.set_content(document)
+    assert page.locator('#gbody_settings').is_visible()
+    assert page.locator('body > .sidebar').count() == 1
+    assert not page.get_by_text('대시보드에서 보기', exact=True).count()
+    assert not page.get_by_text('인쇄 · PDF', exact=True).count()
+    assert page.get_by_text('저장된 실제 결과 제목', exact=True).is_visible()
+    assert page.locator('.filter-bar').bounding_box()['y'] >= page.locator('.group-header').bounding_box()['y'] + page.locator('.group-header').bounding_box()['height']
