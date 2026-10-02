@@ -947,3 +947,11 @@ code,pre,.log-area,.log-panel,.overview-log{font-family:var(--font-mono)}
 .ev-dialog{background:var(--surface);max-width:calc(100vw - 32px)}.ev-dialog-head,.ev-dialog-tabs{background:var(--surface)}
 @media(max-width:1100px){#gen-all.active{grid-template-columns:minmax(0,1fr)}#gen-all>*{grid-column:1!important;grid-row:auto!important}.obs-run-main{grid-template-columns:minmax(0,1fr)}}
 #view-tests>div:first-child{display:none!important}
+/* Reports — retain the existing preview, selection and pagination controls. */
+#view-reports{padding:0;background:none;border:0}.reports-title{font-size:22px;font-weight:600}.reports-subtitle{font-size:13px;color:var(--text-3);margin:4px 0 20px}
+.report-controls{gap:10px;margin-bottom:20px}.report-controls button,.report-controls select,.report-controls input{min-height:34px;font-size:13px;border-radius:var(--radius-control);background:var(--surface);color:var(--text);border:1px solid var(--border)}
+.report-workspace{gap:20px;grid-template-columns:minmax(340px,1fr) minmax(0,1.3fr)}.report-panel{background:var(--surface);border-radius:var(--radius-card);border-color:var(--border)}
+.report-panel-head{background:var(--surface);padding:14px 16px;font-size:13px}.report-item{background:var(--surface);padding:14px 16px;border-bottom:1px solid var(--border);border-radius:0}.report-item.is-open{background:var(--accent-bg)}
+.report-item-name{font-family:var(--font-mono);font-size:13px;overflow-wrap:anywhere}.report-item-meta{color:var(--text-3);font-size:12px}.report-empty{font-size:14px;color:var(--text-2);line-height:1.6}.report-danger{color:var(--fail)!important}
+.report-preview{min-width:0}.report-iframe-wrap{background:var(--surface)}
+@media(max-width:1000px){.report-workspace{grid-template-columns:1fr}}
