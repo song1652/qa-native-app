@@ -259,7 +259,7 @@
 .tc-studio .src-title { font-weight:600; font-size:12.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .tc-studio .src-meta { display:flex; gap:6px; flex-wrap:wrap; margin-top:3px; }
 .tc-studio .cred { display:flex; gap:8px; flex-wrap:wrap; font-size:11.5px; }
-.tc-studio .picker { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.tc-studio .picker { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(150px,100%),1fr)); gap:8px; }
 .tc-studio .profile-rules { list-style:none; padding:0; margin:0; display:grid; gap:5px; font-size:11.5px; color:var(--text2); }
 .tc-studio .profile-rules li { display:flex; gap:6px; }
 .tc-studio .profile-rules li::before { content:"·"; color:var(--accent); font-weight:700; }
@@ -491,8 +491,8 @@
 .tc-studio .seg button[aria-pressed="true"]{background:var(--text);color:var(--on-accent)}
 .tc-studio .maprow{grid-template-columns:minmax(0,1fr);gap:6px}.tc-studio .maprow>.row{flex-wrap:wrap}.tc-studio .maprow>.tag{justify-self:start}
 /* 스튜디오 대화창과 알림 */
-.tc-studio .scrim{background:var(--backdrop);z-index:1500;padding:24px}
-.tc-studio .modal{background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-modal)}
+.tc-studio .scrim{grid-template-columns:minmax(0,1fr);background:var(--backdrop);z-index:1500;padding:24px}
+.tc-studio .modal{max-width:100%;min-width:0;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-modal)}
 .tc-studio .modal .panel-head{font-size:17px;font-weight:600}
 .tc-studio .modal .panel-body{padding:20px}
 .tc-studio .modal .icon-btn{width:34px;height:34px;border:1px solid var(--border)}
@@ -616,8 +616,8 @@
 .tc-studio .gen:has(#job:not([hidden]) #job-cancel:not([hidden])) .job>.row:first-child{flex-wrap:wrap}
 @media(max-width:1100px){.tc-studio .gen:has(#job:not([hidden]) #job-cancel:not([hidden]))>div>.panel:has(#job-panel){grid-column:1;grid-row:auto}}
 .tc-studio .gen>div{gap:16px!important}
-.tc-studio #gen-rules{gap:0;line-height:1.45}
-.tc-studio #gen-rules li{line-height:1.45}
+.tc-studio #gen-rules{gap:4px;line-height:1.6}
+.tc-studio #gen-rules li{line-height:1.6}
 .tc-studio #md-preview-panel table{table-layout:fixed}
 .tc-studio #md-preview-panel th:first-child{width:70px}
 .tc-studio #md-preview-panel th:nth-child(3){width:120px}
@@ -634,3 +634,21 @@
 .tc-studio #screen-library>.filterbar .fselect{max-width:125px;font-size:12px;padding:0 8px}
 .tc-studio #screen-library>.filterbar #lib-filter-mismatch{order:10}
 @media(max-width:1200px){.tc-studio #screen-library>.filterbar{flex-wrap:wrap}}
+
+/* Keep all studio screens and dialog fields readable on narrow displays. */
+@media(max-width:600px){
+  .tc-studio .wizard{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:16px;overflow:visible}
+  .tc-studio .step-item{min-width:0;min-height:44px}
+  .tc-studio .review{grid-template-columns:minmax(0,1fr)}
+  .tc-studio .rv-list-pane,.tc-studio #drafts,.tc-studio .rv-right{grid-column:1;grid-row:auto}
+  .tc-studio .review-case-item{grid-template-columns:auto minmax(0,1fr);line-height:1.5}
+  .tc-studio .review-case-item .pill{grid-column:2;justify-self:start}
+  .tc-studio .review-case-item b,.tc-studio .draft-grid dd{min-width:0;overflow-wrap:anywhere}
+  .tc-studio .scrim{padding:16px}
+  .tc-studio .modal .panel-head{align-items:flex-start}
+  .tc-studio .modal .panel-head .icon-btn{flex-shrink:0}
+  .tc-studio #cred-modal .row:has(#cred-email){display:grid;grid-template-columns:minmax(0,1fr)}
+  .tc-studio #import-custom-mapping>.row:has([data-map]),.tc-studio #import-history-panel:not([hidden]){grid-template-columns:minmax(0,1fr)}
+  .tc-studio #import-mapping-profile{min-width:0;max-width:100%}
+  .tc-studio #import-history-panel>.row{grid-column:1}
+}

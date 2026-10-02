@@ -397,14 +397,14 @@ def case_row(case: dict, uid: str, outcome) -> str:
 
     return (
         f'<div class="case-item {status_cls}" data-status="{status_cls}" data-toggle="{uid}">'
-        f'  <div class="case-header">'
+        f'  <button type="button" class="case-header" aria-expanded="false" aria-controls="detail_{uid}">'
         f'    <span class="case-dot {status_cls}"></span>'
         f'    <span class="case-title">{_esc(title)}</span>'
-        f'    <div class="case-right">'
+        f'    <span class="case-right">'
         f'      <span class="case-status-txt {status_cls}">{badge_txt}</span>'
         f'      <span class="chevron" id="chv_{uid}">&#8250;</span>'
-        f'    </div>'
-        f'  </div>'
+        f'    </span>'
+        f'  </button>'
         f'  <div class="case-detail" id="detail_{uid}"><div class="case-columns"><div class="case-description">{error_section}'
         f'    <div class="detail-row">'
         f'      <span class="detail-label">사전 조건</span>'
@@ -443,12 +443,12 @@ def build_group_section(label: str, rows_html: str,
     return f"""
 <section class="group-card" id="group_{label}">
   <div class="group-header {status_cls}">
-    <div class="group-title-wrap" data-toggle-group="{label}" style="cursor:pointer">
+    <button type="button" class="group-title-wrap" data-toggle-group="{label}" aria-expanded="false" aria-controls="gbody_{label}">
       <span class="group-chevron" id="gchv_{label}">&#9654;</span>
       <span class="group-dot {status_cls}"></span>
       <span class="group-title">{display_label}</span>
       <span class="group-sub">{g_pass_cnt} / {g_total_cnt - g_skip_cnt} 통과{f" · {g_skip_cnt}건 건너뜀" if g_skip_cnt else ""}</span>
-    </div>
+    </button>
     <div class="group-right">
       <span class="badge {status_cls}">{status_txt}</span>
     </div>
@@ -478,7 +478,7 @@ button,a{font:inherit}button{cursor:pointer;white-space:nowrap}button:focus-visi
 .report-header{background:var(--surface);border-bottom:1px solid var(--border)}
 .topbar{max-width:1304px;margin:auto;padding:20px 32px;display:flex;gap:20px;align-items:center;justify-content:space-between}
 .report-actions{display:flex;align-items:center;gap:16px;flex-shrink:0;font-size:13px}.report-actions button{height:34px;padding:0 14px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:14px}
-.topbar h1{font-size:22px;font-weight:600}.meta{font:13px var(--font-mono);color:var(--text-2);margin-top:6px}
+.topbar>div:first-child{min-width:0}.topbar>div:first-child>div:first-child{flex-wrap:wrap}.meta{overflow-wrap:anywhere}.topbar h1{font-size:22px;font-weight:600}.meta{font:13px var(--font-mono);color:var(--text-2);margin-top:6px}
 .overall-badge,.platform-badge,.badge,.case-status-txt{font-size:12px;font-weight:600;white-space:nowrap;border-radius:4px;padding:2px 8px}
 .platform-badge{background:var(--surface-sub);color:var(--text-2)}
 .overall-badge.pass,.badge.pass,.case-status-txt.pass{background:var(--pass-bg);color:var(--pass)}
@@ -486,24 +486,24 @@ button,a{font:inherit}button{cursor:pointer;white-space:nowrap}button:focus-visi
 .badge.warn,.case-status-txt.skip{background:var(--warn-bg);color:var(--warn)}
 .layout{max-width:1304px;margin:auto;padding:24px 32px;display:grid;grid-template-columns:220px minmax(0,1fr);gap:24px;align-items:start}
 .sidebar{position:sticky;top:24px;min-width:0}.sidebar-logo{display:none}.logo-text{font-size:15px;font-weight:600}.logo-sub{font-size:12px;color:var(--text-3);overflow-wrap:anywhere}
-.nav-label{font-size:12px;color:var(--text-3);padding:0 12px 6px}.nav-section ul{list-style:none;display:grid;gap:2px}
-.nav-item{display:flex;gap:8px;padding:8px 12px;align-items:center;border-radius:6px;font-size:13px;cursor:pointer;overflow-wrap:anywhere}
+.nav-label{font-size:12px;color:var(--text-3);padding:0 12px 6px}.nav-section ul{list-style:none;display:grid;grid-template-columns:minmax(0,1fr);gap:2px}.nav-section li{min-width:0}
+.nav-item{width:100%;min-width:0;border:0;background:transparent;color:inherit;text-align:left;white-space:normal;display:flex;gap:8px;padding:8px 12px;align-items:center;border-radius:6px;font-size:13px;cursor:pointer;overflow-wrap:anywhere}
 .nav-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.nav-item.active{background:var(--accent-bg);color:var(--accent);font-weight:600}.nav-count{margin-left:auto;font:12px var(--font-mono);white-space:nowrap}
 .nav-dot,.group-dot,.case-dot{height:7px;width:7px;flex-shrink:0;border-radius:50%}.pass.nav-dot,.pass.group-dot,.pass.case-dot{background:var(--pass)}.fail.nav-dot,.fail.group-dot,.fail.case-dot{background:var(--fail)}.warn.nav-dot,.warn.group-dot,.skip.case-dot{background:var(--warn)}
 .main{min-width:0;display:grid;gap:20px}.stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));background:var(--surface);border:1px solid var(--border);border-radius:8px}
 .stat-card{padding:14px 16px;display:flex;flex-direction:column-reverse;border-left:1px solid var(--border)}.stat-card:first-child{border:0}.stat-num{font:600 24px var(--font-mono);margin-top:4px}.stat-lbl{font-size:13px;color:var(--text-2);white-space:nowrap}
 .group-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;min-width:0}
-.group-header,.group-title-wrap,.group-right{display:flex;align-items:center;gap:10px}.group-header{padding:14px 16px;justify-content:space-between;flex-wrap:wrap;border-bottom:1px solid var(--border)}.group-title-wrap{min-width:0;flex:1;flex-wrap:wrap}.group-title{font:600 14px var(--font-mono);overflow-wrap:anywhere}.group-sub{font-size:13px;color:var(--text-2);white-space:nowrap}.group-chevron,.chevron{display:inline-block;color:var(--text-3)}.group-chevron.open,.chevron.open{transform:rotate(90deg)}
+.group-header,.group-title-wrap,.group-right{display:flex;align-items:center;gap:10px}.group-header{padding:14px 16px;justify-content:space-between;flex-wrap:wrap;border-bottom:1px solid var(--border)}.group-title-wrap{border:0;background:transparent;color:inherit;text-align:left;white-space:normal;min-width:0;flex:1;flex-wrap:wrap}.group-title{font:600 14px var(--font-mono);overflow-wrap:anywhere}.group-sub{font-size:13px;color:var(--text-2);white-space:nowrap}.group-chevron,.chevron{display:inline-block;color:var(--text-3)}.group-chevron.open,.chevron.open{transform:rotate(90deg)}
 .filter-bar{display:flex;gap:0;padding:0;align-items:center;flex-wrap:wrap}.fbtn{min-height:32px;padding:0 12px;background:var(--surface);color:var(--text-2);border:1px solid var(--border);border-radius:0}.fbtn:first-child{border-radius:6px 0 0 6px}.fbtn.active{background:var(--text);color:var(--on-accent);border-color:var(--text)}.pager{margin-left:auto;font:12px var(--font-mono)}.pager button{padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface)}
-.case-item{border-top:1px solid var(--border)}.case-header{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer}.case-item:hover>.case-header{background:var(--surface-sub)}.case-title{flex:1;font-weight:500;overflow-wrap:anywhere}.case-right{display:flex;gap:10px;align-items:center}.chevron{font-size:20px}
+.case-item{border-top:1px solid var(--border)}.case-header{width:100%;border:0;background:transparent;color:inherit;text-align:left;white-space:normal;display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer}.case-header:focus-visible{outline-offset:-3px}.case-item:hover>.case-header{background:var(--surface-sub)}.case-title{min-width:0;flex:1;font-weight:500;overflow-wrap:anywhere}.case-right{display:flex;gap:10px;align-items:center}.chevron{font-size:20px}
 .case-detail{display:none;padding:20px 16px 20px 40px;border-top:1px solid var(--border)}.case-columns{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:24px}.case-columns:not(:has(.attempt-evidence,.artifact-panel)){grid-template-columns:1fr}.case-description{min-width:0;display:grid;align-content:start;gap:18px}
 .detail-row{display:flex;flex-direction:column;gap:6px}.detail-label{font-size:12px;color:var(--text-2)}.detail-val{font-size:14px;overflow-wrap:anywhere}.steps-list{padding-left:20px}.steps-list li{padding:2px 0}
-.error-summary{background:var(--fail-bg);border-radius:6px;padding:14px 16px;color:var(--fail)}.error-summary strong{font-size:14px;font-weight:600}.error-summary details{margin-top:10px;color:var(--text-2);font-size:13px}.error-summary summary{cursor:pointer}.error-summary pre{margin-top:8px;padding:10px 12px;border-radius:6px;background:var(--surface);font:12px/1.7 var(--font-mono);white-space:pre-wrap;overflow-wrap:anywhere}
+.error-summary{background:var(--fail-bg);border-radius:6px;padding:14px 16px;color:var(--fail)}.error-summary strong{overflow-wrap:anywhere;font-size:14px;font-weight:600}.error-summary details{margin-top:10px;color:var(--text-2);font-size:13px}.error-summary summary{cursor:pointer}.error-summary pre{margin-top:8px;padding:10px 12px;border-radius:6px;background:var(--surface);font:12px/1.7 var(--font-mono);white-space:pre-wrap;overflow-wrap:anywhere}
 .attempt-evidence{min-width:0}.attempt-evidence h3{font-size:12px;font-weight:500;color:var(--text-2);margin-bottom:12px}.attempt-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}.attempt-tabs button{height:32px;padding:0 12px;border:1px solid var(--border);background:var(--surface);border-radius:6px;color:var(--text-2);font-size:13px}.attempt-tabs [aria-pressed=true]{background:var(--accent-bg);color:var(--accent);border-color:var(--accent)}
 .artifact-panel{border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--log-bg)}.artifact-sub{padding:12px}.artifact-sub+.artifact-sub{border-top:1px solid var(--border)}.artifact-sub-title{font-size:12px;color:var(--text-2);margin-bottom:8px}.screenshot-thumb{display:block;width:100%;height:420px;object-fit:contain;cursor:zoom-in}.artifact-video{width:100%;max-height:260px;background:var(--surface-sub)}.artifact-dl{display:inline-block;margin-top:8px;font-size:13px}.evidence-empty{font-size:13px;color:var(--text-3);background:var(--surface-sub);padding:16px;border-radius:6px}
 .lb-overlay{display:none;position:fixed;inset:0;background:var(--backdrop);z-index:9999;align-items:center;justify-content:center;cursor:zoom-out}.lb-overlay.open{display:flex}.lb-overlay img{max-width:92vw;max-height:92vh;object-fit:contain;border-radius:8px;box-shadow:var(--shadow-modal)}
 @media(max-width:1000px){.layout{grid-template-columns:160px minmax(0,1fr);padding:20px}.case-columns{grid-template-columns:1fr}.stat-card{padding:12px}.stat-num{font-size:20px}}
-@media(max-width:640px){.layout{grid-template-columns:1fr}.sidebar{position:static}.stats{grid-template-columns:repeat(3,minmax(0,1fr))}.topbar{padding:16px;flex-wrap:wrap}.case-detail{padding:16px}}
+@media(max-width:640px){.layout{grid-template-columns:1fr}.sidebar{position:static}.stats{grid-template-columns:repeat(3,minmax(0,1fr))}.stat-card:nth-child(n+4){border-top:1px solid var(--border)}.stat-card:nth-child(4){border-left:0}.report-actions{flex-wrap:wrap;gap:12px}.report-actions button,.report-actions a,.nav-item,.group-title-wrap,.fbtn,.attempt-tabs button,.pager button{min-height:44px}.report-actions a{display:inline-flex;align-items:center}.pager{display:flex;align-items:center;gap:8px;margin-top:8px}.filter-bar{row-gap:8px}.topbar{padding:16px;flex-wrap:wrap}.case-detail{padding:16px}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
 @media print{.sidebar,.filter-bar,.attempt-tabs,.report-actions{display:none}.layout{display:block;max-width:none}.case-detail,.group-body{display:block!important}.group-card{break-inside:avoid}}
 """
@@ -524,6 +524,7 @@ function toggle(uid) {
   var c=document.getElementById('chv_'+uid);
   if(d.style.display==='none'||!d.style.display){d.style.display='block';c.classList.add('open');}
   else{d.style.display='none';c.classList.remove('open');}
+  d.closest('.case-item').querySelector('.case-header').setAttribute('aria-expanded',String(d.style.display==='block'));
 }
 
 function scrollToGroup(label) {
@@ -567,6 +568,7 @@ function toggleGroup(label) {
   var chv=document.getElementById('gchv_'+label);
   if(st.open){body.style.display='block';chv.classList.add('open');applyFilter(label);}
   else{body.style.display='none';chv.classList.remove('open');}
+  document.getElementById('group_'+label).querySelector('[data-toggle-group]').setAttribute('aria-expanded',String(st.open));
 }
 
 function setFilter(label, f) {
@@ -677,22 +679,22 @@ def build_report(groups_data: list, summary: dict,
     if platform:
         platform_badge = f'<span class="platform-badge {platform}">{_esc("Android" if platform == "android" else "iOS" if platform == "ios" else platform)}</span>'
 
-    nav_items = f'<li class="nav-item active" id="nav_all" data-nav="all">전체 ({total})</li>\n'
+    nav_items = f'<li><button type="button" class="nav-item active" id="nav_all" data-nav="all">전체 ({total})</button></li>\n'
     for g in groups_data:
         lbl = g["label"]
         g_skip_cnt = g.get("skip_cnt", 0)
         g_non_skip = g["total_cnt"] - g_skip_cnt
         dot_cls = "pass" if g["all_pass"] else ("fail" if g["has_tests"] else "warn")
         skip_label = (
-            f'<span style="font-size:10px;color:var(--warn);margin-left:3px;">· {g_skip_cnt}건 건너뜀</span>'
+            f'<span style="font-size:12px;color:var(--warn);margin-left:3px;">· {g_skip_cnt}건 건너뜀</span>'
             if g_skip_cnt > 0 else ""
         )
         nav_items += (
-            f'<li class="nav-item" id="nav_{lbl}" data-nav="{lbl}">'
+            f'<li><button type="button" class="nav-item" id="nav_{lbl}" data-nav="{lbl}">'
             f'<span class="nav-dot {dot_cls}"></span>'
             f'<span class="nav-name" title="{_esc(lbl)}">{_esc(lbl)}</span>'
             f'<span class="nav-count">{g["pass_cnt"]}/{g_non_skip}{skip_label}</span>'
-            f'</li>\n'
+            f'</button></li>\n'
         )
 
     group_sections = ""

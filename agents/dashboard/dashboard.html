@@ -35,9 +35,9 @@
   <aside class="sidebar" aria-label="주 메뉴">
     <div class="sidebar-section">
       <div class="sidebar-label">개요</div>
-      <div class="sidebar-item active" data-view="dashboard" onclick="selectView('dashboard',this)">
+      <a class="sidebar-item active" data-view="dashboard" onclick="event.preventDefault();selectView('dashboard',this)" href="/">
         <span class="sidebar-dot"></span><span>대시보드</span>
-      </div>
+      </a>
     </div>
     <div class="sidebar-section">
       <div class="sidebar-label">TC 작성</div>
@@ -45,33 +45,33 @@
         <span class="sidebar-dot"></span><span>TC 스튜디오</span>
       </a>
       <a class="legacy-import-link" data-view="tc_import" href="/tc-studio?import=1" hidden style="display:none"><span>엑셀 가져오기</span></a>
-      <div class="sidebar-item" data-view="capture" onclick="selectView('capture',this)" id="sidebar-capture">
+      <a class="sidebar-item" data-view="capture" onclick="event.preventDefault();selectView('capture',this)" id="sidebar-capture" href="/?view=capture">
         <span class="sidebar-dot" style="background:var(--accent-bg)"></span><span>화면 캡처로 작성</span>
-      </div>
+      </a>
     </div>
     <div class="sidebar-section">
       <div class="sidebar-label">실행</div>
-      <div class="sidebar-item" data-view="pipeline" onclick="selectView('pipeline',this)">
+      <a class="sidebar-item" data-view="pipeline" onclick="event.preventDefault();selectView('pipeline',this)" href="/?view=pipeline">
         <span class="sidebar-dot"></span><span>파이프라인</span>
-      </div>
-      <div class="sidebar-item" data-view="tests" onclick="selectView('tests',this)">
+      </a>
+      <a class="sidebar-item" data-view="tests" onclick="event.preventDefault();selectView('tests',this)" href="/?view=tests">
         <span class="sidebar-dot"></span><span>빠른 실행</span>
-      </div>
+      </a>
     </div>
     <div class="sidebar-section">
       <div class="sidebar-label">결과</div>
-      <div class="sidebar-item" data-view="reports" onclick="selectView('reports',this)">
+      <a class="sidebar-item" data-view="reports" onclick="event.preventDefault();selectView('reports',this)" href="/?view=reports">
         <span class="sidebar-dot"></span><span>리포트</span>
-      </div>
-      <div class="sidebar-item" data-view="history" onclick="selectView('history',this)">
+      </a>
+      <a class="sidebar-item" data-view="history" onclick="event.preventDefault();selectView('history',this)" href="/?view=history">
         <span class="sidebar-dot"></span><span>실행 기록</span>
-      </div>
+      </a>
     </div>
     <div class="sidebar-section sidebar-bottom">
 
-      <div class="sidebar-item" data-view="config" onclick="selectView('config',this)">
+      <a class="sidebar-item" data-view="config" onclick="event.preventDefault();selectView('config',this)" href="/?view=config">
         <span class="sidebar-dot"></span><span>환경 설정</span>
-      </div>
+      </a>
     </div>
   </aside>
   <main class="app-main dashboard-view">
@@ -148,7 +148,7 @@
       </div>
       <div id="pipeline-device-hint" class="device-hint none" style="display:none"></div>
       <div id="pipeline-device-list">
-        <div style="font-size:11px;color:var(--text3)">로딩 중...</div>
+        <div style="font-size:12px;color:var(--text3)">로딩 중...</div>
       </div>
     </div>
 
@@ -434,13 +434,13 @@
           <span style="font-size:12px;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);font-weight:600">Android 실기기</span>
         </div>
         <div id="env-android-real-list" style="margin-bottom:6px"></div>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:8px">
+        <div style="font-size:12px;color:var(--text3);margin-bottom:8px">
           USB 연결 후 <code style="font-size:10px;background:var(--surface3,var(--surface2));padding:1px 4px;border-radius:3px;border:1px solid var(--border)">adb devices</code>로 확인.
           <code style="font-size:10px;background:var(--surface3,var(--surface2));padding:1px 4px;border-radius:3px;border:1px solid var(--border)">wifi_ip</code> 설정 시 WiFi ADB 연결/해제 버튼이 표시됩니다.
         </div>
         <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center">
-          <button class="btn" style="flex:none;padding:4px 10px;font-size:11px" onclick="envShowAddModal('android','real_device')">＋ 추가</button>
-          <button class="btn" style="flex:none;padding:4px 10px;font-size:11px" onclick="envShowWifiPairModal()" title="Android 11+ 무선 디버깅 페어링"> WiFi 페어링</button>
+          <button class="btn" style="flex:none;padding:4px 10px;font-size:13px" onclick="envShowAddModal('android','real_device')">＋ 추가</button>
+          <button class="btn" style="flex:none;padding:4px 10px;font-size:13px" onclick="envShowWifiPairModal()" title="Android 11+ 무선 디버깅 페어링"> WiFi 페어링</button>
         </div>
       </div>
 
@@ -465,13 +465,13 @@
           <span style="font-size:12px;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);font-weight:600">iOS 실기기</span>
         </div>
         <div id="env-ios-real-list" style="margin-bottom:6px"></div>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:8px">
+        <div style="font-size:12px;color:var(--text3);margin-bottom:8px">
           Lightning/USB-C 연결 후 신뢰 허용. 연결 상태는 자동으로 감지됩니다.
           WDA 빌드는 Apple Developer 계정과 Xcode가 필요합니다.
         </div>
         <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center">
-          <button class="btn" style="flex:none;padding:4px 10px;font-size:11px" onclick="envShowAddModal('ios','real_device')">＋ 추가</button>
-          <button class="btn" style="flex:none;padding:4px 10px;font-size:11px" onclick="envShowWdaBuildModal()" title="WebDriverAgent 빌드 및 설치"> WDA 빌드</button>
+          <button class="btn" style="flex:none;padding:4px 10px;font-size:13px" onclick="envShowAddModal('ios','real_device')">＋ 추가</button>
+          <button class="btn" style="flex:none;padding:4px 10px;font-size:13px" onclick="envShowWdaBuildModal()" title="WebDriverAgent 빌드 및 설치"> WDA 빌드</button>
         </div>
       </div>
 
@@ -651,7 +651,7 @@
             <input type="text" id="cs-pkg" class="cs-input" placeholder="com.example.app">
           </div>
           <div id="cs-field-activity">
-            <label class="cs-label">앱 Activity <span style="color:var(--text3);font-size:10px;font-weight:400">대소문자 정확히 (예: .Settings, .MainActivity)</span></label>
+            <label class="cs-label">앱 Activity <span style="color:var(--text3);font-size:12px;font-weight:400">대소문자 정확히 (예: .Settings, .MainActivity)</span></label>
             <input type="text" id="cs-activity" class="cs-input" placeholder=".MainActivity (대소문자 구분)">
           </div>
           <!-- iOS 전용 필드 (기본 hidden) -->
@@ -667,7 +667,7 @@
           <div>
             <label class="cs-label">TC 그룹명</label>
             <input type="text" id="cs-group" class="cs-input" placeholder="예: settings, login, onboarding">
-            <div style="font-size:10px;color:var(--text3);margin-top:3px">폴더 이름이 됩니다 — <code style="font-size:9px">testcases/{platform}/<b>그룹명</b>/</code> 에 저장. 미입력 시 'default'</div>
+            <div style="font-size:12px;color:var(--text3);margin-top:3px">폴더 이름이 됩니다 — <code style="font-size:9px">testcases/{platform}/<b>그룹명</b>/</code> 에 저장. 미입력 시 'default'</div>
           </div>
           <div id="cs-field-mjpeg-port">
             <label class="cs-label">MJPEG 포트</label>
@@ -694,7 +694,7 @@
 
           <!-- 왼쪽: MJPEG 미러링 -->
           <div class="cs-device-panel">
-            <div style="font-size:11px;color:var(--text3);font-weight:600">기기 화면</div>
+            <div style="font-size:12px;color:var(--text3);font-weight:600">기기 화면</div>
             <div id="cs-mirror-container" style="border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--surface);aspect-ratio:9/18;position:relative">
               <img id="cs-mirror-img" src="" alt="미러링" style="width:100%;height:100%;object-fit:contain;display:none" onmousedown="csMirrorMouseDown(event)" onmousemove="csMirrorMouseMove(event)" onmouseup="csMirrorMouseUp(event)" onmouseleave="csMirrorMouseUp(event)">
               <div id="cs-mirror-placeholder" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text3);font-size:12px;gap:6px">
@@ -724,7 +724,7 @@
           <!-- 가운데: Hierarchy 트리 -->
           <div class="cs-hierarchy-panel">
             <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-              <div style="font-size:11px;color:var(--text3);font-weight:600">Hierarchy</div>
+              <div style="font-size:12px;color:var(--text3);font-weight:600">Hierarchy</div>
               <div style="display:flex;gap:4px">
                 <button class="cs-btn active" id="cs-ctx-native" onclick="csSetContext('native',this)" style="padding:3px 9px;font-size:10px">Native</button>
                 <button class="cs-btn" id="cs-ctx-webview" onclick="csSetContext('webview',this)" style="padding:3px 9px;font-size:10px" disabled>WebView</button>
@@ -741,7 +741,7 @@
 
             <section class="cs-action-panel">
             <!-- Step 추가 — 항상 표시 -->
-            <div style="font-size:11px;color:var(--text3);font-weight:600;letter-spacing:.5px;text-transform:uppercase">선택된 요소</div>
+            <div style="font-size:12px;color:var(--text3);font-weight:600;letter-spacing:.5px;text-transform:uppercase">선택된 요소</div>
 
             <!-- 요소 미선택 안내 -->
             <div id="cs-step-hint" style="border:1px dashed var(--accent);border-radius:8px;padding:12px 10px;text-align:center;color:var(--text3);font-size:11px;line-height:1.6">
@@ -778,7 +778,7 @@
               </div>
               <!-- 검증 메뉴 -->
               <div id="cs-assert-menu" style="display:none;margin-top:6px;background:var(--surface-sub);border:1px solid var(--border);border-radius:6px;padding:6px">
-                <div style="font-size:10px;color:var(--text3);margin-bottom:4px">검증 유형 선택</div>
+                <div style="font-size:12px;color:var(--text3);margin-bottom:4px">검증 유형 선택</div>
                 <button class="cs-btn" onclick="csAddAssert('text_visible')" style="display:block;width:100%;text-align:left;padding:4px 8px;font-size:10px;margin-bottom:3px"> 텍스트 확인</button>
                 <button class="cs-btn" onclick="csAddAssert('element_present')" style="display:block;width:100%;text-align:left;padding:4px 8px;font-size:10px;margin-bottom:3px"> 요소 존재 확인</button>
                 <button class="cs-btn" onclick="csAddAssert('element_absent')" style="display:block;width:100%;text-align:left;padding:4px 8px;font-size:10px"> 요소 없음 확인</button>
@@ -795,7 +795,7 @@
 
             <!-- 요소 없이 추가 가능한 직접 스텝 -->
             <div style="border-top:1px solid var(--border);padding-top:8px">
-              <div style="font-size:10px;color:var(--text3);margin-bottom:6px">요소 없이 추가</div>
+              <div style="font-size:12px;color:var(--text3);margin-bottom:6px">요소 없이 추가</div>
               <div class="cs-direct-actions">
                 <button class="cs-btn" onclick="csAddDirectStep('back')" style="padding:5px;font-size:10px;text-align:center">뒤로</button>
                 <button class="cs-btn" onclick="csAddDirectStep('scroll_down')" style="padding:5px;font-size:10px;text-align:center">아래로 스크롤</button>
@@ -806,14 +806,14 @@
 
             </section>
             <div class="cs-detail-panel">
-              <div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:6px">선택 요소 상세</div>
+              <div style="font-size:12px;color:var(--text3);font-weight:600;margin-bottom:6px">선택 요소 상세</div>
               <div id="cs-element-detail" style="border:1px solid var(--border);border-radius:8px;padding:10px;font-size:11px;background:var(--surface);color:var(--text2)">
                 <span style="color:var(--text3)">요소를 선택하세요.</span>
               </div>
             </div>
 
             <div class="cs-locator-panel">
-              <div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:6px">Locator 후보</div>
+              <div style="font-size:12px;color:var(--text3);font-weight:600;margin-bottom:6px">Locator 후보</div>
               <div id="cs-locators" style="border:1px solid var(--border);border-radius:8px;padding:10px;font-size:11px;background:var(--surface);color:var(--text2)">
                 <span style="color:var(--text3)">요소 선택 후 후보가 표시됩니다.</span>
               </div>
@@ -826,10 +826,10 @@
         <!-- Action Timeline -->
         <div style="margin-top:14px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-            <div style="font-size:11px;color:var(--text3);font-weight:600">기록한 동작</div>
+            <div style="font-size:12px;color:var(--text3);font-weight:600">기록한 동작</div>
             <div style="display:flex;gap:8px">
-              <button class="cs-btn" onclick="csSendBack()" style="padding:4px 10px;font-size:11px" title="Back 버튼 스텝 추가"> 뒤로</button>
-              <button class="cs-btn" onclick="csClearActions()" style="padding:4px 10px;font-size:11px">초기화</button>
+              <button class="cs-btn" onclick="csSendBack()" style="padding:4px 10px;font-size:13px" title="Back 버튼 스텝 추가"> 뒤로</button>
+              <button class="cs-btn" onclick="csClearActions()" style="padding:4px 10px;font-size:13px">초기화</button>
             </div>
           </div>
           <div id="cs-timeline" style="border:1px solid var(--border);border-radius:8px;padding:8px 12px;max-height:180px;overflow-y:auto;background:var(--surface);font-size:11px;color:var(--text2)">
@@ -881,10 +881,10 @@
 <script src="/static/dashboard-init.js"></script>
 
 <!-- ── TC Preview Modal ─────────────────────────────────────── -->
-<div id="cs-preview-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:var(--surface);align-items:center;justify-content:center">
+<dialog id="cs-preview-modal" aria-labelledby="cs-preview-title" oncancel="event.preventDefault();csClosePreview()" style="display:none;position:fixed;inset:0;margin:0;width:100%;max-width:none;height:100%;max-height:none;border:0;padding:0;z-index:9999;background:var(--surface);align-items:center;justify-content:center">
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;width:min(96vw,1000px);max-height:88vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:none">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border)">
-      <div style="font-size:13px;font-weight:700;color:var(--text)">TC 미리보기</div>
+      <div id="cs-preview-title" style="font-size:13px;font-weight:700;color:var(--text)">TC 미리보기</div>
       <button class="cs-btn" onclick="csClosePreview()" style="padding:3px 10px;font-size:11px">닫기 ✕</button>
     </div>
     <div style="flex:1;overflow-y:auto;padding:16px 18px;display:flex;gap:16px;flex-wrap:wrap">
@@ -900,7 +900,7 @@
     <div class="cs-preview-source" id="cs-preview-source"></div>
     <div class="cs-preview-footer"><button class="cs-btn" onclick="csClosePreview()">닫기</button><button class="cs-btn primary" id="cs-preview-save" onclick="csClosePreview();csSaveTC()">저장 및 생성</button></div>
   </div>
-</div>
+</dialog>
 
 <!-- ── US-3: 디바이스 추가 모달 ───────────────────────────────── -->
 <div id="env-add-modal" class="env-add-overlay" role="dialog" aria-modal="true" aria-labelledby="env-add-modal-title" onclick="if(event.target===this)envCloseAddModal()">
@@ -941,10 +941,10 @@
 </div>
 
 <!-- ── WiFi 페어링 모달 (Phase 3) ────────────────────────── -->
-<div id="env-wifi-pair-modal" style="display:none;position:fixed;inset:0;background:var(--surface);z-index:9999;align-items:center;justify-content:center">
+<dialog id="env-wifi-pair-modal" aria-labelledby="env-wifi-pair-title" oncancel="event.preventDefault();envCloseWifiPairModal()" style="display:none;position:fixed;inset:0;margin:0;width:100%;max-width:none;height:100%;max-height:none;border:0;padding:0;background:var(--surface);z-index:9999;align-items:center;justify-content:center">
   <div style="background:var(--surface);border-radius:var(--radius);padding:24px;min-width:340px;max-width:440px;box-shadow:none">
-    <div style="font-weight:700;margin-bottom:6px;font-size:14px"> Android WiFi ADB 페어링</div>
-    <div style="font-size:11px;color:var(--text3);margin-bottom:14px;line-height:1.5">
+    <div id="env-wifi-pair-title" style="font-weight:700;margin-bottom:6px;font-size:14px"> Android WiFi ADB 페어링</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:14px;line-height:1.5">
       Android 11+ 기기: 설정 → 개발자 옵션 → 무선 디버깅 → "페어링 코드로 기기 페어링"을 탭하면 IP·포트·코드가 표시됩니다.
     </div>
     <div style="margin-bottom:10px">
@@ -965,13 +965,13 @@
       <button class="btn" style="padding:6px 14px;font-size:12px" onclick="envSubmitWifiPair()">페어링</button>
     </div>
   </div>
-</div>
+</dialog>
 
 <!-- ── WDA 빌드 모달 (Phase 3) ─────────────────────────────── -->
-<div id="env-wda-build-modal" style="display:none;position:fixed;inset:0;background:var(--surface);z-index:9999;align-items:center;justify-content:center">
+<dialog id="env-wda-build-modal" aria-labelledby="env-wda-build-title" oncancel="event.preventDefault();envCloseWdaBuildModal()" style="display:none;position:fixed;inset:0;margin:0;width:100%;max-width:none;height:100%;max-height:none;border:0;padding:0;background:var(--surface);z-index:9999;align-items:center;justify-content:center">
   <div style="background:var(--surface);border-radius:var(--radius);padding:24px;min-width:340px;max-width:440px;box-shadow:none">
-    <div style="font-weight:700;margin-bottom:6px;font-size:14px"> WebDriverAgent 빌드</div>
-    <div style="font-size:11px;color:var(--text3);margin-bottom:14px;line-height:1.5">
+    <div id="env-wda-build-title" style="font-weight:700;margin-bottom:6px;font-size:14px"> WebDriverAgent 빌드</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:14px;line-height:1.5">
       iOS 실기기 Appium 세션에 필요한 WDA를 빌드하고 설치합니다. Xcode와 Apple Developer 계정이 필요합니다.
     </div>
     <div style="margin-bottom:10px">
@@ -988,7 +988,7 @@
       <button class="btn" style="padding:6px 14px;font-size:12px" onclick="envSubmitWdaBuild()">빌드 시작</button>
     </div>
   </div>
-</div>
+</dialog>
 
 <!-- Livetail 글로벌 슬라이드 오버레이 — status-bar 버튼과 연결, 모든 탭에서 동작 -->
 <div class="lt-slide-overlay" id="csLtOverlay" role="log" aria-label="Livetail">

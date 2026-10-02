@@ -214,10 +214,13 @@ function csPreviewTC() {
   document.getElementById('cs-preview-save').disabled = document.getElementById('cs-save-btn').disabled;
   var modal = document.getElementById('cs-preview-modal');
   modal.style.display = 'flex';
+  if (modal.showModal) modal.showModal();
 }
 
 function csClosePreview() {
-  document.getElementById('cs-preview-modal').style.display = 'none';
+  var modal = document.getElementById('cs-preview-modal');
+  if (modal.close) modal.close();
+  modal.style.display = 'none';
 }
 
 function csSaveTC() {

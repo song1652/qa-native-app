@@ -8,6 +8,7 @@ routes/api.py — 일반 GET 엔드포인트.
 from __future__ import annotations
 
 import sys
+import re
 from html import escape as html_escape
 from pathlib import Path
 
@@ -230,23 +231,45 @@ async def serve_report(name: str):
     if ".." in name:
         return Response(status_code=403)
     fpath = REPORTS_DIR / name
+    scripts_path = str(PROJECT_ROOT / "scripts")
+    if scripts_path not in sys.path:
+        sys.path.insert(0, scripts_path)
+    from report_html import report_css
+
     if not fpath.is_file():
         fname = html_escape(name, quote=True)
         body = (
             "<!DOCTYPE html><html lang='ko'><head><meta charset='utf-8'>"
-            "<style>body{display:flex;align-items:center;justify-content:center;"
-            "height:100vh;margin:0;font-family:Inter,-apple-system,sans-serif;"
-            "background:#08071b;color:#b8b3d0}.box{text-align:center;padding:32px;"
-            "border:1px solid rgba(140,120,220,.12);border-radius:16px;"
-            "background:rgba(18,16,42,.55);backdrop-filter:blur(12px)}"
-            ".icon{font-size:44px;margin-bottom:16px}.title{font-size:16px;"
-            "font-weight:600;color:#f0eff5;margin-bottom:8px}.sub{font-size:12px;"
-            "color:rgba(184,179,208,.5);font-family:monospace;word-break:break-all;"
-            "max-width:320px}</style></head><body><div class='box'>"
-            "<div class='icon'>🗑️</div><div class='title'>리포트가 삭제되었습니다</div>"
-            f"<div class='sub'>{fname}</div></div></body></html>"
+            "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+            "<title>리포트를 찾을 수 없습니다</title>"
+            f"<style>{report_css()}"
+            "body{min-height:100vh;display:grid;place-items:center;padding:24px}"
+            ".box{width:min(100%,420px);padding:32px;border:1px solid var(--border);"
+            "border-radius:8px;background:var(--surface)}"
+            ".title{font-size:20px;font-weight:600;margin-bottom:12px}"
+            ".sub{font-size:14px;color:var(--text-2);overflow-wrap:anywhere;margin-bottom:20px}"
+            "a{display:inline-flex;align-items:center;min-height:44px}"
+            "</style></head><body><main class='box'>"
+            "<h1 class='title'>리포트를 찾을 수 없습니다</h1>"
+            f"<p class='sub'>{fname}</p>"
+            "<a href='/?view=reports'>리포트 목록으로 돌아가기</a></main></body></html>"
         )
         return HTMLResponse(content=body, status_code=404)
+
+    # Historical QA reports keep their original evidence and script; only the
+    # response stylesheet adopts the current theme. Saved artifacts stay intact.
+    document = fpath.read_text(encoding="utf-8")
+    style = re.search(r"<style\b[^>]*>.*?</style>", document, re.DOTALL | re.IGNORECASE)
+    if "<title>App QA Report</title>" in document and style and "--bg-gradient:" in style.group():
+        compatibility = (
+            ".main>.topbar{padding:0;margin:0;width:100%;max-width:none;flex-wrap:wrap}"
+            ".main>.topbar .overall-badge{align-self:flex-start}"
+            ".group-body>.filter-bar{padding:12px 16px;border-bottom:1px solid var(--border)}"
+            ".nav-count{white-space:normal;text-align:right;flex-shrink:0}"
+            ".case-detail>.detail-row+.detail-row{margin-top:18px}"
+        )
+        document = document[:style.start()] + f"<style>{report_css()}{compatibility}</style>" + document[style.end():]
+        return HTMLResponse(content=document)
     return FileResponse(str(fpath), media_type="text/html")
 
 

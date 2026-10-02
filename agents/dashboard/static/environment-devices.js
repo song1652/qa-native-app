@@ -338,8 +338,10 @@ function envShowWifiPairModal() {
   var r = document.getElementById('env-pair-result');
   r.style.display = 'none'; r.textContent = '';
   document.getElementById('env-wifi-pair-modal').style.display = 'flex';
+  document.getElementById('env-wifi-pair-modal').showModal();
 }
 function envCloseWifiPairModal() {
+  document.getElementById('env-wifi-pair-modal').close();
   document.getElementById('env-wifi-pair-modal').style.display = 'none';
 }
 function envSubmitWifiPair() {
@@ -376,8 +378,10 @@ function envShowWdaBuildModal() {
   var r = document.getElementById('env-wda-result');
   r.style.display = 'none'; r.textContent = '';
   document.getElementById('env-wda-build-modal').style.display = 'flex';
+  document.getElementById('env-wda-build-modal').showModal();
 }
 function envCloseWdaBuildModal() {
+  document.getElementById('env-wda-build-modal').close();
   document.getElementById('env-wda-build-modal').style.display = 'none';
 }
 function envSubmitWdaBuild() {
