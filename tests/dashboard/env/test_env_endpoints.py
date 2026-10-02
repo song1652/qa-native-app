@@ -34,6 +34,14 @@ IOS_SIMULATOR = {
 
 # ── 앱 픽스처 ──────────────────────────────────────────────────────
 
+@pytest.fixture(autouse=True)
+def isolated_capture_state(tmp_path, monkeypatch):
+    """개발 서버의 실제 Capture 세션과 테스트 상태를 분리한다."""
+    monkeypatch.setattr(
+        "utils.state.CAPTURE_SESSION_PATH", tmp_path / "capture_session.json"
+    )
+
+
 @pytest.fixture
 def app():
     _app = FastAPI()
