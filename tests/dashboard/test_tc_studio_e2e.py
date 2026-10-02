@@ -297,6 +297,7 @@ def test_dashboard_confirmation_keeps_history_until_confirmed(tc_server):
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch(headless=True)
             page = browser.new_page()
+            page.route('**/api/run-history', lambda route: route.fulfill(json={'ok':True,'entries':[]}))
             page.goto(tc_server)
             page.evaluate("localStorage.setItem('qa-native-app.run-history', '[]')")
             page.evaluate('void resetHistory()')
@@ -306,7 +307,7 @@ def test_dashboard_confirmation_keeps_history_until_confirmed(tc_server):
             assert page.evaluate("localStorage.getItem('qa-native-app.run-history')") == '[]'
             page.evaluate('void resetHistory()')
             dialog.get_by_role('button', name='확인', exact=True).click()
-            assert page.evaluate("localStorage.getItem('qa-native-app.run-history')") is None
+            page.wait_for_function("localStorage.getItem('qa-native-app.run-history') === null")
             assert dialog.count() == 0
             browser.close()
     with ThreadPoolExecutor(max_workers=1) as pool:

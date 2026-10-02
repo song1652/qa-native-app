@@ -133,8 +133,8 @@ def test_dashboard_reset_cancel_and_confirm_keep_actions_separate(overview_page)
       localStorage.setItem('qa-native-app.run-history',JSON.stringify([{type:'quick',platform:'ios',total:1,passed:1,rate:100}]));
       window._runAllActive=false;
       const original=fetch;
-      window.fetch=(url,options)=>url==='/api/reset'
-        ?(requests.push({url}),Promise.resolve({ok:true,json:async()=>({ok:true})}))
+      window.fetch=(url,options)=>(url==='/api/reset'||url==='/api/run-history')
+        ?(requests.push({url,method:options&&options.method}),Promise.resolve({ok:true,json:async()=>({ok:true,entries:[]})}))
         :original(url,options);
     }""")
     page.locator('#overview-reset-btn').click()
@@ -145,5 +145,6 @@ def test_dashboard_reset_cancel_and_confirm_keep_actions_separate(overview_page)
     page.locator('.ui-confirm').get_by_role('button',name='확인',exact=True).click()
     page.wait_for_function("localStorage.getItem('qa-native-app.run-history')===null")
     assert page.evaluate("requests.filter(r=>r.url==='/api/reset').length")==1
+    assert page.evaluate("requests.filter(r=>r.url==='/api/run-history'&&r.method==='DELETE').length")==1
     assert page.evaluate("localStorage.getItem('qa-native-app.quick-log-name.ios')") is None
     assert page.locator('#overview-reset-btn').is_enabled()

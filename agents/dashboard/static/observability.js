@@ -7,9 +7,15 @@ var _obsKeep = (function(){
 
 function _obsSetKeep(v){
   if(v!=='on_failure'&&v!=='always') return;
+  var active=document.activeElement;
+  var focused=active&&active.matches('input[data-obs-keep-radio]')?{name:active.name,value:active.value}:null;
   _obsKeep=v;
   try{ localStorage.setItem('qa-native-app.obs-keep',v); }catch(_){}
   _obsRenderStrips();
+  if(focused){
+    var replacement=Array.from(document.querySelectorAll('input[data-obs-keep-radio]')).find(function(r){return r.name===focused.name&&r.value===focused.value;});
+    if(replacement)replacement.focus({preventScroll:true});
+  }
 }
 
 function _obsStripHtml(stripId){
@@ -21,10 +27,10 @@ function _obsStripHtml(stripId){
     +'<span class="obs-collect-chips"><span class="obs-collect-chip">영상</span><span class="obs-collect-chip">시스템 로그</span></span>'
     +'<span style="font-size:10.5px;color:var(--text3)">항상 수집 · 보존 정책</span>'
     +'<div class="obs-radio-row" role="radiogroup" aria-label="보존 정책">'
-    +'<label class="obs-policy-option '+(!always?'is-selected':'')+'" role="radio" aria-checked="'+(!always)+'"><input type="radio" name="'+groupName+'" data-obs-keep-radio value="on_failure" '
-    +(!always?'checked':'')+' onchange="_obsSetKeep(\'on_failure\')"><span class="obs-policy-check">'+(!always?'✓':'')+'</span>실패 시만</label>'
-    +'<label class="obs-policy-option '+(always?'is-selected':'')+'" role="radio" aria-checked="'+always+'"><input type="radio" name="'+groupName+'" data-obs-keep-radio value="always" '
-    +(always?'checked':'')+' onchange="_obsSetKeep(\'always\')"><span class="obs-policy-check">'+(always?'✓':'')+'</span>항상</label>'
+    +'<label class="obs-policy-option '+(!always?'is-selected':'')+'"><input type="radio" name="'+groupName+'" data-obs-keep-radio value="on_failure" '
+    +(!always?'checked':'')+' onchange="_obsSetKeep(\'on_failure\')"><span class="obs-policy-check" aria-hidden="true">'+(!always?'✓':'')+'</span>실패 시만</label>'
+    +'<label class="obs-policy-option '+(always?'is-selected':'')+'"><input type="radio" name="'+groupName+'" data-obs-keep-radio value="always" '
+    +(always?'checked':'')+' onchange="_obsSetKeep(\'always\')"><span class="obs-policy-check" aria-hidden="true">'+(always?'✓':'')+'</span>항상</label>'
     +'</div>'
     +'<span class="obs-policy-feedback">'+feedback+'</span>'
     +'</div>';

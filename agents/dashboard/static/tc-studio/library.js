@@ -144,7 +144,7 @@
     if (NS.refreshSuiteCounts) await NS.refreshSuiteCounts();
   }
 
-  async function reloadList() {
+  async function reloadList(options = {}) {
     const seq = ++listSeq;
     const suite = state.suite;
     const query = NS.queryFromFilters(state.filters);
@@ -159,7 +159,7 @@
     state.items = items;
     state.total = total;
     state.selected.forEach((id) => { if (!items.some((c) => c.case_id === id)) state.selected.delete(id); });
-    renderGrid();
+    renderGrid(options);
     NS.detail.refreshIfOpen();
   }
 
@@ -379,8 +379,7 @@
       Object.assign(c, updated);
       toast(`${id} 저장됨 · rev ${updated.rev}`, 'ok', [], 1800);
       await refreshTreeOnly();
-      renderGrid({ keep: true });
-      NS.detail.refreshIfOpen();
+      await reloadList({ keep: true });
     } catch (err) {
       if (err.status !== 409) {
         rerenderRow(id);   // 화면에 바꾼 값이 남아 서버 값과 달라 보이지 않게

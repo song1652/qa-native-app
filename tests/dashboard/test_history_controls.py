@@ -35,6 +35,7 @@ def test_history_type_filter_survives_refresh_and_reset_restores_group_label(nav
     assert visible_count(page)==1
     page.locator('.history-group-menu summary').click()
     page.locator('.history-filter.group[data-filter-value=settings]').click()
+    page.route('**/api/run-history',lambda route:route.fulfill(json={'ok':True,'entries':[]}))
     page.evaluate('window.dashboardConfirm=async()=>true;resetHistory()')
     assert page.locator('.history-group-menu summary').inner_text()=='전체 그룹'
     assert page.locator('#history-list').inner_text()=='실행 이력이 없습니다.'

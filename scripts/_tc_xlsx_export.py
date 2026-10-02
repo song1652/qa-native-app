@@ -128,8 +128,12 @@ def _rewrite_summary(ws, profile: TemplateProfile, last: int) -> None:
 
 
 def append_history(wb, note: str, today: date) -> None:
-    if "History" not in wb.sheetnames or not note.strip():
+    if not note.strip():
         return
+    if "History" not in wb.sheetnames:
+        ws = wb.create_sheet("History")
+        ws.cell(2, 2, "날짜")
+        ws.cell(2, 3, "변경 내용")
     ws = wb["History"]
     last = max((c.row for c in ws["B"] if c.value not in (None, "")), default=2)
     for col in (2, 3):

@@ -62,3 +62,21 @@ def test_verify_export_reports_mismatch(template_xlsx, tmp_path):
 
     checks = verify_export(out, profiles, by_sheet)
     assert ("error", "ROUNDTRIP") in {(c["level"], c["code"]) for c in checks}
+
+
+def test_history_note_is_preserved_when_template_has_no_history_sheet(template_xlsx, tmp_path):
+    wb = openpyxl.load_workbook(template_xlsx)
+    del wb["History"]
+    wb.save(template_xlsx)
+    wb.close()
+    original = template_xlsx.read_bytes()
+    profiles, by_sheet = _load(template_xlsx)
+    out = tmp_path / "with-history.xlsx"
+    export_workbook(template_xlsx, profiles, by_sheet, out,
+                    history_note="  실사용 최종 검토  ", today=date(2026, 10, 2))
+    wb = openpyxl.load_workbook(out)
+    assert "History" in wb.sheetnames
+    assert [(row[1].value, row[2].value) for row in wb["History"]
+            if row[2].value == "실사용 최종 검토"] == [("26.10.02", "실사용 최종 검토")]
+    wb.close()
+    assert template_xlsx.read_bytes() == original

@@ -116,3 +116,15 @@ def test_locator_buttons_preserve_quotes_and_newlines_with_production_escaping(p
     assert page.evaluate('window.validated') == {'strategy': 'accessibility-id', 'value': value}
     page.locator('#actual-locators .cs-loc-card').first.get_by_role('button', name='승인 ✓', exact=True).click()
     assert page.evaluate('_cs.approvedLocators[0].value') == value
+
+
+def test_rendered_hierarchy_hover_handler_is_valid_javascript(page):
+    setup_controls(page)
+    page.add_script_tag(path=str(STATIC / 'execution.js'))
+    handlers = page.evaluate('''() => {
+      const xml=new DOMParser().parseFromString('<node class="android.widget.Button" bounds="[0,0][100,50]"/>','text/xml');
+      const host=document.createElement('div');host.innerHTML=csRenderXMLNode(xml.documentElement,0,'node-1');
+      return Array.from(host.querySelectorAll('*')).flatMap(el=>Array.from(el.attributes).filter(a=>a.name.startsWith('on')).map(a=>a.value));
+    }''')
+    errors = page.evaluate('''handlers => handlers.flatMap(handler=>{try{new Function('event',handler);return []}catch(error){return [{handler,error:error.message}]}})''', handlers)
+    assert errors == []

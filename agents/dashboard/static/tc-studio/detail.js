@@ -6,6 +6,7 @@
   let root = null;
   let current = null;   // 서버에서 받은 케이스 (rev 기준)
   let draft = null;     // 편집 중인 사본
+  let openRequest = 0;
 
   NS.detail = { html, mount, open, close, refreshIfOpen, confirmLeave };
 
@@ -87,11 +88,20 @@
     });
   }
 
-  async function open(caseId, tab = 'edit') {
-    // 같은 케이스를 다시 여는 것(저장 뒤·"최신 값 불러오기")은 묻지 않는다
+  async function open(caseId, tab = 'edit', { discardEdits = false } = {}) {
+    if (current?.case_id === caseId && isDirty() && !discardEdits) return;
     if (current && current.case_id !== caseId && !(await confirmLeave())) return;
+    const request = ++openRequest;
+    const suite = state.suite;
+    const before = draft && JSON.stringify(pick(draft));
     state.activeId = caseId;
-    const { case: c } = await api.getCase(state.suite, caseId);
+    const { case: c } = await api.getCase(suite, caseId);
+    if (request !== openRequest || suite !== state.suite) return;
+    // 조회하는 동안 입력한 내용도 백그라운드 응답으로 덮지 않는다.
+    if (draft && before !== JSON.stringify(pick(draft)) && isDirty()) {
+      state.activeId = current.case_id;
+      return;
+    }
     current = c;
     draft = JSON.parse(JSON.stringify(c));
     $('#lib', root).classList.remove('no-detail');
@@ -102,6 +112,7 @@
 
   async function close({ force = false } = {}) {
     if (!force && !(await confirmLeave())) return;
+    ++openRequest;
     state.activeId = '';
     current = draft = null;
     $('#lib', root).classList.add('no-detail');
@@ -280,7 +291,7 @@
       if (err.status === 409) {
         toast(`<b>${current.case_id}</b>를 저장하지 못했습니다. 다른 곳에서 먼저 바뀌었습니다 (내 rev ${current.rev}, 서버 rev ${err.data.server_case.rev}). 변경 내용은 그대로 남아 있습니다.`, 'err', [
           { id: 'toast-conflict-compare', label: '차이 비교', fn: () => selectTab('history') },
-          { id: 'toast-conflict-reload', label: '최신 값 불러오기', fn: () => open(current.case_id) },
+          { id: 'toast-conflict-reload', label: '최신 값 불러오기', fn: () => open(current.case_id, 'edit', { discardEdits: true }) },
         ], 0);
       } else {
         toast(`저장 실패: ${esc(err.message)}`, 'err');

@@ -43,6 +43,19 @@ from utils.system import (  # noqa: E402
 
 router = APIRouter()
 
+
+@router.get("/api/run-history")
+def get_run_history():
+    from utils.run_history import load_run_history
+    return JSONResponse({"ok": True, "entries": load_run_history(PROJECT_ROOT, REPORTS_DIR)})
+
+
+@router.delete("/api/run-history")
+def delete_run_history():
+    from utils.run_history import reset_run_history
+    reset_run_history(PROJECT_ROOT, REPORTS_DIR)
+    return JSONResponse({"ok": True})
+
 _DASHBOARD_ASSETS = {
     "tokens.css": "text/css",
     "dashboard.css": "text/css",

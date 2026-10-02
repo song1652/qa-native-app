@@ -89,6 +89,7 @@ function overviewTime(value){
   return value&&!isNaN(date.getTime())?date.toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}):'시간 정보 없음';
 }
 function overviewDuration(value){
+  if(typeof value==='number')return Number.isFinite(value)?Math.round(value*10)/10+'초':'—';
   return value&&value!=='-'?String(value).replace(/^(\d+)s$/,'$1초'):'—';
 }
 function renderOverviewTrend(){
@@ -96,7 +97,7 @@ function renderOverviewTrend(){
   if(!allEntries.length) return '<div class="overview-empty"><strong>실행 이력이 없습니다</strong><p>테스트를 실행하면 결과가 여기에 표시됩니다.</p><button class="btn" onclick="selectView(\'pipeline\',document.querySelector(\'[data-view=pipeline]\'))">파이프라인 열기</button></div>';
   return '<table class="overview-history-table"><thead><tr><th>시작</th><th>종류</th><th>대상</th><th>결과</th><th>통과</th><th>소요</th></tr></thead><tbody>'+allEntries.map(function(entry){
     var result=overviewResult(entry);
-    return '<tr data-platform="'+esc(entry.platform||'')+'"><td>'+esc(entry.executedAt?overviewTime(entry.executedAt):'—')+'</td><td>'+esc(entry.type==='quick'?'빠른 실행':entry.type==='pipeline'?'파이프라인':'—')+'</td><td>'+esc(Array.isArray(entry.groups)&&entry.groups.length?entry.groups.join(' · '):'—')+'</td><td><span class="result-badge '+result.kind+'">'+result.text+'</span></td><td>'+esc(Number.isFinite(Number(entry.passed))&&Number.isFinite(Number(entry.total))?entry.passed+'/'+entry.total:'—')+'</td><td>'+esc(overviewDuration(entry.duration))+'</td></tr>';
+    return '<tr data-platform="'+esc(entry.platform||'')+'"><td>'+esc(entry.executedAt?overviewTime(entry.executedAt):'—')+'</td><td>'+esc(entry.type==='quick'?'빠른 실행':entry.type==='pipeline'?'파이프라인':'테스트 실행')+'</td><td>'+esc(Array.isArray(entry.groups)&&entry.groups.length?entry.groups.join(' · '):'—')+'</td><td><span class="result-badge '+result.kind+'">'+result.text+'</span></td><td>'+esc(Number.isFinite(Number(entry.passed))&&Number.isFinite(Number(entry.total))?entry.passed+'/'+entry.total:'—')+'</td><td>'+esc(overviewDuration(entry.duration))+'</td></tr>';
   }).join('')+'</tbody></table>';
 }
 function renderOverviewRateChart(entries){
@@ -129,12 +130,12 @@ function renderOverviewData(data){
   var entries=overviewEntries(),latest=entries[0]||null;
   var candidates=entries.slice(0,1);
   var summary=(state.execute_results||{}).summary;
-  if(summary&&Number(summary.total)>0){
+  if(_serverRunHistory===null&&summary&&Number(summary.total)>0){
     candidates.push(Object.assign({},summary,{platform:state.platform||status.platform,executedAt:state.updated_at||'',duration:summary.duration}));
   }
-  if(data.quickSummary)candidates.push(data.quickSummary);
+  if(data.quickSummary&&(_serverRunHistory===null||data.quickSummary.status==='running'))candidates.push(data.quickSummary);
   candidates=candidates.filter(function(entry){return _overviewPlatform==='all'||entry.platform===_overviewPlatform;});
-  candidates.sort(function(a,b){return String(b.executedAt||'').localeCompare(String(a.executedAt||''));});
+  candidates.sort(function(a,b){return (Date.parse(b.executedAt)||0)-(Date.parse(a.executedAt)||0);});
   latest=candidates[0]||null;
   var set=function(id,value){var el=document.getElementById(id);if(el)el.textContent=value;};
   var result=overviewResult(latest);
@@ -166,7 +167,7 @@ function renderOverviewData(data){
   var running=Array.isArray(status.running_steps)?status.running_steps:[];
   set('overview-pipeline-status',running.length?running.map(function(step){return STEP_LABEL[step]||step;}).join(' · ')+' 진행 중':stages[state.step]||'정보 없음');
   var quick=data.quickSummary||loadRunHistory().find(function(entry){return entry.type==='quick';});
-  set('overview-quick-status',quick?overviewResult(quick).text+' '+(quick.passed||0)+'/'+(quick.total||0):'실행 없음');
+  set('overview-quick-status',quick?overviewResult(quick).text+' '+(quick.passed||0)+'/'+(quick.total||0):loadRunHistory().some(function(entry){return entry.type==='execution';})?'기록 있음 · 유형 미확인':'실행 없음');
   set('overview-report-status',state.report_path?'생성됨':'정보 없음');
 
 }
@@ -191,7 +192,8 @@ async function refreshOverview(){
       fetch('/api/state').then(function(r){return r.json();}).catch(function(){return {}; }),
       fetch('/api/status').then(function(r){return r.json();}).catch(function(){return {}; }),
       fetch('/api/generated').then(function(r){return r.json();}).catch(function(){return []; }),
-      pipelineLogRequest
+      pipelineLogRequest,
+      refreshRunHistory()
     ]);
     if(refreshId!==_overviewRefreshId)return;
     var state=results[0]||{}, status=results[1]||{}, generated=results[2]||[], log=results[3]||{};
@@ -286,7 +288,7 @@ var _tcStudioMounted = false;
 async function refreshSelectedView(view, options){
   if(view === 'dashboard') return refreshOverview();
   if(view === 'reports') return refreshReports();
-  if(view === 'history') return renderRunHistory();
+  if(view === 'history'){renderRunHistory();return refreshRunHistory();}
   if(view === 'config') return pollEnvStatus();
   if(view === 'pipeline') return Promise.all([refreshStatus(),refreshTcFolders(),loadDevicePicker(getPlatform(), 'pipeline')]);
   if(view === 'capture'){
@@ -372,7 +374,40 @@ window.addEventListener('popstate', function(){
   selectView(view, document.querySelector('.sidebar-item[data-view="'+view+'"]'), {fromHistory:true, preserveRun:location.hash.indexOf('#obs/')===0});
 });
 
+var _serverRunHistory=null;
+var _historyRequest=null;
+var _historyGeneration=0;
+async function refreshRunHistory(){
+  if(_historyRequest)return _historyRequest;
+  var generation=_historyGeneration;
+  _historyRequest=(async function(){
+    var status=document.getElementById('history-source-status');
+    try{
+      var response=await fetch('/api/run-history');
+      var data=await response.json();
+      if(!response.ok||!Array.isArray(data.entries))throw new Error('실행 기록 조회 실패');
+      if(generation!==_historyGeneration)return;
+      _serverRunHistory=data.entries.map(function(entry){
+        return Object.assign({},entry,{rate:entry.total?Math.round(entry.passed/entry.total*100):0});
+      });
+      if(status)status.textContent='서버에 저장된 최근 50회 실행 · 다른 브라우저에서도 동일하게 표시됩니다.';
+      renderRunHistory();
+    }catch(error){
+      if(generation===_historyGeneration&&status)status.textContent='서버 기록을 읽지 못했습니다. 기존 표시를 유지합니다.';
+    }
+  })();
+  try{await _historyRequest;}finally{_historyRequest=null;}
+}
+async function clearServerRunHistory(){
+  ++_historyGeneration;
+  var response=await fetch('/api/run-history',{method:'DELETE'});
+  var data=await response.json();
+  if(!response.ok||!data.ok)throw new Error(data.error||'서버 실행 기록 초기화 실패');
+  _serverRunHistory=[];
+  try{localStorage.removeItem('qa-native-app.run-history');}catch(_){}
+}
 function loadRunHistory(){
+  if(_serverRunHistory!==null)return _serverRunHistory.slice();
   try{return JSON.parse(localStorage.getItem('qa-native-app.run-history')||'[]');}catch(_){return [];}
 }
 function renderRunHistory(){
@@ -398,30 +433,32 @@ function renderRunHistory(){
     var time=date.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
     var groups=(entry.groups||[]).map(function(group){return '<span class="history-group">'+esc(group)+'</span>';}).join('');
     var ok=!entry.failed;
-    return '<div class="history-row" data-history-type="'+esc(entry.type||'quick')+'" data-history-platform="'+esc(entry.platform||'android')+'" data-history-groups="'+esc((entry.groups||[]).join(' '))+'">'
+    return '<div class="history-row" data-history-type="'+esc(entry.type||'quick')+'" data-history-platform="'+esc(entry.platform||'unknown')+'" data-history-groups="'+esc((entry.groups||[]).join(' '))+'">'
       +'<div class="history-date"><strong>'+esc(dateText)+' '+esc(time)+'</strong></div>'
       +'<div><div class="history-pass" style="color:'+(ok?'var(--pass)':'var(--fail)')+'">'+entry.rate+'%</div><div class="history-progress"><span style="width:'+entry.rate+'%;background:'+(ok?'var(--pass)':'var(--fail)')+'"></span></div></div>'
-      +'<div><span class="history-count">'+entry.passed+'<small> / '+entry.total+'</small></span></div><div class="history-duration">'+esc(entry.duration||'-')+'</div>'
-      +'<div><span class="history-type">'+(entry.type==='pipeline'?'파이프라인 실행':'빠른 실행')+'</span></div><div><span class="history-platform '+esc(entry.platform||'android')+'">'+(entry.platform==='ios'?'iOS':'Android')+'</span></div>'
-      +'<div class="history-groups">'+groups+'</div><div><span class="history-result" style="color:'+(ok?'var(--pass)':'var(--fail)')+';border-color:'+(ok?'var(--pass)':'var(--fail)')+'">'+(ok?'첫 시도 통과':'실패')+'</span></div></div>';
+      +'<div><span class="history-count">'+entry.passed+'<small> / '+entry.total+'</small></span></div><div class="history-duration">'+esc(overviewDuration(entry.duration))+'</div>'
+      +'<div><span class="history-type">'+(entry.type==='pipeline'?'파이프라인 실행':entry.type==='quick'?'빠른 실행':'테스트 실행')+'</span></div><div><span class="history-platform '+esc(entry.platform||'unknown')+'">'+(entry.platform==='ios'?'iOS':entry.platform==='android'?'Android':'—')+'</span></div>'
+      +'<div class="history-groups">'+groups+'</div><div><span class="history-result" style="color:'+(ok?'var(--pass)':'var(--fail)')+';border-color:'+(ok?'var(--pass)':'var(--fail)')+'">'+(ok?(entry.rate===100?'통과':'건너뜀 포함'):'실패')+'</span></div></div>';
   }).join('')||'<div class="history-empty">실행 이력이 없습니다.</div>';
   var total=entries.length, passedRate=total?Math.round(entries.reduce(function(sum,item){return sum+(item.rate||0);},0)/total):0;
-  var passedFirst=entries.filter(function(item){return !item.failed&&item.rate===100;}).length;
+  var passedFirst=entries.filter(function(item){return item.firstPass===true;}).length;
   document.getElementById('history-total').textContent=total;
   document.getElementById('history-rate').textContent=passedRate+'%';
-  document.getElementById('history-first').innerHTML=passedFirst+'<span class="history-kpi-suffix">/'+total+'</span>';
-  document.getElementById('history-heal').textContent=entries.reduce(function(sum,item){return sum+(item.healCount||0);},0);
+  document.getElementById('history-first').innerHTML=entries.length&&entries.some(function(item){return typeof item.firstPass!=='boolean';})?'—':passedFirst+'<span class="history-kpi-suffix">/'+total+'</span>';
+  document.getElementById('history-heal').textContent=entries.length&&entries.some(function(item){return typeof item.healCount!=='number';})?'—':entries.reduce(function(sum,item){return sum+(item.healCount||0);},0);
   applyHistoryFilters();
 }
 function recordRunHistory(entry){
-  var entries=loadRunHistory(); entries.unshift(entry); entries=entries.slice(0,50);
+  var entries;try{entries=JSON.parse(localStorage.getItem('qa-native-app.run-history')||'[]');}catch(_){entries=[];}
+  entries.unshift(entry); entries=entries.slice(0,50);
   try{localStorage.setItem('qa-native-app.run-history',JSON.stringify(entries));}catch(_){ }
   renderRunHistory();
+  refreshRunHistory();
 }
 
 async function resetHistory(){
-  if(!await dashboardConfirm('실행 히스토리를 초기화할까요?')) return;
-  try{localStorage.removeItem('qa-native-app.run-history');}catch(_){ }
+  if(!await dashboardConfirm('모든 브라우저에 표시되는 서버 실행 기록을 초기화할까요?\n리포트 파일과 실행 증거는 유지됩니다.')) return;
+  try{await clearServerRunHistory();}catch(error){window.alert(error.message);return;}
   document.querySelectorAll('.history-filter').forEach(function(btn){btn.classList.toggle('active',btn.dataset.filterValue==='all');});
   renderRunHistory();
 }
@@ -520,13 +557,14 @@ async function resetDashboard(){
 }
 
 async function resetOverviewDashboard(){
-  if(!await dashboardConfirm('대시보드의 실행 요약, 로그와 누적 히스토리를 초기화할까요?\n생성 테스트와 리포트 파일은 유지됩니다.')) return;
+  if(!await dashboardConfirm('대시보드의 실행 요약, 로그와 서버 실행 기록을 초기화할까요? (모든 브라우저에 적용)\n생성 테스트와 리포트 파일은 유지됩니다.')) return;
   var btn=document.getElementById('overview-reset-btn');
   if(btn){btn.disabled=true;btn.textContent='초기화 중...';}
   try{
     var res=await fetch('/api/reset',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
     var data=await res.json();
     if(!data.ok) throw new Error(data.error||'초기화 실패');
+    await clearServerRunHistory();
     if(_pollTimer){clearInterval(_pollTimer);_pollTimer=null;}
     _currentStep=null;_runAllActive=false;
     try{

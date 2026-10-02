@@ -379,3 +379,85 @@ def test_review_bulk_approval_excludes_unresolved_duplicate(page):
     expect(page.locator('[data-id="draft-card"]')).to_have_count(1)
     assert page.evaluate('bulkCases') == ['AUD_0002']
     expect(page.locator('[data-id="draft-approve"]')).to_be_disabled()
+
+
+def test_grid_edit_refreshes_the_current_search_result(page, tc_server):
+    import _tc_library as lib
+    from _tc_model import new_case
+    lib.import_cases('filter-audit',['Sheet'],[new_case(case_id='AUD_0001',sheet='Sheet',path=['Audit','',''],feature='Filter current'),
+        new_case(case_id='AUD_0002',sheet='Sheet',path=['Audit','',''],feature='Other case')],'seed')
+    studio(page, tc_server)
+    page.locator('#suite-select').select_option('filter-audit')
+    page.locator('[data-id="nav-tab-library"]').click()
+    page.locator('#lib-search').fill('Filter current')
+    expect(page.locator('#grid-body tr[data-case]')).to_have_count(1)
+    cell=page.locator('[data-id="grid-cell-feature"]')
+    cell.dblclick();cell.fill('Filter changed');cell.press('Meta+Enter')
+    expect(page.locator('#grid-body tr[data-case]')).to_have_count(0)
+    page.locator('#lib-search').fill('Filter changed')
+    expect(page.locator('#grid-body tr[data-case]')).to_have_count(1)
+    expect(page.locator('[data-id="grid-cell-feature"]')).to_have_text('Filter changed')
+
+
+def detail_fixture(page):
+    from _tc_model import new_case
+    from _tc_library import with_issues
+    case=with_issues(new_case(case_id='AUD_0001',sheet='Sheet',path=['Audit','',''],feature='Server title',steps=['Tap'],expected='Visible'))
+    page.set_content('<div id="root"><div id="lib" class="no-detail"><table><tbody id="grid-body"></tbody></table><div id="detail-host"></div></div></div><div id="tcs-toasts"></div>')
+    page.add_script_tag(path=str(STATIC/'state.js'))
+    page.evaluate('''c=>{
+      window.detailCase=c; Object.assign(TCS_NS.state,{suite:'detail-audit',items:[c]});
+      TCS_NS.library={refresh:async()=>{},reloadList:async()=>{}};
+      TCS_NS.api={getCase:async()=>({case:detailCase}),history:async()=>({history:[]})};
+    }''',case)
+    page.add_script_tag(path=str(STATIC/'detail.js'))
+    page.evaluate('''()=>{const root=document.getElementById('root');document.getElementById('detail-host').innerHTML=TCS_NS.detail.html();TCS_NS.detail.mount(root);}''')
+
+
+def test_delayed_detail_refresh_preserves_user_typing(page):
+    detail_fixture(page)
+    page.evaluate("TCS_NS.detail.open('AUD_0001')")
+    page.evaluate('''()=>{TCS_NS.api.getCase=()=>new Promise(resolve=>window.finishDetail=()=>resolve({case:detailCase}));TCS_NS.detail.refreshIfOpen();}''')
+    page.locator('#detail-feature').fill('Unsaved user input')
+    page.evaluate('finishDetail()')
+    expect(page.locator('#detail-feature')).to_have_value('Unsaved user input')
+    expect(page.locator('#detail-save')).to_be_enabled()
+
+
+def test_older_detail_request_cannot_replace_newer_case(page):
+    detail_fixture(page)
+    page.evaluate('''()=>{
+      window.detailReplies={};TCS_NS.api.getCase=(s,id)=>new Promise(resolve=>detailReplies[id]=()=>resolve({case:{...detailCase,case_id:id,feature:id}}));
+      TCS_NS.detail.open('AUD_0001');TCS_NS.detail.open('AUD_0002');
+    }''')
+    page.evaluate("detailReplies['AUD_0002']()")
+    expect(page.locator('#detail-feature')).to_have_value('AUD_0002')
+    page.evaluate("detailReplies['AUD_0001']()")
+    expect(page.locator('#detail-feature')).to_have_value('AUD_0002')
+
+
+def test_delayed_detail_response_does_not_reopen_closed_panel(page):
+    detail_fixture(page)
+    page.evaluate("TCS_NS.detail.open('AUD_0001')")
+    page.evaluate('''()=>{TCS_NS.api.getCase=()=>new Promise(resolve=>window.finishDetail=()=>resolve({case:detailCase}));TCS_NS.detail.refreshIfOpen();}''')
+    page.locator('#detail-close').click()
+    expect(page.locator('#lib')).to_have_class('no-detail')
+    page.evaluate('finishDetail()')
+    expect(page.locator('#lib')).to_have_class('no-detail')
+    assert page.evaluate('TCS_NS.state.activeId') == ''
+
+
+def test_save_unsaved_changes_then_open_the_requested_case(page):
+    detail_fixture(page)
+    page.evaluate('''()=>{
+      document.getElementById('root').insertAdjacentHTML('beforeend','<div id="dirty-modal" hidden><span id="dirty-title"></span><button id="dirty-save">저장하고 이동</button><button id="dirty-discard">버리고 이동</button><button id="dirty-cancel">취소</button></div>');
+      TCS_NS.api.getCase=async(s,id)=>({case:{...detailCase,case_id:id,feature:id}});
+      TCS_NS.api.patchCase=async(s,id,rev,changes)=>({case:{...detailCase,case_id:id,...changes,rev:rev+1}});
+      TCS_NS.library.refresh=async()=>{await TCS_NS.detail.refreshIfOpen();};
+    }''')
+    page.evaluate("TCS_NS.detail.open('AUD_0001')")
+    page.locator('#detail-feature').fill('Saved before moving')
+    page.evaluate("void TCS_NS.detail.open('AUD_0002')")
+    page.locator('#dirty-save').click()
+    expect(page.locator('#detail-feature')).to_have_value('AUD_0002')
+    assert page.evaluate('TCS_NS.state.activeId') == 'AUD_0002'

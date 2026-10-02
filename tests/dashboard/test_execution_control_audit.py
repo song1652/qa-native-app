@@ -192,3 +192,22 @@ def test_evidence_pagination_attempt_media_log_presets_and_tc_content(controls):
     page.locator('.obs-log-filter[data-preset=all]').click()
     assert 'ready' in page.locator('#obs-evidence-log').inner_text()
     assert '기대 결과: 저장됨' in page.locator('.obs-evidence-section[data-kind=tc]').inner_text()
+
+
+def test_policy_native_radio_has_one_accessible_role_and_keeps_arrow_focus(controls):
+    page = controls
+    page.evaluate("""() => {
+      document.querySelector('#gen-all').innerHTML='<div id="obs-strip-quick"></div>';
+      _obsRenderStrips();
+    }""")
+    strip=page.locator('#obs-strip-quick')
+    assert strip.get_by_role('radio').count() == 2
+    assert strip.get_by_role('radio', name='항상', exact=True).count() == 1
+    initial=strip.get_by_role('radio', name='실패 시만', exact=True)
+    initial.focus()
+    page.keyboard.press('ArrowRight')
+    assert strip.get_by_role('radio', name='항상', exact=True).is_checked()
+    assert page.locator(':focus').get_attribute('value') == 'always'
+    page.keyboard.press('ArrowLeft')
+    assert strip.get_by_role('radio', name='실패 시만', exact=True).is_checked()
+    assert page.locator(':focus').get_attribute('value') == 'on_failure'

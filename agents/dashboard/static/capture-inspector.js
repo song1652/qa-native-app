@@ -200,7 +200,7 @@ function csRenderXMLNode(xmlNode, depth, pathId) {
   return '<div class="cs-tree-node" data-nid="' + esc(pathId) + '">'
     + '<div class="cs-tree-header" style="padding-left:' + indent + 'px"'
     + ' onclick="csSelectTreeNode(this)"'
-    + ' onmouseenter="csHoverNode(this,' + JSON.stringify(bounds) + ')"'
+    + ' onmouseenter="' + esc('csHoverNode(this,' + JSON.stringify(bounds) + ')').replace(/"/g, '&quot;') + '"'
     + ' onmouseleave="csHoverNodeEnd()"'
     + '>'
     + (hasChildren
