@@ -253,8 +253,12 @@ function selectView(view, item, options){
     return;
   }
   if(!options.fromHistory){
-    if(view === 'tc_studio' && location.pathname !== '/tc-studio') history.pushState({}, '', '/tc-studio');
-    else if(view !== 'tc_studio' && location.pathname === '/tc-studio') history.pushState({}, '', '/?view='+encodeURIComponent(view));
+    var viewUrl=new URL(location.href);
+    viewUrl.pathname=view === 'tc_studio'?'/tc-studio':'/';
+    if(view === 'dashboard'||view === 'tc_studio') viewUrl.searchParams.delete('view');
+    else viewUrl.searchParams.set('view',view);
+    var nextUrl=viewUrl.pathname+viewUrl.search+viewUrl.hash;
+    if(nextUrl!==location.pathname+location.search+location.hash) history.pushState({}, '', nextUrl);
   }
   document.querySelectorAll('.sidebar-item').forEach(function(el){
     el.classList.toggle('active', el === item);
