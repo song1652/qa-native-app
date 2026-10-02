@@ -98,7 +98,7 @@
 
   <!-- 왼쪽: 플랫폼 + 테스트 실행 -->
   <div class="card" id="view-pipeline">
-    <div class="pipeline-card-head"><div class="card-title">플랫폼 선택 &amp; 파이프라인 실행</div><button id="reset-btn" class="reset-btn" onclick="resetDashboard()">↺ 리셋</button></div>
+    <div class="pipeline-card-head"><div><h2 class="card-title">파이프라인</h2><p class="page-description">분석 → 생성 → 린트 → 실행 → 자동 복구를 순서대로 실행합니다.</p></div><button id="reset-btn" class="reset-btn" onclick="resetDashboard()">↺ 리셋</button></div>
 
     <input type="radio" name="platform" id="radio-android" class="platform-radio" value="android" checked>
     <input type="radio" name="platform" id="radio-ios"     class="platform-radio" value="ios">
@@ -110,12 +110,12 @@
 
     <div class="platform-selector">
       <label for="radio-android" class="pl-label">
-        <span class="pl-icon">🤖</span>
+        <span class="pl-icon" aria-hidden="true"></span>
         <span class="pl-name android">Android</span>
         <span class="pl-desc">UiAutomator2<br>에뮬레이터 · 실기기</span>
       </label>
       <label for="radio-ios" class="pl-label">
-        <span class="pl-icon">🍎</span>
+        <span class="pl-icon" aria-hidden="true"></span>
         <span class="pl-name ios">iOS</span>
         <span class="pl-desc">XCUITest<br>Simulator · 실기기</span>
       </label>
@@ -153,7 +153,7 @@
 
     <!-- 전체 실행 버튼 -->
     <button class="btn primary" id="btn-run-all" onclick="runAll()" style="width:100%;margin-bottom:14px;justify-content:center;gap:8px;font-size:13px">
-      <span>▶ 전체 실행</span>
+      <span>전체 실행</span>
       <span style="font-size:10px;opacity:.7">analyze → generate → lint → execute</span>
       <div class="spinner"></div>
     </button>
@@ -216,7 +216,7 @@
       <div class="step-row">
         <div class="step-num" id="sn-heal">5</div>
         <button class="btn heal-btn" id="btn-heal" onclick="runStep('heal')">
-          <span>힐링 <span style="color:rgba(245,158,11,.5);font-size:10px">06_heal</span></span>
+          <span>자동 복구 <span style="color:rgba(245,158,11,.5);font-size:10px">06_heal</span></span>
           <div class="btn-right">
             <span class="btn-tip" style="color:var(--warn)">실패 시 자동 패치</span>
             <div class="spinner"></div>

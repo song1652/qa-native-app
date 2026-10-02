@@ -230,7 +230,7 @@ function renderRunHistory(){
       +'<div><div class="history-pass" style="color:'+(ok?'var(--pass)':'var(--fail)')+'">'+entry.rate+'%</div><div class="history-progress"><span style="width:'+entry.rate+'%;background:'+(ok?'var(--pass)':'var(--fail)')+'"></span></div></div>'
       +'<div><span class="history-count">'+entry.passed+'<small> / '+entry.total+'</small></span><div style="color:var(--text3);font-size:11px;margin-top:3px">'+(entry.duration||'-')+'</div></div>'
       +'<div><span class="history-type">'+(entry.type==='pipeline'?'파이프라인 실행':'빠른 실행')+'</span></div><div><span class="history-platform '+esc(entry.platform||'android')+'">'+(entry.platform==='ios'?'🍎 iOS':'🤖 Android')+'</span></div>'
-      +'<div class="history-groups">'+groups+'</div><div><span class="history-result" style="color:'+(ok?'var(--pass)':'var(--fail)')+';border-color:'+(ok?'rgba(52,211,153,.3)':'rgba(251,113,133,.3)')+'">'+(ok?'First Pass':'Failed')+'</span></div></div>';
+      +'<div class="history-groups">'+groups+'</div><div><span class="history-result" style="color:'+(ok?'var(--pass)':'var(--fail)')+';border-color:'+(ok?'var(--pass)':'var(--fail)')+'">'+(ok?'First Pass':'Failed')+'</span></div></div>';
   }).join('');
   var total=entries.length, passedRate=Math.round(entries.reduce(function(sum,item){return sum+(item.rate||0);},0)/total);
   var passedFirst=entries.filter(function(item){return !item.failed&&item.rate===100;}).length;
@@ -295,26 +295,10 @@ function toggleLog(){
 }
 
 function renderProgressBar(){
-  var bar = document.getElementById('progress-bar');
-  if(!bar) return;
-  var doneCount = STEP_ORDER.filter(function(s){ return _stepState[s]==='done'; }).length;
-  var html = '';
-  STEP_ORDER.forEach(function(s, i){
-    var st = _stepState[s];
-    var color = {done:'#10b981',failed:'#f43f5e',running:'#6366f1',idle:'rgba(255,255,255,.15)',skipped:'rgba(255,255,255,.08)'}[st]||'rgba(255,255,255,.15)';
-    var border = st==='skipped' ? '1px dashed rgba(255,255,255,.2)' : 'none';
-    var anim = st==='running' ? 'animation:pulse 1s infinite' : '';
-    html += '<div style="display:flex;flex-direction:column;align-items:center;flex:1;gap:3px">'
-      + '<div style="width:16px;height:16px;border-radius:50%;background:'+color+';border:'+border+';'+anim+';flex-shrink:0"></div>'
-      + '<span style="font-size:11px;color:rgba(255,255,255,.45)">'+STEP_LABEL[s]+'</span>'
-      + '</div>';
-    if(i < STEP_ORDER.length - 1){
-      var lineColor = (_stepState[STEP_ORDER[i]]==='done') ? '#10b981' : 'rgba(255,255,255,.1)';
-      html += '<div style="flex:1;height:2px;background:'+lineColor+';margin-bottom:14px;margin-top:7px"></div>';
-    }
-  });
-  html += '<span style="font-size:12px;color:#8c87a8;margin-left:8px;white-space:nowrap">'+doneCount+'/5</span>';
-  bar.innerHTML = html;
+  var bar=document.getElementById('progress-bar');if(!bar)return;
+  var doneCount=STEP_ORDER.filter(function(s){return _stepState[s]==='done';}).length;
+  var labels={done:'완료',failed:'실패',running:'실행 중',idle:'대기',skipped:'건너뜀'};
+  bar.innerHTML=STEP_ORDER.map(function(s){return '<span class="pipeline-progress-state" data-state="'+_stepState[s]+'">'+STEP_LABEL[s]+' · '+labels[_stepState[s]]+'</span>';}).join('')+'<span class="pipeline-progress-count">'+doneCount+' / 5</span>';
 }
 
 function setStepState(step, state){

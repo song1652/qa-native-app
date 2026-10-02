@@ -531,9 +531,9 @@ function showGuideBanner(step, success){
   var msgVal = (_guideMessages[step]||{})[success?'ok':'fail'];
   var msg = (msgVal === null && step === 'analyze' && !success) ? _analyzeFailMsg() : (msgVal || '');
   if(!msg){ banner.style.display='none'; return; }
-  banner.style.background = success ? 'rgba(16,185,129,.12)' : 'rgba(244,63,94,.12)';
-  banner.style.border = '1px solid ' + (success ? 'rgba(16,185,129,.35)' : 'rgba(244,63,94,.35)');
-  banner.style.color = success ? '#10b981' : '#f43f5e';
+  banner.style.background = success ? 'var(--pass-bg)' : 'var(--fail-bg)';
+  banner.style.border = '1px solid ' + (success ? 'var(--pass)' : 'var(--fail)');
+  banner.style.color = success ? 'var(--pass)' : 'var(--fail)';
   banner.innerHTML = msg + '<button onclick="hideGuideBanner()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:inherit;cursor:pointer;font-size:14px;opacity:.7">&#x2715;</button>';
   banner.style.display = 'block';
 }
@@ -607,7 +607,7 @@ async function refreshStatus(){
       if(!existingWarn){
         var warnEl = document.createElement('div');
         warnEl.id = 'capture-pipeline-warn';
-        warnEl.style.cssText='background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.35);color:#a78bfa;padding:8px 14px;border-radius:8px;font-size:12px;margin:8px 0;';
+        warnEl.style.cssText='background:var(--accent-bg);border:1px solid var(--accent);color:var(--accent);padding:8px 14px;border-radius:8px;font-size:12px;margin:8px 0;';
         warnEl.textContent='⚠️ Capture Studio 세션이 실행 중입니다. 파이프라인 실행이 비활성화되었습니다.';
         var mainArea = document.querySelector('.tab-panel.active') || document.querySelector('.main-area');
         if(mainArea) mainArea.insertBefore(warnEl, mainArea.firstChild);
@@ -624,7 +624,7 @@ async function refreshStatus(){
         if(!_expiredBanner){
           var _banner = document.createElement('div');
           _banner.id = 'cs-expired-banner';
-          _banner.style.cssText = 'background:rgba(251,113,133,.1);border:1px solid rgba(251,113,133,.4);color:#fb7185;' +
+          _banner.style.cssText = 'background:var(--fail-bg);border:1px solid var(--fail);color:var(--fail);' +
             'padding:10px 16px;border-radius:8px;font-size:12px;margin-bottom:10px;display:flex;align-items:center;gap:10px;';
           _banner.innerHTML = '⏰ Capture 세션이 30분 비활동으로 자동 종료됐습니다. 기록은 보존됩니다.' +
             '<button class="cs-btn" onclick="csForceNewSession()" style="padding:3px 10px;font-size:11px;flex-shrink:0">새 세션 시작</button>' +
