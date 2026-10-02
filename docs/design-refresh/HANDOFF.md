@@ -115,7 +115,7 @@ grep -rnE "🤖|🍎|📡|🔨|⚠️|📝|✅|❌|⏱|⬅|👤|⚙️|🔄|🔌
 - 화면 캡처 작업 공간은 Appium + Android 에뮬레이터가 있어야 열린다. 없으면 세션 설정 화면까지만 확인하고 사용자에게 알린다.
 - 리포트 HTML은 빠른 실행 1회 후 `tests/reports/`에 생긴 파일을 열어 `ReportPass`/`ReportFail`과 비교한다. 실패 사례는 기존 실패 run(`state/runs/run_android_20261001_220632_572`)의 리포트를 `scripts/report_html.py`로 다시 만들어 본다(원본 파일은 덮어쓰지 않는다).
 
-최종 작업·검증 결과: [VERIFICATION.md](VERIFICATION.md) (2026-10-02).
+최종 작업·검증 결과: [VERIFICATION.md](VERIFICATION.md), [전체 화면 재검토](REAUDIT.md) (2026-10-02).
 
 ## 6. 완료 정의
 

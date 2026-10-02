@@ -15,10 +15,10 @@ function _obsSetKeep(v){
 function _obsStripHtml(stripId){
   var always=_obsKeep==='always';
   var groupName='obs-keep-radio-'+String(stripId||'default');
-  var feedback=always?'성공 포함 모든 증거 보존 · 약 33 MB/run':'실패·FLAKY 증거만 보존 · 약 17 MB/run';
+  var feedback=always?'성공 포함 모든 증거 보존 · 약 33 MB/회':'실패·불안정 결과만 보존 · 약 17 MB/회';
   return '<div class="obs-strip">'
     +'<span class="obs-strip-label"><span class="obs-strip-bulb"></span>증거 수집</span>'
-    +'<span class="obs-collect-chips"><span class="obs-collect-chip">▶ 영상</span><span class="obs-collect-chip">▤ 로그</span></span>'
+    +'<span class="obs-collect-chips"><span class="obs-collect-chip">영상</span><span class="obs-collect-chip">시스템 로그</span></span>'
     +'<span style="font-size:10.5px;color:var(--text3)">항상 수집 · 보존 정책</span>'
     +'<div class="obs-radio-row" role="radiogroup" aria-label="보존 정책">'
     +'<label class="obs-policy-option '+(!always?'is-selected':'')+'" role="radio" aria-checked="'+(!always)+'"><input type="radio" name="'+groupName+'" data-obs-keep-radio value="on_failure" '
@@ -114,7 +114,7 @@ function _evRender(){
   // 배지
   var badge=document.getElementById('ev-dialog-badge');
   var nodeEl=document.getElementById('ev-dialog-node');
-  if(badge) badge.innerHTML='<span style="padding:2px 9px;border-radius:5px;font-size:10px;font-weight:700;'+(outcome==='failed'?'color:var(--fail);background:var(--fail-bg);border:1px solid var(--fail)':'color:var(--pass);background:var(--pass-bg);border:1px solid var(--pass)')+'">'+outcome.toUpperCase()+'</span>';
+  if(badge) badge.innerHTML='<span style="padding:2px 9px;border-radius:5px;font-size:10px;font-weight:700;'+(outcome==='failed'?'color:var(--fail);background:var(--fail-bg);border:1px solid var(--fail)':'color:var(--pass);background:var(--pass-bg);border:1px solid var(--pass)')+'">'+({failed:'실패',error:'오류',passed:'통과',skipped:'건너뜀'}[outcome]||'확인 필요')+'</span>';
   if(nodeEl) nodeEl.textContent=nodeid;
 
   var hasVideo=kept&&attempt.video;
@@ -126,7 +126,7 @@ function _evRender(){
   if(tabs){
     var attemptHtml=selection.attempts.length>1?'<span style="display:flex;align-items:center;gap:4px;margin-right:10px;font-size:10px;color:var(--text3)">시도 '+selection.attempts.map(function(a){var n=a.n||1;return '<button type="button" class="ev-lvl '+(n===_evState.attempt?'active':'')+'" onclick="_evSelectAttempt('+n+')">'+n+'</button>';}).join('')+'</span>':'';
     tabs.innerHTML=attemptHtml+['video','log','shot'].map(function(t){
-      var labels={video:'▶ 영상',log:'▤ 시스템 로그',shot:'▣ 스크린샷'};
+      var labels={video:'영상',log:'시스템 로그',shot:'스크린샷'};
       var has={video:hasVideo,log:hasLog,shot:hasShot};
       return '<button type="button" class="ev-dialog-tab'+(t===_evState.tab?' active':'')
         +'" '+(has[t]?'':'disabled')+' onclick="_evTab(\''+t+'\')" data-ev="'+t+'">'+labels[t]+'</button>';
@@ -173,9 +173,9 @@ function _evTabBody(){
       body.innerHTML='<div class="ev-log-toolbar">'
         +'<input type="text" class="ev-log-search" id="ev-log-q" placeholder="로그 검색" oninput="_evLogFilter()">'
         +'<button type="button" class="ev-lvl active" data-l="ALL" onclick="_evLogLvl(this,\'ALL\')">전체</button>'
-        +'<button type="button" class="ev-lvl" data-l="E" onclick="_evLogLvl(this,\'E\')">E/</button>'
-        +'<button type="button" class="ev-lvl" data-l="W" onclick="_evLogLvl(this,\'W\')">W/</button>'
-        +'<button type="button" class="ev-lvl" data-l="FATAL" onclick="_evLogLvl(this,\'FATAL\')">FATAL</button>'
+        +'<button type="button" class="ev-lvl" data-l="E" title="E/ 오류 로그" onclick="_evLogLvl(this,\'E\')">오류</button>'
+        +'<button type="button" class="ev-lvl" data-l="W" onclick="_evLogLvl(this,\'W\')">주의</button>'
+        +'<button type="button" class="ev-lvl" data-l="FATAL" onclick="_evLogLvl(this,\'FATAL\')">치명적</button>'
         +'<button type="button" class="ev-lvl" onclick="_evPreset(\'AndroidRuntime\')">AndroidRuntime</button>'
         +appPreset
         +'</div>'
@@ -527,11 +527,11 @@ function _obsPaintEvidence(){
   if(hasVideo){
     var offset=Number(attempt.failure_offset_sec)||0;
     var mins=Math.floor(offset/60), secs=(offset%60).toFixed(1).padStart(4,'0');
-    var label=(mins<10?'0':'')+mins+':'+secs+' CRASH';
+    var label=(mins<10?'0':'')+mins+':'+secs+' 실패 지점';
     var crashMarker=status.key==='fail'?'<span class="obs-crash-marker">● '+label+'</span>':'';
     videoBody='<div class="obs-video-shell"><div class="obs-video-frame"><span class="obs-video-caption">실제 실행 녹화</span>'+crashMarker
       +'<video class="obs-evidence-video" controls preload="metadata" src="'+esc(_obsAttemptUrl('video',runId,nodeid,attempt))+'"></video></div>'
-      +'<div class="obs-video-meta"><span>'+_obsFormatBytes(attempt.video.bytes)+'</span><span>'+_obsFormatDuration(attempt.duration_sec)+'</span><span>'+attempts.length+'회 시도</span><span>'+(attempt===(attempts[attempts.length-1])?'마지막 attempt':'attempt '+(attempt.n||1))+'</span></div></div>';
+      +'<div class="obs-video-meta"><span>'+_obsFormatBytes(attempt.video.bytes)+'</span><span>'+_obsFormatDuration(attempt.duration_sec)+'</span><span>'+attempts.length+'회 시도</span><span>'+(attempt===(attempts[attempts.length-1])?'마지막 시도':'시도 '+(attempt.n||1))+'</span></div></div>';
   }else{
     videoBody='<div class="obs-evidence-empty">'+esc(_evEvidenceReason(attempt,'video'))+'</div>';
   }
@@ -563,9 +563,9 @@ function _obsPaintEvidence(){
   })(nodeid,platform);
   var tcSectionId='obs-tc-content-'+Date.now();
   var tcBody='<div class="obs-evidence-empty obs-tc-loading" id="'+tcSectionId+'">TC 정보를 불러오는 중...</div>';
-  body.innerHTML='<section class="obs-evidence-section" data-kind="video"><div class="obs-evidence-section-head">▶ 영상</div><div class="obs-evidence-section-body">'+videoBody+'</div></section>'
-    +'<section class="obs-evidence-section" data-kind="log"><div class="obs-evidence-section-head">▤ 시스템 로그</div><div class="obs-evidence-section-body">'+logBody+'</div></section>'
-    +'<section class="obs-evidence-section" data-kind="shot"><div class="obs-evidence-section-head">▣ 스크린샷</div><div class="obs-evidence-section-body">'+shotBody+'</div></section>'
+  body.innerHTML='<section class="obs-evidence-section" data-kind="video"><div class="obs-evidence-section-head">영상</div><div class="obs-evidence-section-body">'+videoBody+'</div></section>'
+    +'<section class="obs-evidence-section" data-kind="log"><div class="obs-evidence-section-head">시스템 로그</div><div class="obs-evidence-section-body">'+logBody+'</div></section>'
+    +'<section class="obs-evidence-section" data-kind="shot"><div class="obs-evidence-section-head">스크린샷</div><div class="obs-evidence-section-body">'+shotBody+'</div></section>'
     +(tcFile?'<section class="obs-evidence-section" data-kind="tc"><div class="obs-evidence-section-head"> TC 내용</div><div class="obs-evidence-section-body">'+tcBody+'</div></section>':'');
   if(tcFile){
     fetch('/api/testcase?platform='+encodeURIComponent(platform)+'&file='+encodeURIComponent(tcFile))
@@ -593,7 +593,7 @@ function _obsPaintEvidence(){
       var marker=body.querySelector('.obs-crash-marker');
       if(marker){
         var targetMins=Math.floor(target/60), targetSecs=(target%60).toFixed(1).padStart(4,'0');
-        marker.textContent='● '+(targetMins<10?'0':'')+targetMins+':'+targetSecs+' CRASH';
+        marker.textContent='● '+(targetMins<10?'0':'')+targetMins+':'+targetSecs+' 실패 지점';
       }
     },{once:true});
   }

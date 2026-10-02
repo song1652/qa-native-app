@@ -4,11 +4,11 @@
   const { state, api, esc, $, $$, toast } = NS;
   let root, previews = [], files = [], profiles = [], plan = null, busy = false, generation = 0, planVersion = 0, mappingDirty = false;
   const fields = [['header_row','헤더 행','1'],['source_tc_id','원본 TC ID',''],['feature','제목*','B'],['steps','Step*','C'],['expected','Expected*','D'],['precondition','사전 조건',''],['l1','대분류',''],['l2','중분류',''],['l3','소분류',''],['priority','우선순위',''],['tags','태그','']];
-  const statuses = {new:'신규',updated:'갱신',same:'동일',conflict:'충돌',error:'오류',committed:'반영 완료',preview:'미리보기',rolled_back:'되돌림'};
+  const statuses = {new:'신규',updated:'갱신',same:'동일',conflict:'충돌',error:'오류',committed:'반영 완료',preview:'미리보기',preview_ready:'미리보기 준비',rolled_back:'되돌림'};
   NS.importModal = { html, mount, open };
   function html() {
     return `<div class="scrim" id="import-modal" data-id="import-modal" hidden>
-      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="im-title" style="width:min(1040px,96vw)">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="im-title" style="width:min(900px,96vw)">
       <div class="panel-head"><span id="im-title">엑셀을 라이브러리로 가져오기</span><span class="spacer"></span><button class="icon-btn" id="import-close" data-id="import-close" aria-label="닫기">✕</button></div>
       <div class="panel-body" style="display:grid;gap:12px;max-height:82vh;overflow:auto">
         <div class="row"><span class="help">파일 선택 → 열 매핑 → 변경 확인 → 가져오기</span><span class="spacer"></span><button class="btn-sm" data-id="import-history-open" id="import-history-open">가져오기 이력</button></div>
@@ -27,7 +27,7 @@
           <ul class="checks" id="import-warnings" data-id="import-warnings"></ul>
         </div>
         <section id="import-plan-panel" hidden><b>반영할 변경 내용</b><div id="import-plan-rows" data-id="import-plan-rows" style="overflow:auto"></div></section>
-        <section id="import-history-panel" hidden><div class="row"><b>가져오기·md 반영 이력</b><span class="spacer"></span><button class="btn-sm" id="import-history-refresh">새로고침</button></div><div id="import-history-list" data-id="import-history-list"></div><div id="import-history-detail" data-id="import-history-detail" style="margin-top:12px"></div></section>
+        <section id="import-history-panel" hidden><div class="row"><b>가져오기·md 반영 이력</b><span class="spacer"></span><button class="btn-sm" id="import-history-back">가져오기로 돌아가기</button><button class="btn-sm" id="import-history-refresh">새로고침</button></div><div id="import-history-list" data-id="import-history-list"></div><div id="import-history-detail" data-id="import-history-detail" style="margin-top:12px"></div></section>
         <div class="row"><span class="help" id="import-summary"></span><span class="spacer"></span><button class="btn btn-ghost" id="import-cancel" data-id="import-cancel">취소</button><button class="btn btn-ghost" id="import-plan" data-id="import-plan" disabled>변경 미리보기</button><button class="btn btn-primary" id="import-confirm" data-id="import-confirm" disabled>가져오기</button></div>
       </div></div></div>`;
   }
@@ -184,6 +184,7 @@
     ['save','update','delete'].forEach(action=>$(`[data-id="import-profile-${action}"]`,root).addEventListener('click',()=>manageProfile(action)));
     $('#import-mapping-apply',root).addEventListener('click',()=>pick(files));
     $('#import-plan-rows',root).addEventListener('change',updateCommit);
+    $('#import-history-back',root).addEventListener('click',()=>{$('#import-history-panel',root).hidden=true;});
     ['#import-history-open','#import-history-refresh'].forEach(s=>$(s,root).addEventListener('click',loadHistory));
     $('#import-history-list',root).addEventListener('click',e=>{const b=e.target.closest('[data-action="view"]');if(b)viewRun(b.dataset.run,b.dataset.kind);});
     $('#import-history-detail',root).addEventListener('click',async e=>{const b=e.target.closest('[data-action="rollback"]');if(!b)return;b.disabled=true;try{if(b.dataset.kind==='library')await api.rollbackImport(b.dataset.run);else await api.rollbackMdImport(b.dataset.run);await viewRun(b.dataset.run,b.dataset.kind);await loadHistory();await NS.reloadSuites(state.suite);}catch(err){toast(`되돌리지 못했습니다: ${esc(err.message)}`,'err');b.disabled=false;}});

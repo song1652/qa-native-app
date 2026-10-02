@@ -19,20 +19,6 @@
   function html() {
     return `
   <section class="screen" id="screen-library" data-screen="library">
-    <div class="lib no-detail" id="lib">
-      <aside class="tree-pane" aria-label="계층 트리">
-        <div class="tree-tools">
-          <input class="input" id="tree-search" data-id="tree-search" placeholder="가지 이름 검색" autocomplete="off">
-          <div class="row" style="justify-content:space-between">
-            <span class="faint" style="font-size:11px">시트 › 대분류 › 중분류 › 소분류 › 제목</span>
-            <button class="icon-btn" data-id="tree-collapse-all" id="tree-collapse-all" title="모두 접기" aria-label="모두 접기">⊟</button>
-          </div>
-        </div>
-        <ul class="tree" id="tree" data-id="lib-tree" role="tree"></ul>
-        <div class="tree-legend"><span><i class="dot d-draft"></i>초안</span><span><i class="dot d-review"></i>재검토</span><span><i class="dot d-err"></i>검증 오류</span></div>
-      </aside>
-      <div class="center">
-        <div id="lib-banners"></div>
         <div class="filterbar" role="search">
           <div class="search"><input class="input" id="lib-search" data-id="lib-search" placeholder="제목, Step, Expected, UI 문구 검색  ( / )" autocomplete="off"></div>
           <select class="fselect" id="lib-filter-result" data-id="lib-filter-result" aria-label="실행 결과">
@@ -45,19 +31,34 @@
             ${opt('', '우선순위 전체')}${NS.PRIORITIES.map((p) => opt(p, p)).join('')}${opt('-', '미지정')}</select>
           <select class="fselect" id="lib-filter-source" data-id="lib-filter-source" aria-label="출처">
             ${opt('', '출처 전체')}${opt('xlsx', '엑셀 가져오기')}${opt('conf', 'Confluence')}${opt('figma', 'Figma')}${opt('file', '파일·붙여넣기')}</select>
+        </div>
+        <div class="grid-meta">
           ${NS.sourceWatch ? '<button class="fchip" data-id="lib-filter-needs-review" id="lib-filter-needs-review" aria-pressed="false">재검토 필요 <span class="n" id="n-review">0</span></button>' : ''}
           <button class="fchip" data-id="lib-filter-invalid" id="lib-filter-invalid" aria-pressed="false">검증 오류 <span class="n" id="n-invalid">0</span></button>
           <button class="btn-sm" data-id="lib-filter-reset" id="lib-filter-reset">초기화</button>
-        </div>
-        <div class="grid-meta">
+
           <button class="btn-sm" data-id="tree-toggle" id="tree-toggle" aria-pressed="false" title="계층 트리를 숨겨 그리드를 넓게 봅니다">트리 숨기기</button>
-          <span class="crumbpath" id="grid-crumb"></span>
+          <button class="btn-sm" id="grid-extra-columns" aria-pressed="false">추가 열 보기</button><span class="crumbpath" id="grid-crumb"></span>
           <span id="grid-count" class="num"></span>
           <span class="spacer"></span>
           <span class="faint">더블클릭 또는 Enter로 셀 편집 · <span class="kbd">⌘</span><span class="kbd">↵</span> 저장 · <span class="kbd">Esc</span> 취소</span>
           ${NS.sourceWatch ? '<button class="btn btn-ghost" data-id="btn-check-sources" id="btn-check-sources" title="Confluence·Figma 출처의 새 버전을 확인합니다">출처 변경 확인</button>' : ''}
           <button class="btn btn-primary" data-id="btn-add-case" id="btn-add-case">+ 케이스 추가</button>
         </div>
+    <div class="lib no-detail" id="lib">
+      <aside class="tree-pane" aria-label="계층 트리">
+        <div class="tree-tools"><b>계층 트리</b>
+          <input class="input" id="tree-search" data-id="tree-search" placeholder="가지 이름 검색" autocomplete="off">
+          <div class="row" style="justify-content:space-between">
+            <span class="faint" style="font-size:11px">시트 › 대분류 › 중분류 › 소분류 › 제목</span>
+            <button class="icon-btn" data-id="tree-collapse-all" id="tree-collapse-all" title="모두 접기" aria-label="모두 접기">⊟</button>
+          </div>
+        </div>
+        <ul class="tree" id="tree" data-id="lib-tree" role="tree"></ul>
+        <div class="tree-legend"><span><i class="dot d-draft"></i>초안</span><span><i class="dot d-review"></i>재검토</span><span><i class="dot d-err"></i>검증 오류</span></div>
+      </aside>
+      <div class="center">
+        <div id="lib-banners"></div>
         <div class="grid-wrap" id="grid-wrap">
           <table class="grid" id="grid" data-id="lib-grid" aria-label="케이스 그리드">
             <colgroup><col style="width:34px"><col style="width:20px"><col style="width:44px"><col style="width:96px"><col class="c-l2" style="width:96px"><col class="c-l3" style="width:96px"><col style="width:200px"><col style="width:150px"><col style="width:200px"><col style="width:240px"><col style="width:74px"><col class="web-result" style="width:100px"><col class="app-result" style="width:92px"><col class="app-result" style="width:92px"><col style="width:130px"></colgroup>
@@ -65,8 +66,8 @@
               <th><input type="checkbox" id="grid-check-all" data-id="grid-check-all" aria-label="전체 선택"></th>
               <th></th><th class="no"><span class="xl">A</span>No.</th>
               <th><span class="xl">B</span>대분류</th><th><span class="xl">C</span>중분류</th><th><span class="xl">D</span>소분류</th>
-              <th><span class="xl">E</span>제목</th><th><span class="xl">F</span>사전 조건</th><th><span class="xl">G</span>테스트 단계</th>
-              <th><span class="xl">H</span>기대 결과</th><th><span class="xl">I</span>우선순위</th><th class="web-result">실행 결과</th><th class="app-result">And</th><th class="app-result">iOS</th><th><span class="xl">M</span>기타 (id · src)</th>
+              <th><span class="xl">E</span>ID · 제목</th><th><span class="xl">F</span>사전 조건</th><th><span class="xl">G</span>테스트 단계</th>
+              <th><span class="xl">H</span>기대 결과</th><th><span class="xl">I</span>우선순위</th><th class="web-result">실행 결과</th><th class="app-result">And</th><th class="app-result">iOS</th><th><span class="xl">M</span>검토</th>
             </tr></thead>
             <tbody id="grid-body"></tbody>
           </table>
@@ -215,7 +216,7 @@
   function platformResultSelect(c, platform) {
     const included = (c.platforms || ['android', 'ios']).includes(platform);
     const value = included ? (c.results || {})[platform] || '' : 'na';
-    return `<select class="chip-select" data-platform="${platform}" aria-label="${c.case_id} ${platform} 결과" ${included ? '' : 'disabled'}>${
+    return `<select class="chip-select result-${value || 'none'}" data-platform="${platform}" aria-label="${c.case_id} ${platform} 결과" ${included ? '' : 'disabled'}>${
       Object.entries(NS.RESULT_LABEL).map(([k, l]) => opt(k, l, value)).join('')}</select>`;
   }
   function prioritySelect(c) {
@@ -239,7 +240,7 @@
         <td><span class="drag" draggable="true" data-id="grid-row-drag" title="트리로 끌어 계층 이동">⋮⋮</span></td>
         <td class="no">${i + 1}</td>
         ${hier}
-        <td><div class="cell" data-edit="feature" data-id="grid-cell-feature" tabindex="0">${esc(c.feature)}</div></td>
+        <td><span class="compact-case-id mono">${esc(c.case_id)}</span><div class="cell" data-edit="feature" data-id="grid-cell-feature" tabindex="0">${esc(c.feature)}</div></td>
         <td><div class="cell" data-edit="precondition" data-id="grid-cell-precondition" tabindex="0">${esc(c.precondition)}</div></td>
         <td><div class="cell" data-edit="steps" data-id="grid-cell-steps" tabindex="0">${esc(c.steps.map((s, n) => `${n + 1}. ${s}`).join('\n'))}</div></td>
         <td><div class="cell" data-edit="expected" data-id="grid-cell-expected" tabindex="0">${expHtml(c)}</div>${errors.length ? `<span class="vbadge tag err" title="${esc(errors.map((x) => x.message).join(', '))}">검증 오류 ${errors.length}</span>` : ''}${c.bullets.some((b) => !b.verified) ? ' <span class="vbadge tag warn">추정 문구</span>' : ''}</td>
@@ -247,7 +248,7 @@
         <td class="web-result">${resultSelect(c)}</td>
         <td class="app-result ${!(c.platforms || ['android','ios']).includes('android') ? 'platform-na' : ''}">${platformResultSelect(c, 'android')}</td>
         <td class="app-result ${!(c.platforms || ['android','ios']).includes('ios') ? 'platform-na' : ''}">${platformResultSelect(c, 'ios')}</td>
-        <td><div class="etc"><span>id:${c.case_id}</span>${c.status !== 'approved' ? `<span class="pill st-${c.status}" data-id="grid-status-chip">${NS.STATUS_LABEL[c.status]}</span>` : ''}${c.note ? `<span>${esc(c.note)}</span>` : ''}</div></td>
+        <td><div class="etc"><span>id:${c.case_id}</span><span class="pill st-${c.status}" data-id="grid-status-chip">${NS.STATUS_LABEL[c.status]}</span>${c.note ? `<span>${esc(c.note)}</span>` : ''}</div></td>
       </tr>`;
   }
   const moreHtml = () => (shown < state.items.length
@@ -494,6 +495,11 @@
   // ── 이벤트 연결 ──────────────────────────────────────────────
   function mount(r) {
     root = r;
+    $('#grid-extra-columns', root).addEventListener('click', (e) => {
+      const expanded = $('#grid', root).classList.toggle('show-extra-columns');
+      e.currentTarget.setAttribute('aria-pressed', expanded);
+      e.currentTarget.textContent = expanded ? '추가 열 숨기기' : '추가 열 보기';
+    });
     const onFilter = (id, k, map = (v) => v) => $(id, root).addEventListener('change', (e) => {
       state.filters[k] = map(e.target.value);
       reloadList();

@@ -407,7 +407,7 @@ def test_evidence_policy_control_shows_selected_action_and_immediate_effect(work
         assert "✓" in selected_text
         assert selected_text.endswith("항상")
         assert strip.locator(".obs-policy-feedback").inner_text() == (
-            "성공 포함 모든 증거 보존 · 약 33 MB/run"
+            "성공 포함 모든 증거 보존 · 약 33 MB/회"
         )
 
 
@@ -650,7 +650,7 @@ def test_workspace_clamps_failure_seek_to_recorded_video(workspace_page):
         }"""
     )
     assert video.evaluate("element => element.currentTime") == pytest.approx(39.9)
-    assert "00:39.9 CRASH" in page.locator(".obs-crash-marker").inner_text()
+    assert "00:39.9 실패 지점" in page.locator(".obs-crash-marker").inner_text()
 
 
 def test_workspace_stacks_columns_on_narrow_viewport(workspace_page):

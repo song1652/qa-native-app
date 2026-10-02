@@ -1,4 +1,5 @@
 // ── ENV 상태 카드 (Appium + Android + iOS) ────────────────────────
+var _envOverviewSnapshot = null;
 var _envAppiumStatus = 'stopped'; // 상태값 직접 참조용 모듈 변수
 var _envAppiumRenderToken = 0;
 var _envAppiumActionBusy = false;
@@ -8,6 +9,8 @@ function pollEnvStatus() {
   fetch('/api/env/status')
     .then(function(r){ return r.json(); })
     .then(function(d){
+      _envOverviewSnapshot=d;
+      if(typeof renderOverviewEnvironment==='function')renderOverviewEnvironment(d);
       updateEnvAppiumCard(d.appium || {});
       updateAndroidCard(d.android || {});
       updateIosCard(d.ios || {});

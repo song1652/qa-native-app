@@ -46,3 +46,20 @@ def test_locator_confidence_keeps_rating_and_approval(page):
         {'strategy': 'resource-id', 'value': 'app:id/settings', 'rating': 5}
     ]
     assert page.get_by_role('button', name='승인됨 ✓', exact=True).is_disabled()
+
+
+def test_capture_preview_keeps_save_disabled_and_draft_text(page):
+    page.set_content('''<input id="cs-tc-id" value="tc_settings"><input id="cs-tc-title" value="설정 확인">
+        <select id="cs-platform"><option value="android">Android</option></select><input id="cs-group" value="settings">
+        <button id="cs-save-btn" disabled>저장</button><div id="cs-preview-modal" style="display:none">
+        <pre id="cs-preview-md"></pre><pre id="cs-preview-py"></pre><div id="cs-preview-source"></div>
+        <button id="cs-preview-save">저장 및 생성</button></div>''')
+    page.evaluate("window._cs={actions:[{action:'tap',target_ref:'설정'}]}")
+    page.add_script_tag(path=str(STATIC / 'capture-actions.js'))
+    page.evaluate('csPreviewTC()')
+    assert page.locator('#cs-preview-modal').is_visible()
+    assert page.locator('#cs-preview-save').is_disabled()
+    assert '설정' in page.locator('#cs-preview-md').inner_text()
+    assert '기록한 동작 1개' in page.locator('#cs-preview-source').inner_text()
+    page.evaluate('csClosePreview()')
+    assert not page.locator('#cs-preview-modal').is_visible()

@@ -156,6 +156,7 @@ function csLtScrollBottom() {
 function csLtFilter(cat, el) {
   _csLtFilters[cat] = !_csLtFilters[cat];
   el.style.opacity = _csLtFilters[cat] ? '1' : '0.35';
+  el.setAttribute('aria-pressed', String(_csLtFilters[cat]));
   if (_csLtOpen) { csLtRender(); csLtScrollBottom(); }
 }
 
@@ -177,7 +178,7 @@ document.addEventListener('DOMContentLoaded', function(){
       var atBottom = rows.scrollHeight - rows.scrollTop - rows.clientHeight < 20;
       _csLtPinned = atBottom;
       var pin = document.getElementById('csLtPin');
-      if (pin) pin.textContent = atBottom ? '⬇ 하단 고정' : '▲ 위로 스크롤 중 — 클릭하여 고정';
+      if (pin) pin.textContent = atBottom ? '하단 고정' : '스크롤 중 · 하단으로';
       if (pin) pin.style.cursor = atBottom ? 'default' : 'pointer';
       if (pin && !atBottom) pin.onclick = function(){ _csLtPinned=true; csLtScrollBottom(); };
     });

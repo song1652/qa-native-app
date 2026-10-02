@@ -69,11 +69,11 @@
             <p class="help">빈 양식을 만들면 시트·분류를 정한 뒤 아래에 기획 정보를 넣어 LLM 초안을 생성할 수 있습니다.</p>
             <button class="btn btn-primary" type="button" id="btn-start-blank">빈 양식으로 시작</button>
           </div>
-          <p class="help" style="margin:0">PRD 파일을 올리거나 텍스트·URL·Confluence·Figma 탭에서 기획 정보를 추가하세요. 입력한 내용을 바탕으로 LLM이 TC 초안을 작성합니다.</p>
+          <p class="help" style="margin:0">기획서를 올리거나 텍스트·URL·Confluence·Figma로 기획 정보를 추가하세요. 추가한 내용만 근거로 초안을 만듭니다.</p>
           <div class="src-tabs" role="tablist">${tabs.map((t, i) => `<button class="src-tab" role="tab" data-id="src-tab-${t.id}" data-src="${t.id}" aria-selected="${i === 0}">${esc(t.label)}</button>`).join('')}</div>
           ${tabs.map((t, i) => `<div data-srcpane="${t.id}" ${i ? 'hidden' : ''}>${t.html()}</div>`).join('')}
           <div id="src-extra"></div>
-          <div class="label" style="margin-top:4px">수집한 소스 <span id="src-n" class="num">0</span></div>
+          <div class="label" style="margin-top:4px">수집한 기획 정보 <span id="src-n" class="num">0</span></div>
           <div class="srcs" id="srcs" data-id="src-list"></div>
         </div>
       </div>
@@ -81,7 +81,7 @@
         <div class="panel"><div class="panel-head">작성 위치</div>
           <div class="panel-body" style="display:grid;gap:10px">
             <div class="field"><span class="label">시트</span><div class="row" style="flex-wrap:nowrap"><select class="select" id="gen-target-sheet" data-id="gen-target-sheet" style="min-width:0"></select><button class="btn-sm" type="button" data-id="gen-add-sheet" id="gen-add-sheet" style="white-space:nowrap;flex-shrink:0">시트 추가</button><button class="btn-sm" type="button" data-id="gen-rename-sheet" id="gen-rename-sheet" style="white-space:nowrap;flex-shrink:0" disabled>이름 변경</button></div></div>
-            <div class="field app-only"><label class="label" for="gen-platforms">대상 플랫폼</label><select class="select" id="gen-platforms"><option value="both">둘 다</option><option value="android">And</option><option value="ios">iOS</option></select></div>
+            <div class="field app-only"><label class="label" for="gen-platforms">대상 플랫폼</label><select class="select" id="gen-platforms" hidden><option value="both">둘 다</option><option value="android">And</option><option value="ios">iOS</option></select><div class="seg gen-platform-segments" role="group" aria-label="대상 플랫폼"><button type="button" data-gen-platform="both" aria-pressed="true">둘 다</button><button type="button" data-gen-platform="android" aria-pressed="false">And</button><button type="button" data-gen-platform="ios" aria-pressed="false">iOS</button></div></div>
             <div class="picker" data-id="gen-target-path">
               ${[['l1', '대분류'], ['l2', '중분류'], ['l3', '소분류']].map(([k, l]) => `<div class="field"><span class="label">${l}</span>
                 <select class="select" id="gen-path-${k}" data-id="gen-path-${k}"></select>
@@ -94,17 +94,7 @@
           <div class="panel-body" style="display:grid;gap:10px">
             <select class="select" id="gen-profile" data-id="gen-profile"></select>
             <ul class="profile-rules" id="gen-rules"></ul>
-            <div id="gen-profile-editor" hidden style="display:grid;gap:8px">
-              <div class="row"><span class="help">규칙 (한 줄에 하나)</span><span class="spacer"></span>
-                <label class="btn-sm" for="gen-style-file" data-id="gen-style-import" title="기존 TC 엑셀의 제목·Step·Expected 말투를 읽어 규칙·끝맺음·기준 예시를 채웁니다">엑셀에서 문체 가져오기</label>
-                <input type="file" id="gen-style-file" data-id="gen-style-file" accept=".xlsx" hidden></div>
-              <textarea class="textarea" id="gen-rules-input" data-id="gen-rules-input" rows="6" aria-label="규칙 (한 줄에 하나)"></textarea>
-              <label class="help">금지 표현 (쉼표로 구분)<input class="input" id="gen-banned-input" data-id="gen-banned-input"></label>
-              <label class="help">Expected 끝맺음 (쉼표로 구분 · 비우면 검사하지 않음)<input class="input" id="gen-endings-input" data-id="gen-endings-input" placeholder="예: 된다., 는다."></label>
-              <div class="help" id="gen-profile-examples" data-id="gen-profile-examples"></div>
-              <div class="row"><input class="input" id="gen-profile-name" data-id="gen-profile-name" placeholder="저장할 프로필 이름" style="max-width:220px">
-                <button class="btn-sm" data-id="gen-profile-save" id="gen-profile-save">저장</button></div>
-            </div>
+
           </div></div>
         <div class="panel"><div class="panel-body" style="display:grid;gap:12px" id="job-panel" data-id="job-panel">
           <div class="row"><button class="btn btn-primary" data-id="gen-submit" id="gen-submit" disabled>초안 생성</button><span class="help" id="gen-hint">소스를 하나 이상 추가하세요</span></div>
@@ -125,6 +115,17 @@
       </div>
     </div></div>
   </section>
+<div class="scrim" id="gen-profile-editor" hidden><div class="modal profile-dialog" role="dialog" aria-modal="true" aria-labelledby="profile-dialog-title"><div class="panel-head"><span id="profile-dialog-title">작성 규칙 편집</span><span class="spacer"></span><button class="icon-btn" id="gen-profile-close" aria-label="닫기">×</button></div><div class="panel-body"><label class="field"><span class="label">저장할 프로필 이름</span><input class="input" id="gen-profile-name" data-id="gen-profile-name" placeholder="저장할 프로필 이름"></label>
+              <div class="row"><span class="help">규칙 (한 줄에 하나)</span><span class="spacer"></span>
+                <label class="btn-sm" for="gen-style-file" data-id="gen-style-import" title="기존 TC 엑셀의 제목·Step·Expected 말투를 읽어 규칙·끝맺음·기준 예시를 채웁니다">엑셀에서 문체 가져오기</label>
+                <input type="file" id="gen-style-file" data-id="gen-style-file" accept=".xlsx" hidden></div>
+              <textarea class="textarea" id="gen-rules-input" data-id="gen-rules-input" rows="6" aria-label="규칙 (한 줄에 하나)"></textarea>
+              <label class="help">금지 표현 (쉼표로 구분)<input class="input" id="gen-banned-input" data-id="gen-banned-input"></label>
+              <label class="help">Expected 끝맺음 (쉼표로 구분 · 비우면 검사하지 않음)<input class="input" id="gen-endings-input" data-id="gen-endings-input" placeholder="예: 된다., 는다."></label>
+              <div class="help" id="gen-profile-examples" data-id="gen-profile-examples"></div>
+              <div class="profile-actions row"><button class="btn btn-ghost" id="gen-profile-cancel">취소</button>
+                <button class="btn-sm" data-id="gen-profile-save" id="gen-profile-save">저장</button></div>
+            </div></div></div>
   <div class="scrim" id="sheet-rename-modal" data-id="sheet-rename-modal" hidden>
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="sheet-rename-title" style="width:min(440px,100%)">
       <div class="panel-head" id="sheet-rename-title">시트 이름 변경</div>
@@ -307,13 +308,14 @@
   function renderJob(body) {
     const j = body.job;
     $('#job', root).hidden = false;
-    $('#job-title', root).textContent = `작업 ${j.job_id}`;
+    $('#job-title', root).textContent = '초안 생성';
+    $('#job-title', root).title = j.job_id;
     // 화면을 다시 열면 스위트의 마지막 작업을 복원한다. 방금 실행한 작업과 헷갈리지 않게 시각을 붙인다
     const past = j.job_id !== startedHere && !isRunning();
     $('#job-when', root).textContent = past ? `지난 작업 · ${(j.created_at || '').replace('T', ' ').slice(5, 16)}` : '';
     $('#job-dismiss', root).hidden = isRunning();
     const failed = ['failed', 'cancelled'].includes(j.status);
-    $('#job-pill', root).innerHTML = `<span class="pill ${failed ? 'st-rejected' : j.status === 'done' ? 'st-approved' : 'st-draft'}">${esc(j.status)}</span>`;
+    $('#job-pill', root).innerHTML = `<span class="pill ${failed ? 'st-rejected' : j.status === 'done' ? 'st-approved' : 'st-draft'}">${esc(({queued:"대기",fetching:"수집 중",drafting:"초안 작성 중",validating:"검증 중",done:"완료",failed:"실패",cancelled:"취소"})[j.status] || j.status)}</span>`;
     const at = Math.max(STEPS.findIndex(([k]) => k === j.status), 0);
     $('#jsteps', root).innerHTML = STEPS.map(([k, l], i) => {
       const cls = j.status === 'done' || i < at ? 'done' : i === at ? (failed ? 'fail' : 'run') : '';
@@ -418,6 +420,14 @@
 
   function mount(r) {
     root = r;
+    $$('[data-gen-platform]', root).forEach(button => button.addEventListener('click', () => {
+      const select = $('#gen-platforms', root);
+      select.value = button.dataset.genPlatform;
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    }));
+    $('#gen-platforms', root).addEventListener('change', () => {
+      $$('[data-gen-platform]', root).forEach(button => button.setAttribute('aria-pressed', button.dataset.genPlatform === $('#gen-platforms', root).value));
+    });
     $$('.src-tab', root).forEach((t) => t.addEventListener('click', () => {
       $$('.src-tab', root).forEach((x) => x.setAttribute('aria-selected', x === t));
       $$('[data-srcpane]', root).forEach((p) => { p.hidden = p.dataset.srcpane !== t.dataset.src; });
@@ -492,6 +502,7 @@
       renderTarget({ sheet: t.sheet, path: t.path.map((p, j) => (j <= i ? p : '')) });
     }));
     $('#gen-profile', root).addEventListener('change', () => { renderRules(); loadExamples(); });
+    ['#gen-profile-close', '#gen-profile-cancel'].forEach(id => $(id, root).addEventListener('click', () => { $('#gen-profile-editor', root).hidden = true; $('#gen-profile-edit', root).focus(); }));
     $('#gen-profile-edit', root).addEventListener('click', () => {
       const ed = $('#gen-profile-editor', root);
       ed.hidden = !ed.hidden;

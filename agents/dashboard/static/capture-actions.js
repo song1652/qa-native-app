@@ -87,7 +87,7 @@ function csAddDirectStep(type) {
   }
 }
 
-var _CS_ACTION_ICONS = {tap:'',input:'⌨',back:'',scroll_down:'↓',scroll_up:'↑',wait:'',context_switch:'',assertion:''};
+var _CS_ACTION_ICONS = {tap:'',input:'',back:'',scroll_down:'↓',scroll_up:'↑',wait:'',context_switch:'',assertion:''};
 
 function csActionStepText(a) {
   // Human-readable step draft (Phase 5)
@@ -210,6 +210,8 @@ function csPreviewTC() {
 
   document.getElementById('cs-preview-md').textContent = md;
   document.getElementById('cs-preview-py').textContent = pyLines.join('\n');
+  document.getElementById('cs-preview-source').textContent = '기록한 동작 ' + _cs.actions.length + '개 · 저장 전 미리보기';
+  document.getElementById('cs-preview-save').disabled = document.getElementById('cs-save-btn').disabled;
   var modal = document.getElementById('cs-preview-modal');
   modal.style.display = 'flex';
 }

@@ -505,3 +505,132 @@
 .tc-studio .toast{background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow-modal);color:var(--text);font-size:14px}
 .tc-studio .suite-menu{background:var(--surface);border-color:var(--border);box-shadow:var(--shadow-modal)}
 @media(max-width:900px){.tc-studio #import-custom-mapping>.row:has(#import-profile-name){display:flex;flex-wrap:wrap}}
+
+/* 목업 재검토: 전체폭 도구 모음과 독립된 세 영역 */
+.tc-studio .step-item{padding:10px 0}
+.tc-studio .step-item[aria-selected="true"] .step-label{color:var(--text)}
+.tc-studio .step-label{font-weight:400}.tc-studio .step-item[aria-selected="true"] .step-label{font-weight:600}
+.tc-studio #screen-library>.filterbar{margin-top:20px;padding:0;border:0;background:transparent;flex-wrap:wrap}
+.tc-studio #screen-library>.filterbar .search{flex:1 1 240px;min-width:180px}
+.tc-studio #screen-library>.grid-meta{padding:20px 0 0;gap:8px}
+.tc-studio .lib{gap:16px;border:0;border-radius:0;background:transparent;align-items:start;min-height:0}
+.tc-studio .tree-pane,.tc-studio .center,.tc-studio .detail{border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.tc-studio .tree-pane{min-height:340px}.tc-studio .tree-tools{padding:12px}.tc-studio .center{min-width:0;background:var(--surface)}
+.tc-studio .grid-wrap{margin:0;border:0;border-radius:0;max-height:580px}
+.tc-studio .bulkbar{order:-1;position:relative;bottom:auto;margin:0;border:0;border-bottom:1px solid var(--border);border-radius:0;padding:10px 12px;gap:6px}
+.tc-studio .bulkbar select{max-width:96px;font-size:12px}.tc-studio .bulk-more>div{top:100%;bottom:auto}
+.tc-studio .grid:not(.show-extra-columns){min-width:0;table-layout:fixed}
+.tc-studio .grid:not(.show-extra-columns) :is(th,td,col):is(:nth-child(3),:nth-child(4),:nth-child(5),:nth-child(6),:nth-child(8),:nth-child(9),:nth-child(10)){display:none}
+.tc-studio .grid:not(.show-extra-columns) col:nth-child(1){width:30px!important}
+.tc-studio .grid:not(.show-extra-columns) col:nth-child(2){width:18px!important}
+.tc-studio .grid:not(.show-extra-columns) col:nth-child(7){width:auto!important}
+.tc-studio .grid:not(.show-extra-columns) col:nth-child(11){width:58px!important}
+.tc-studio .grid:not(.show-extra-columns) col:is(:nth-child(12),:nth-child(13),:nth-child(14)){width:68px!important}
+.tc-studio .grid:not(.show-extra-columns) col:nth-child(15){width:58px!important}
+.tc-studio .grid:not(.show-extra-columns) td{padding:12px 5px}
+.tc-studio .grid:not(.show-extra-columns) th{padding:10px 5px}
+.tc-studio .grid:not(.show-extra-columns) .chip-select{max-width:100%;padding:3px 2px;font-size:12px;border:0;background:transparent}
+.tc-studio .grid:not(.show-extra-columns) .etc>span:not(.pill){display:none}
+.tc-studio .compact-case-id{display:block;color:var(--text-3);font-size:11px;margin-bottom:2px}
+.tc-studio .grid.show-extra-columns .compact-case-id{display:none}
+.tc-studio .grid:not(.show-extra-columns) .grid-more td,.tc-studio .grid:not(.show-extra-columns) td[colspan]{display:table-cell}
+.tc-studio .detail-head{padding:14px 16px}.tc-studio .detail-body{padding:16px}
+/* 1440px 화면에서 생성 행동이 작성 규칙 아래에 보이도록 간격을 맞춘다. */
+.tc-studio .gen>.panel .panel-body{gap:12px!important}
+.tc-studio .gen>div{gap:20px!important}
+.tc-studio .gen .profile-rules{margin:0;padding-left:18px;line-height:1.6}
+.tc-studio .gen .profile-rules li{margin:0;padding:0}
+.tc-studio .profile-dialog{width:min(640px,100%)}
+.tc-studio .profile-dialog>.panel-body{display:grid;gap:14px}
+.tc-studio .profile-dialog #gen-rules-input{min-height:150px}
+.tc-studio .profile-actions{border-top:1px solid var(--border);padding-top:14px;justify-content:flex-end}
+.tc-studio .profile-actions #gen-profile-save{background:var(--accent);color:var(--on-accent)}
+.tc-studio .gen:has(#job:not([hidden])) #job-panel{padding:16px;border:1px solid var(--border);border-radius:8px;background:var(--surface)}
+/* 검토 목록 / 선택한 초안 / 근거 */
+.tc-studio .review{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;border:0;background:transparent;overflow:visible;min-height:0;align-items:start}
+.tc-studio .rv-left{display:contents}.tc-studio .rv-summary{grid-column:1/-1;grid-row:1;padding:0;flex-wrap:wrap}
+.tc-studio .rv-left>.row{grid-column:1;grid-row:2;display:flex;flex-wrap:wrap;gap:8px;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--surface)}
+.tc-studio #review-case-list{grid-column:1;grid-row:3;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--surface)}
+.tc-studio .review-case-item{width:100%;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px;text-align:left;padding:14px 16px;border:0;border-bottom:1px solid var(--border);border-radius:0;background:var(--surface);color:var(--text);font:13px var(--font-sans);cursor:pointer;white-space:normal!important}
+.tc-studio .review-case-item.selected{background:var(--accent-bg)}
+.tc-studio .review-case-item .mono{font-size:11px;color:var(--text-3)}
+.tc-studio .review-case-item small{grid-column:2/-1;color:var(--text-2)}
+.tc-studio #drafts{grid-column:2;grid-row:2/span 2;display:block!important}
+.tc-studio #drafts .dcard:not(.focus){display:none}
+.tc-studio .dcard{padding:20px;border:1px solid var(--border)}
+.tc-studio .dcard.focus{border-color:var(--border);box-shadow:none}
+.tc-studio .draft-head{flex-wrap:wrap}.tc-studio .draft-title{font-size:17px;flex-basis:100%;order:2}
+.tc-studio .draft-grid{display:block}.tc-studio .draft-grid dt{margin:16px 0 6px}.tc-studio .draft-grid dd{margin:0}
+.tc-studio .rv-right{grid-column:3;grid-row:2/span 2;border:0;padding:0;display:grid;gap:16px;background:transparent;min-width:0}
+.tc-studio .rv-right>.row{padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:8px 8px 0 0;margin-bottom:-16px}
+.tc-studio .rv-right>.excerpt{padding:16px;background:var(--surface);border:1px solid var(--border);border-top:0;border-radius:0 0 8px 8px;margin:0}
+.tc-studio #rv-invalid{grid-column:1/-1}.tc-studio #rv-invalid:empty{display:none}
+.tc-studio .exp-card>.head{margin:-16px -16px 0;padding:14px 16px;border-bottom:1px solid var(--border);display:block}
+.tc-studio .exp-card>.head .fmt{display:none}.tc-studio .exp-card>.head .help{margin-top:14px}
+.tc-studio .funnel .f{grid-template-columns:minmax(0,1fr) auto;padding:10px 0;border-top:1px solid var(--border)}
+.tc-studio .funnel .track{display:none}
+.tc-studio #screen-export .wrap:has(>#md-preview-panel:not([hidden]))>.exp{display:none}
+.tc-studio #md-preview-panel{padding:0;border:0;background:transparent;gap:20px}
+.tc-studio #md-preview-back{justify-self:start}
+.tc-studio #md-preview-panel table{background:var(--surface);font-size:14px}
+.tc-studio #md-preview-panel :is(td,th){padding:14px 16px}
+.tc-studio #md-preview-panel>.row:last-of-type{padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:8px}
+@media(max-width:1100px){.tc-studio .review{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.tc-studio .rv-right{grid-column:1/-1;grid-row:auto}.tc-studio #review-case-list{grid-column:1}.tc-studio #drafts{grid-column:2}}
+.tc-studio .suite-label{font-size:13px;color:var(--text-2)}
+.tc-studio .rv-list-pane{grid-column:1;grid-row:2;display:grid;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--surface)}
+.tc-studio .rv-list-pane>.row{padding:12px;display:flex;flex-wrap:wrap;gap:8px}
+.tc-studio .rv-list-pane #review-case-list{border:0;border-radius:0}
+.tc-studio #drafts,.tc-studio .rv-right{grid-row:2}
+.tc-studio .rv-summary #review-approve-clean{margin-left:0}
+.tc-studio .gen-platform-segments{height:34px}.tc-studio .gen-platform-segments button{font-size:13px;padding:0 14px;font-weight:400}
+.tc-studio #gen-profile-edit,.tc-studio #cred-settings{min-height:0;padding:0;border:0;background:transparent;color:var(--accent);font-weight:400;text-decoration:underline}
+.tc-studio .gen #gen-examples:empty{display:none}
+.tc-studio .gen .panel-body:has(>#gen-examples){gap:8px!important}
+.tc-studio .gen .panel-body:has(>#gen-examples)>.row>.help{font-size:12px;line-height:1.4}
+.tc-studio #gen-add-branch{min-height:30px}
+.tc-studio #gen-rules{font-size:13px;line-height:1.55;padding-left:12px}
+.tc-studio #gen-rules li{line-height:1.55}
+.tc-studio #import-modal .panel-body:has(#import-history-panel:not([hidden]))> :not(#import-history-panel){display:none!important}
+.tc-studio #import-history-panel:not([hidden]){display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:16px;min-height:320px}
+.tc-studio #import-history-panel>.row{grid-column:1/-1}
+.tc-studio #import-history-list{border:1px solid var(--border);border-radius:8px;max-height:480px;overflow:auto}
+.tc-studio #import-history-list>.row{padding:12px!important;flex-wrap:wrap;font-size:13px}
+.tc-studio #import-history-list>.row>span:first-child{flex:1;min-width:200px}
+.tc-studio #import-history-detail{margin:0!important;padding:16px;border:1px solid var(--border);border-radius:8px;overflow:auto;min-width:0}
+.tc-studio #import-history-detail:empty::before{content:'작업을 선택하면 변경 내용과 되돌리기 옵션을 확인할 수 있습니다.';color:var(--text-3);font-size:13px}
+.tc-studio #import-custom-mapping>.row:has([data-map]){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 16px}
+.tc-studio #import-custom-mapping label.field{width:auto!important;display:grid;grid-template-columns:110px minmax(0,1fr);align-items:center;font-size:13px}
+.tc-studio .grid:not(.show-extra-columns) .chip-select.result-pass{background:var(--pass-bg);color:var(--pass)}
+.tc-studio .grid:not(.show-extra-columns) .chip-select.result-fail{background:var(--fail-bg);color:var(--fail)}
+.tc-studio .grid:not(.show-extra-columns) .chip-select.result-none{background:var(--surface-sub);color:var(--text-2)}
+.tc-studio .detail .two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.tc-studio .detail .two .field:has(#detail-status){grid-column:2;grid-row:1}
+.tc-studio .detail .two .field:has(#detail-result-android){grid-column:1;grid-row:2}
+.tc-studio .detail .two .field:has(#detail-result-ios){grid-column:2;grid-row:2}
+.tc-studio .detail .two .field:has(#detail-platform-android){grid-column:1/-1;grid-row:3}
+.tc-studio .gen:has(#job:not([hidden]) #job-cancel:not([hidden]))>div:has(#job-panel){display:contents!important}
+.tc-studio .gen:has(#job:not([hidden]) #job-cancel:not([hidden]))>div>.panel:not(:has(#job-panel)){display:none}
+.tc-studio .gen:has(#job:not([hidden]) #job-cancel:not([hidden]))>div>.panel:has(#job-panel){grid-column:2;grid-row:1}
+.tc-studio .gen:has(#job:not([hidden]) #job-cancel:not([hidden])) #job-panel>.row:first-child{display:none}
+.tc-studio .gen:has(#job:not([hidden]) #job-cancel:not([hidden])) #job{margin:0;padding:0;border:0}
+.tc-studio .gen:has(#job:not([hidden]) #job-cancel:not([hidden])) .job>.row:first-child{flex-wrap:wrap}
+@media(max-width:1100px){.tc-studio .gen:has(#job:not([hidden]) #job-cancel:not([hidden]))>div>.panel:has(#job-panel){grid-column:1;grid-row:auto}}
+.tc-studio .gen>div{gap:16px!important}
+.tc-studio #gen-rules{gap:0;line-height:1.45}
+.tc-studio #gen-rules li{line-height:1.45}
+.tc-studio #md-preview-panel table{table-layout:fixed}
+.tc-studio #md-preview-panel th:first-child{width:70px}
+.tc-studio #md-preview-panel th:nth-child(3){width:120px}
+.tc-studio #md-preview-panel th:last-child{width:200px}
+.tc-studio #md-preview-panel td{overflow-wrap:anywhere}
+.tc-studio #md-existing-pipeline .btn{background:var(--surface);color:var(--text);border:1px solid var(--border)}
+.tc-studio #import-history-list>.row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px}
+.tc-studio #import-history-list>.row>.spacer{display:none}
+.tc-studio #import-history-list>.row>span:first-child{min-width:0}
+.tc-studio .grid:not(.show-extra-columns) .chip-select{border-radius:4px;min-height:24px;height:24px}
+.tc-studio .grid-meta>.fchip{min-height:30px;border-radius:6px;background:var(--surface);border:1px solid var(--border);font-size:12px}
+.tc-studio #screen-library>.filterbar{flex-wrap:nowrap}
+.tc-studio #screen-library>.filterbar .search{flex:1;min-width:150px}
+.tc-studio #screen-library>.filterbar .fselect{max-width:125px;font-size:12px;padding:0 8px}
+.tc-studio #screen-library>.filterbar #lib-filter-mismatch{order:10}
+@media(max-width:1200px){.tc-studio #screen-library>.filterbar{flex-wrap:wrap}}

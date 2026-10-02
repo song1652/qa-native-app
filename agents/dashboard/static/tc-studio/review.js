@@ -11,6 +11,7 @@
   let suiteDrafts = 0;      // 스위트 전체 draft 수 (상단 탭 배지와 같은 기준)
   let focus = 0;
   let filter = 'all';
+  let sourceSeq = 0;
 
   NS.reviewView = { html, mount, onShow };
 
@@ -27,15 +28,18 @@
           <span class="tag err">검증 오류 <span id="rv-err" class="num">0</span></span>
           <span class="spacer"></span>
           <span class="faint" style="font-size:11px"><span class="kbd">J</span><span class="kbd">K</span> 이동 <span class="kbd">A</span> 승인 <span class="kbd">R</span> 반려 <span class="kbd">G</span> 재생성 <span class="kbd">E</span> 편집</span>
+          <button class="btn btn-ghost" data-id="review-approve-clean" id="review-approve-clean" title="중복·검증 오류·추정 문구·문체 경고가 없는 초안만">문제없는 초안 일괄 승인</button>
         </div>
-        <div class="row">
+        <div class="rv-list-pane"><div class="row">
           <div class="seg" role="group" aria-label="검토 필터" data-id="review-filter">
             <button aria-pressed="true" data-f="all">전체</button><button aria-pressed="false" data-f="pending">미검토</button><button aria-pressed="false" data-f="dup">중복 후보</button><button aria-pressed="false" data-f="invalid">검증 오류</button>
           </div>
           <span class="help" id="rv-job"></span><span class="spacer"></span>
-          <button class="btn btn-ghost" data-id="review-approve-clean" id="review-approve-clean" title="중복·검증 오류·추정 문구·문체 경고가 없는 초안만">문제없는 초안 일괄 승인</button>
+
         </div>
         <div id="rv-invalid" data-id="review-invalid"></div>
+        <div id="review-case-list" aria-label="초안 목록"></div>
+        </div>
         <div id="drafts" data-id="draft-list" style="display:grid;gap:10px"></div>
       </div>
       <aside class="rv-right" aria-label="원문">
@@ -105,6 +109,10 @@
   function render() {
     const shown = drafts.map((d, i) => [d, i]).filter(([d]) => filter === 'all'
       || (filter === 'pending' && pending(d)) || (filter === 'dup' && unresolvedDup(d)) || (filter === 'invalid' && d.has_error));
+    if (!shown.length) focus = -1;
+    else if (!shown.some(([, i]) => i === focus)) focus = shown[0][1];
+    $('#review-case-list', root).innerHTML = shown.map(([d, i]) => `<button class="review-case-item ${i === focus ? 'selected' : ''}" data-review-index="${i}" aria-pressed="${i === focus}"><span class="mono">${esc(d.case_id)}</span><b>${esc(d.feature)}</b><span class="pill st-${d.status}">${d.has_error ? '검증 오류' : unresolvedDup(d) ? '중복 후보' : NS.STATUS_LABEL[d.status]}</span><small>${esc(d.path.filter(Boolean).join(' › '))}</small></button>`).join('');
+    $$('[data-review-index]', root).forEach(button => button.addEventListener('click', () => setFocus(+button.dataset.reviewIndex)));
     $('#drafts', root).innerHTML = shown.map(([d, i]) => card(d, i)).join('')
       || '<div class="empty-note faint" style="padding:30px;text-align:center">검토할 초안이 없습니다</div>';
     $('#rv-left', root).textContent = drafts.filter(pending).length;
@@ -195,14 +203,20 @@
   }
 
   async function setFocus(i) {
+    if (!$(`#drafts .dcard[data-i="${i}"]`, root)) return;
     focus = i;
     $$('#drafts .dcard', root).forEach((el) => el.classList.toggle('focus', +el.dataset.i === i));
+    $$('[data-review-index]', root).forEach(button => {
+      button.classList.toggle('selected', +button.dataset.reviewIndex === i);
+      button.setAttribute('aria-pressed', +button.dataset.reviewIndex === i);
+    });
     const el = $(`#drafts .dcard[data-i="${i}"]`, root);
     if (el) el.focus({ preventScroll: false });
     await showSource();
   }
 
   async function showSource() {
+    const seq = ++sourceSeq;
     const d = drafts[focus];
     const ref = d && d.source_refs[0];
     const box = $('#rv-excerpt', root);
@@ -210,6 +224,7 @@
     if (!ref || !jobInfo) { box.innerHTML = '<span class="faint">이 초안의 원문을 찾을 수 없습니다 (작업 정보 없음)</span>'; return; }
     try {
       const ex = await api.excerpt(jobInfo.job.bundle_id, ref);
+      if (seq !== sourceSeq) return;
       let text = esc(ex.markdown);
       const quote = d.draft_meta.source_quote && esc(d.draft_meta.source_quote);
       if (quote && text.includes(quote)) text = text.replace(quote, `<mark>${quote}</mark>`);
@@ -217,6 +232,7 @@
       const frames = NS.sourceWatch && entry ? NS.sourceWatch.figmaFrames(jobInfo.job.bundle_id, entry) : '';
       box.innerHTML = `<h5>${esc(ex.title)} › ${esc(ex.section)} (${esc(ex.anchor)})</h5>${frames}<div style="white-space:pre-wrap">${text}</div>`;
     } catch (err) {
+      if (seq !== sourceSeq) return;
       box.innerHTML = `<span class="faint">원문을 불러오지 못했습니다: ${esc(err.message)}</span>`;
     }
   }
@@ -263,16 +279,22 @@
       filter = b.dataset.f;
       $$('[data-id="review-filter"] button', root).forEach((x) => x.setAttribute('aria-pressed', x === b));
       render();
+      showSource();
     }));
     $('#review-approve-clean', root).addEventListener('click', approveClean);
     document.addEventListener('keydown', (e) => {
       if (state.screen !== 'review' || e.target.closest('input,textarea,select') || e.metaKey || e.ctrlKey || !drafts.length) return;
       const k = e.key.toLowerCase();
-      const d = drafts[focus];
-      if (k === 'j') setFocus(Math.min(focus + 1, drafts.length - 1));
-      else if (k === 'k') setFocus(Math.max(focus - 1, 0));
-      else if (k === 'a') decide(d, 'approved');
-      else if (k === 'r') decide(d, 'rejected');
+      const visible = $$('[data-review-index]', root).map(button => +button.dataset.reviewIndex);
+      const position = visible.indexOf(focus);
+      if (position < 0) return;
+      if (k === 'j') setFocus(visible[Math.min(position + 1, visible.length - 1)]);
+      else if (k === 'k') setFocus(visible[Math.max(position - 1, 0)]);
+      else if (k === 'a' || k === 'r') {
+        const action = k === 'a' ? 'draft-approve' : 'draft-reject';
+        const button = $(`.dcard[data-i="${focus}"] [data-id="${action}"]`, root);
+        if (button && !button.disabled) button.click();
+      }
       else if (k === 'g') { e.preventDefault(); const b = $(`.dcard[data-i="${focus}"] [data-id="draft-regen"]`, root); if (b && !b.disabled) b.click(); }
       else if (k === 'e') $(`.dcard[data-i="${focus}"] [data-id="draft-edit"]`, root)?.click();
     });

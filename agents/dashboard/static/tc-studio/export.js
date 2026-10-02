@@ -36,6 +36,7 @@
         </div>
         ${mdCardHtml()}
       </div>
+      <div class="md-preview" id="md-preview-panel" data-id="md-preview-panel" hidden></div>
     </div>
   </section>`;
   }
@@ -52,7 +53,7 @@
       <div class="warnbox" data-id="md-drift-warning" id="md-drift" hidden></div>
       <details data-id="md-excluded-list" id="md-excluded"></details>
       <div class="row"><button class="btn btn-primary" data-id="md-preview" id="md-preview">md 미리보기</button><span class="help" id="md-preview-hint"></span></div>
-      <div class="md-preview" id="md-preview-panel" data-id="md-preview-panel" hidden></div>
+
     </div>`;
   }
 
@@ -111,6 +112,8 @@
       </tbody></table></div>
       <div class="row"><button class="btn btn-success" id="md-commit" data-id="md-commit">md 반영</button><span class="help" id="md-commit-hint"></span><span id="md-existing-pipeline">${pipelineLinks(mdRun.rows.filter((r) => ['same', 'updated', 'conflict'].includes(r.status)).map((r) => r.file))}</span></div>
       <div id="md-result" hidden class="row"><span class="tag ok" id="md-result-text"></span><span id="md-run-links"></span><button class="btn btn-ghost" id="md-rollback" data-id="md-rollback">이 작업 롤백</button></div>`;
+    $('#md-preview-panel', root).insertAdjacentHTML('afterbegin', '<button class="btn btn-ghost" id="md-preview-back">← 내보내기</button>');
+    $('#md-preview-back', root).addEventListener('click', () => { $('#md-preview-panel', root).hidden = true; $('#md-preview', root).focus(); });
     const update = () => {
       const pending = $$('.md-conflict-decision', root).filter((x) => !x.value).length;
       $('#md-commit', root).disabled = false;
@@ -142,6 +145,7 @@
   }
 
   function onShow() {
+    $('#md-preview-panel', root).hidden = true;
     loadMd();
     lastExport = null;
     const suite = state.suites.find((s) => s.suite === state.suite);

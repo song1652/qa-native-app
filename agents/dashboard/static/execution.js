@@ -576,10 +576,11 @@ async function refreshStatus(){
     var dD=document.getElementById('dot-device'), tD=document.getElementById('txt-device');
     var isIos = (platform === 'ios');
     var noDevTxt = '디바이스 없음';
-    if(st.device_count>0){ dD.className='dot on'; tD.textContent=st.devices.join(', '); }
+    if(st.device_count>0){ dD.className='dot on'; tD.textContent=(isIos?'iOS':'Android')+' · '+st.devices.join(', '); }
     else{ dD.className='dot off'; tD.textContent=noDevTxt; }
 
-    document.getElementById('txt-step').textContent=state.step||'init';
+    var stepNames={init:'대기',analyzed:'분석 완료',generated:'생성 완료',linted:'린트 완료',executed:'실행 완료',healed:'복구 완료',failed:'실패',running:'실행 중'};
+    document.getElementById('txt-step').textContent=stepNames[state.step]||state.step||'대기';
 
     var hc=state.heal_count||0;
     var hr=document.getElementById('heal-row');

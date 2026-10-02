@@ -3,7 +3,7 @@ function dashboardConfirm(message){
   return new Promise(function(resolve){
     var trigger=document.activeElement;
     var dialog=document.createElement('dialog');
-    dialog.className='ui-confirm';dialog.setAttribute('role','alertdialog');
+    dialog.className='ui-confirm'+(/삭제|종료|중지|초기화/.test(message)?' is-destructive':'');dialog.setAttribute('role','alertdialog');
     dialog.setAttribute('aria-modal','true');dialog.setAttribute('aria-labelledby','dashboard-confirm-title');
     dialog.innerHTML='<h2 id="dashboard-confirm-title">작업 확인</h2><p></p><div class="ui-confirm-actions"><button type="button" data-confirm="cancel">취소</button><button type="button" class="confirm-accept" data-confirm="accept">확인</button></div>';
     dialog.querySelector('p').textContent=message;
@@ -62,15 +62,111 @@ function setOverviewLog(mode){
   document.querySelectorAll('.overview-log-tab').forEach(function(button){button.classList.toggle('active',button.dataset.overviewLog===mode);});
   refreshOverview();
 }
-function renderOverviewTrend(fallbackRate){
-  var allEntries=loadRunHistory().slice(0,8);
-  if(!allEntries.length && fallbackRate>0) allEntries=[{rate:fallbackRate,executedAt:new Date().toISOString()}];
+// Overview filters affect presentation only; execution platform and saved state are untouched.
+var _overviewPlatform='all';
+var _overviewData=null;
+function setOverviewPlatform(platform){
+  if(['all','android','ios'].indexOf(platform)<0)return;
+  _overviewPlatform=platform;
+  document.querySelectorAll('.overview-platform-filter button').forEach(function(button,index){button.setAttribute('aria-pressed',['all','android','ios'][index]===platform?'true':'false');});
+  if(_overviewData)renderOverviewData(_overviewData);
+}
+function overviewEntries(){
+  return loadRunHistory().filter(function(entry){return _overviewPlatform==='all'||entry.platform===_overviewPlatform;}).slice(0,10);
+}
+function overviewResult(entry){
+  if(!entry)return {text:'—',kind:''};
+  if(entry.status==='running')return {text:'실행 중',kind:'warn'};
+  if(['cancelled','canceled','stopped','aborted'].indexOf(entry.status)>=0)return {text:'중단',kind:'warn'};
+  if(Number(entry.failed)>0||entry.status==='failed')return {text:'실패',kind:'fail'};
+  if(Number(entry.total)>0 && Number(entry.passed)===Number(entry.total))return {text:'통과',kind:'pass'};
+  return {text:'정보 없음',kind:''};
+}
+function overviewTime(value){
+  var date=new Date(value);
+  return value&&!isNaN(date.getTime())?date.toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}):'시간 정보 없음';
+}
+function overviewDuration(value){
+  return value&&value!=='-'?String(value).replace(/^(\d+)s$/,'$1초'):'—';
+}
+function renderOverviewTrend(){
+  var allEntries=overviewEntries().slice(0,8);
   if(!allEntries.length) return '<div class="overview-empty"><strong>실행 이력이 없습니다</strong><p>테스트를 실행하면 결과가 여기에 표시됩니다.</p><button class="btn" onclick="selectView(\'pipeline\',document.querySelector(\'[data-view=pipeline]\'))">파이프라인 열기</button></div>';
-  return '<table class="overview-history-table"><thead><tr><th>시작</th><th>플랫폼</th><th>유형</th><th>통과율</th><th>소요</th><th>결과</th></tr></thead><tbody>'+allEntries.map(function(entry){
-    var rate=Math.max(0,Math.min(100,Number(entry.rate||0)));
-    var stamp=entry.executedAt?new Date(entry.executedAt).toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}):'—';
-    return '<tr><td>'+esc(stamp)+'</td><td>'+esc(entry.platform==='ios'?'iOS':'Android')+'</td><td>'+esc(entry.type==='pipeline'?'파이프라인':'빠른 실행')+'</td><td>'+rate+'%</td><td>'+esc(entry.duration||'—')+'</td><td><span class="result-badge '+(rate===100?'pass':'fail')+'">'+(rate===100?'통과':'실패')+'</span></td></tr>';
+  return '<table class="overview-history-table"><thead><tr><th>시작</th><th>종류</th><th>대상</th><th>결과</th><th>통과</th><th>소요</th></tr></thead><tbody>'+allEntries.map(function(entry){
+    var result=overviewResult(entry);
+    return '<tr data-platform="'+esc(entry.platform||'')+'"><td>'+esc(entry.executedAt?overviewTime(entry.executedAt):'—')+'</td><td>'+esc(entry.type==='quick'?'빠른 실행':entry.type==='pipeline'?'파이프라인':'—')+'</td><td>'+esc(Array.isArray(entry.groups)&&entry.groups.length?entry.groups.join(' · '):'—')+'</td><td><span class="result-badge '+result.kind+'">'+result.text+'</span></td><td>'+esc(Number.isFinite(Number(entry.passed))&&Number.isFinite(Number(entry.total))?entry.passed+'/'+entry.total:'—')+'</td><td>'+esc(overviewDuration(entry.duration))+'</td></tr>';
   }).join('')+'</tbody></table>';
+}
+function renderOverviewRateChart(entries){
+  var points=entries.slice().reverse().filter(function(entry){return Number(entry.total)>0;}).map(function(entry,index,all){
+    var rate=Math.max(0,Math.min(100,Math.round(Number(entry.passed||0)/Number(entry.total)*100)));
+    var time=entry.executedAt?new Date(entry.executedAt):null;
+    return {entry:entry,rate:rate,x:all.length===1?40:40+index*400/(all.length-1),y:32+(100-rate)*.8,label:time&&!isNaN(time.getTime())?time.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false}):'시간 정보 없음',kind:rate===100?'pass':rate>=80?'warn':'fail'};
+  });
+  if(!points.length)return '<div class="overview-chart-empty">실행 이력이 쌓이면 통과율 추이가 표시됩니다.</div>';
+  var description=points.map(function(point){return point.label+' '+point.rate+'%';}).join(', ');
+  var grid=[32,59,86,112].map(function(y){return '<line x1="40" y1="'+y+'" x2="440" y2="'+y+'" class="overview-chart-grid"/>';}).join('');
+  var line=points.length>1?'<polyline class="overview-chart-line" points="'+points.map(function(point){return point.x+','+point.y;}).join(' ')+'"/>':'';
+  return '<svg class="overview-rate-svg" viewBox="0 0 480 190" role="img" aria-label="통과율 추이: '+esc(description)+'"><title>'+esc(description)+'</title>'+grid+line+points.map(function(point){return '<g class="overview-chart-point '+point.kind+'"><title>'+esc(point.label+' · '+point.rate+'% · '+(point.kind==='pass'?'통과':point.kind==='warn'?'주의':'실패'))+'</title><text x="'+point.x+'" y="'+(point.y-11)+'" text-anchor="middle">'+point.rate+'%</text><circle cx="'+point.x+'" cy="'+point.y+'" r="4"/><text class="overview-chart-time" x="'+point.x+'" y="183" text-anchor="middle">'+esc(point.label)+'</text></g>';}).join('')+'</svg>';
+}
+function renderOverviewEnvironment(env){
+  if(!env)return;
+  function put(id,text,connected){var el=document.getElementById(id);if(el){el.textContent=text;el.dataset.connected=String(!!connected);}}
+  var appium=env.appium||{},android=env.android||{},ios=env.ios||{};
+  var connected=appium.status==='managed'||appium.status==='external';
+  var names={managed:'연결됨',external:'연결됨',starting:'시작 중',stopped:'미기동',error:'오류'};
+  put('overview-appium',(names[appium.status]||'확인 전')+(appium.port?' · 127.0.0.1:'+appium.port:''),connected);
+  var avd=(android.emulators||[]).find(function(device){return device.avd===android.avd;});
+  put('overview-android-emulator',android.status==='running'?(android.serial||android.avd||(avd&&avd.deviceName)||'실행 중'):android.status==='starting'?'시작 중':android.status==='error'?'오류':'중지됨',android.status==='running');
+  var real=android.real_devices||[];
+  put('overview-android-real',real.length?real.map(function(device){return (device.deviceName||device.serial||device.udid||'이름 없음')+(device.connected?'':' · 미연결');}).join(', '):'등록된 실기기 없음',real.some(function(device){return device.connected;}));
+  put('overview-ios',ios.status==='running'?(ios.simulator||ios.udid||'실행 중'):ios.status==='starting'?'시작 중':ios.status==='error'?'오류':'중지됨',ios.status==='running');
+}
+function renderOverviewData(data){
+  var state=data.state,status=data.status,generated=data.generated;
+  var entries=overviewEntries(),latest=entries[0]||null;
+  var candidates=entries.slice(0,1);
+  var summary=(state.execute_results||{}).summary;
+  if(summary&&Number(summary.total)>0){
+    candidates.push(Object.assign({},summary,{platform:state.platform||status.platform,executedAt:state.updated_at||'',duration:summary.duration}));
+  }
+  if(data.quickSummary)candidates.push(data.quickSummary);
+  candidates=candidates.filter(function(entry){return _overviewPlatform==='all'||entry.platform===_overviewPlatform;});
+  candidates.sort(function(a,b){return String(b.executedAt||'').localeCompare(String(a.executedAt||''));});
+  latest=candidates[0]||null;
+  var set=function(id,value){var el=document.getElementById(id);if(el)el.textContent=value;};
+  var result=overviewResult(latest);
+  set('overview-last-result',result.text);
+  var resultEl=document.getElementById('overview-last-result');if(resultEl)resultEl.className=result.kind;
+  set('overview-last-detail',latest?(latest.total||0)+'건 중 '+(latest.passed||0)+'건 통과 · 실패 '+(latest.failed||0)+' · 건너뜀 '+(latest.skipped||0)+' · '+overviewDuration(latest.duration):'실행 정보 없음');
+  set('overview-context',latest?'마지막 실행 '+overviewTime(latest.executedAt)+' · '+(latest.platform==='ios'?'iOS':latest.platform==='android'?'Android':'플랫폼 정보 없음'):'최근 실행 없음');
+  var pass=entries.reduce(function(sum,entry){return sum+(Number(entry.passed)||0);},0);
+  var runTotal=entries.reduce(function(sum,entry){return sum+(Number(entry.total)||0);},0);
+  set('overview-history-rate',runTotal?Math.round(pass/runTotal*100)+'%':'—');
+  set('overview-history-count',entries.length?'통과 '+pass+' · 전체 '+runTotal:'실행 이력 없음');
+  var groups=generated.filter(function(group){return _overviewPlatform==='all'||group.platform===_overviewPlatform;});
+  set('overview-generated',groups.reduce(function(sum,group){return sum+(Number(group.count)||0);},0));
+  set('overview-generated-groups',groups.map(function(group){var folders=new Set((group.files||[]).map(function(file){return file.indexOf('/')>=0?file.split('/')[0]:'기본';}));return (group.platform==='ios'?'iOS':'Android')+' '+folders.size+'개 그룹';}).join(' · ')||'생성된 테스트 없음');
+  var healingKnown=entries.length&&entries.every(function(entry){return typeof entry.healCount==='number';});
+  set('overview-healing',healingKnown?entries.reduce(function(sum,entry){return sum+entry.healCount;},0):'—');
+  set('overview-healing-context',entries.length?'최근 '+entries.length+'회 실행 기준'+(healingKnown?'':' · 복구 정보 없음'):'최근 10회 기준');
+  set('overview-appium',status.appium?'연결됨':'미기동');
+  var devices=Array.isArray(status.devices)?status.devices:[];
+  set('overview-android-emulator',status.platform==='android'?(devices.filter(function(device){return /^emulator-/.test(device);}).join(', ')||'연결 없음'):'확인 전');
+  set('overview-android-real',status.platform==='android'?(devices.filter(function(device){return !/^emulator-/.test(device);}).join(', ')||'연결 없음'):'확인 전');
+  set('overview-ios',status.platform==='ios'?(devices.join(', ')||'연결 없음'):'확인 전');
+  if(typeof _envOverviewSnapshot!=='undefined'&&_envOverviewSnapshot)renderOverviewEnvironment(_envOverviewSnapshot);
+  var trend=document.getElementById('overview-trend');
+  if(trend){trend.className=entries.length?'overview-trend-chart':'overview-trend-empty';trend.innerHTML=renderOverviewTrend();}
+  var chart=document.getElementById('overview-rate-chart');if(chart)chart.innerHTML=renderOverviewRateChart(entries);
+  set('overview-chart-context',entries.length?overviewDuration(entries[0].duration)+' · '+overviewResult(entries[0]).text:'실행 이력 없음');
+  var stages={init:'대기',analyzed:'분석 완료',generated:'코드 생성 완료',linted:'검사 완료',executed:'실행 완료',healed:'자동 복구 완료'};
+  var running=Array.isArray(status.running_steps)?status.running_steps:[];
+  set('overview-pipeline-status',running.length?running.map(function(step){return STEP_LABEL[step]||step;}).join(' · ')+' 진행 중':stages[state.step]||'정보 없음');
+  var quick=data.quickSummary||loadRunHistory().find(function(entry){return entry.type==='quick';});
+  set('overview-quick-status',quick?overviewResult(quick).text+' '+(quick.passed||0)+'/'+(quick.total||0):'실행 없음');
+  set('overview-report-status',state.report_path?'생성됨':'정보 없음');
+
 }
 async function refreshOverview(){
   try{
@@ -130,13 +226,8 @@ async function refreshOverview(){
       }catch(_){overviewLog='';}
     }
     set('overview-log',overviewLog||'로그 없음');
-    var trend=document.getElementById('overview-trend');
-    if(trend){
-      var trendEntries=loadRunHistory();
-      trend.className=(trendEntries.length||total)?'overview-trend-chart':'overview-trend-empty';
-      var lastEntry=trendEntries.length?trendEntries[0]:null;
-      trend.innerHTML=renderOverviewTrend(rate);
-    }
+    _overviewData={state:state,status:status,generated:generated,quickSummary:quickActive?Object.assign({},quickSummary,{status:'running'}):quickSummary};
+    renderOverviewData(_overviewData);
   }catch(_){
     // Dashboard remains usable when an optional status/log endpoint is unavailable.
   }
@@ -226,9 +317,9 @@ function renderRunHistory(){
     var groups=(entry.groups||[]).map(function(group){return '<span class="history-group">'+esc(group)+'</span>';}).join('');
     var ok=!entry.failed;
     return '<div class="history-row" data-history-type="'+esc(entry.type||'quick')+'" data-history-platform="'+esc(entry.platform||'android')+'" data-history-groups="'+esc((entry.groups||[]).join(' '))+'">'
-      +'<div class="history-date"><strong>'+esc(dateText)+'<br>'+esc(time)+'</strong></div>'
+      +'<div class="history-date"><strong>'+esc(dateText)+' '+esc(time)+'</strong></div>'
       +'<div><div class="history-pass" style="color:'+(ok?'var(--pass)':'var(--fail)')+'">'+entry.rate+'%</div><div class="history-progress"><span style="width:'+entry.rate+'%;background:'+(ok?'var(--pass)':'var(--fail)')+'"></span></div></div>'
-      +'<div><span class="history-count">'+entry.passed+'<small> / '+entry.total+'</small></span><div style="color:var(--text3);font-size:11px;margin-top:3px">'+(entry.duration||'-')+'</div></div>'
+      +'<div><span class="history-count">'+entry.passed+'<small> / '+entry.total+'</small></span></div><div class="history-duration">'+esc(entry.duration||'-')+'</div>'
       +'<div><span class="history-type">'+(entry.type==='pipeline'?'파이프라인 실행':'빠른 실행')+'</span></div><div><span class="history-platform '+esc(entry.platform||'android')+'">'+(entry.platform==='ios'?'iOS':'Android')+'</span></div>'
       +'<div class="history-groups">'+groups+'</div><div><span class="history-result" style="color:'+(ok?'var(--pass)':'var(--fail)')+';border-color:'+(ok?'var(--pass)':'var(--fail)')+'">'+(ok?'첫 시도 통과':'실패')+'</span></div></div>';
   }).join('');
@@ -262,6 +353,7 @@ document.addEventListener('click', function(e){
     var selector=kind==='platform' ? '.history-filter.platform-filter' : kind==='group' ? '.history-filter.group' : '.history-filter:not(.group):not(.platform-filter)';
     e.target.parentElement.querySelectorAll(selector).forEach(function(btn){btn.classList.remove('active');});
     e.target.classList.add('active');
+    var groupMenu=e.target.closest('.history-group-menu');if(groupMenu){groupMenu.querySelector('summary').textContent=e.target.textContent;groupMenu.open=false;}
     document.querySelectorAll('.history-row:not(.header)').forEach(function(row){
       var typeBtn=document.querySelector('.history-filter[data-filter-kind="type"].active');
       var groupBtn=document.querySelector('.history-filter[data-filter-kind="group"].active');
@@ -298,7 +390,9 @@ function renderProgressBar(){
   var bar=document.getElementById('progress-bar');if(!bar)return;
   var doneCount=STEP_ORDER.filter(function(s){return _stepState[s]==='done';}).length;
   var labels={done:'완료',failed:'실패',running:'실행 중',idle:'대기',skipped:'건너뜀'};
-  bar.innerHTML=STEP_ORDER.map(function(s){return '<span class="pipeline-progress-state" data-state="'+_stepState[s]+'">'+STEP_LABEL[s]+' · '+labels[_stepState[s]]+'</span>';}).join('')+'<span class="pipeline-progress-count">'+doneCount+' / 5</span>';
+  bar.innerHTML='<span class="pipeline-progress-count">'+doneCount+' / 5</span>';
+  var count=document.getElementById('pipeline-step-count');if(count)count.textContent=doneCount+' / 5';
+  STEP_ORDER.forEach(function(step){var badge=document.getElementById('step-status-'+step);if(badge){badge.textContent=labels[_stepState[step]]||'대기';badge.dataset.state=_stepState[step];}});
 }
 
 function setStepState(step, state){

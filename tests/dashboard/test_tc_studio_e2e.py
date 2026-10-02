@@ -159,6 +159,7 @@ def _check_ios_pipeline_link(tc_server):
         page.locator('#radio-ios').wait_for(state='attached')
         page.wait_for_timeout(1000)
         assert page.locator('#radio-ios').is_checked()
+        page.locator('.header-state-details summary').click()
         assert page.locator('#txt-automation').inner_text() == '자동화: XCUITest'
         browser.close()
 
@@ -179,10 +180,11 @@ def _check_studio_status(tc_server):
         assert page.locator('.sidebar-item[data-view="tc_studio"]').inner_text() == 'TC 스튜디오'
         page.wait_for_selector('.page-title')
         assert page.locator('.page-title').inner_text() == 'TC 스튜디오'
-        page.wait_for_function("document.querySelector('#txt-step')?.textContent === 'generated'")
+        page.wait_for_function("document.querySelector('#txt-step')?.textContent === '생성 완료'")
         assert page.locator('.status-bar').is_visible()
         assert page.locator('#txt-appium').inner_text() == 'Appium 연결됨'
-        assert page.locator('#txt-device').inner_text() == 'HA1XM5MS'
+        assert page.locator('#txt-device').inner_text() == 'Android · HA1XM5MS'
+        page.locator('.header-state-details summary').click()
         assert page.locator('#txt-automation').inner_text() == '자동화: ADB'
         browser.close()
 
@@ -306,6 +308,117 @@ def test_dashboard_confirmation_keeps_history_until_confirmed(tc_server):
             dialog.get_by_role('button', name='확인', exact=True).click()
             assert page.evaluate("localStorage.getItem('qa-native-app.run-history')") is None
             assert dialog.count() == 0
+            browser.close()
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        pool.submit(check).result(timeout=60)
+
+
+def test_light_studio_profile_dialog_and_extra_columns_preserve_inputs(tc_server):
+    import _tc_library as lib
+    case = new_case(case_id='LAY_0001', sheet='설정', path=['설정', '', ''], feature='설정 화면', expected='설정 표시')
+    lib.import_cases('layout', ['설정'], [case], 'seed')
+
+    def check():
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(headless=True)
+            page = browser.new_page(viewport={'width': 1440, 'height': 900})
+            page.goto(f'{tc_server}/tc-studio')
+            page.locator('#screen-generate.active').wait_for()
+            page.locator('#gen-profile-edit').click()
+            modal = page.locator('#gen-profile-editor [role="dialog"]')
+            assert modal.is_visible()
+            assert modal.locator('#gen-rules-input').is_visible()
+            page.locator('#gen-profile-cancel').click()
+            assert not modal.is_visible()
+            page.locator('#suite-select').select_option('layout')
+            page.locator('[data-id="nav-tab-library"]').click()
+            page.locator('[data-id="grid-cell-feature"]').wait_for()
+            expected = page.locator('[data-id="grid-cell-expected"]').first
+            assert expected.count() == 1
+            assert not expected.is_visible()
+            page.locator('#grid-extra-columns').click()
+            assert expected.is_visible()
+            assert expected.inner_text() == '설정 표시'
+            page.locator('#grid-extra-columns').click()
+            assert not expected.is_visible()
+            assert page.locator('[data-id="grid-cell-feature"]').first.is_visible()
+            browser.close()
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        pool.submit(check).result(timeout=60)
+    assert lib.load_cases('layout')[0]['expected'] == '설정 표시'
+
+
+def test_light_studio_review_list_selects_existing_detail_card(tc_server):
+    import _tc_library as lib
+    cases = [new_case(case_id=f'RV_{i}', sheet='설정', path=['설정', '', ''], feature=f'초안 {i}', steps=['설정 화면을 연다'], expected='설정 제목이 표시된다') for i in (1, 2)]
+    for case in cases:
+        case['status'] = 'draft'
+    lib.import_cases('review-layout', ['설정'], cases, 'seed')
+
+    def check():
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(headless=True)
+            page = browser.new_page(viewport={'width': 1440, 'height': 900})
+            page.goto(f'{tc_server}/tc-studio')
+            page.locator('#screen-generate.active').wait_for()
+            page.locator('#suite-select').select_option('review-layout')
+            # Browser-only fixture: importing marks cases approved; present them as drafts without persisting changes.
+            page.evaluate('''() => {const api=TCS_NS.api, original=api.list; api.list=async(s,q)=>{const result=await original(s,{limit:1000});return {...result,items:result.items.map(c=>({...c,status:'draft'}))};};}''')
+            page.locator('[data-id="nav-tab-review"]').click()
+            page.locator('[data-review-index="1"]').wait_for()
+            assert page.locator('[data-id="draft-card"]').count() == 2
+            page.locator('[data-review-index="1"]').click()
+            assert page.locator('[data-id="draft-card"][data-i="1"]').is_visible()
+            assert not page.locator('[data-id="draft-card"][data-i="0"]').is_visible()
+            assert page.locator('[data-id="draft-card"][data-i="1"] [data-id="draft-approve"]').is_enabled()
+            page.locator('[data-review-index="0"]').click()
+            assert page.locator('[data-id="draft-card"][data-i="0"]').is_visible()
+            browser.close()
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        pool.submit(check).result(timeout=60)
+
+
+def test_review_keyboard_follows_filtered_cases_and_refreshes_source(tc_server):
+    import _tc_library as lib
+    cases = [new_case(case_id=f'KEY_{i}', sheet='설정', path=['설정', '', ''],
+                      feature=f'검토 {i}', steps=['설정 화면을 연다'], expected='설정 제목이 표시된다')
+             for i in (1, 2, 3)]
+    lib.import_cases('keyboard-review', ['설정'], cases, 'seed')
+
+    def check():
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(headless=True)
+            page = browser.new_page(viewport={'width': 1440, 'height': 900})
+            page.goto(f'{tc_server}/tc-studio')
+            page.locator('#screen-generate.active').wait_for()
+            page.locator('#suite-select').select_option('keyboard-review')
+            page.evaluate('''() => {
+              const api=TCS_NS.api, original=api.list;
+              api.list=async(s,q)=>{const r=await original(s,{limit:1000});return {...r,
+                items:r.items.map((c,i)=>({...c,status:i===1?'approved':'draft',source_refs:['ref-'+i]}))};};
+              window.reviewWrites=[];
+              api.patchCase=async(...args)=>{window.reviewWrites.push(args);throw new Error('Unexpected review write');};
+            }''')
+            page.locator('[data-id="nav-tab-review"]').click()
+            page.locator('[data-review-index="2"]').wait_for()
+            page.locator('[data-review-index="1"]').click()
+            assert page.locator('#rv-ref').inner_text() == 'ref-1'
+            page.locator('[data-id="review-filter"] [data-f="pending"]').click()
+            assert page.locator('[data-id="draft-card"].focus').get_attribute('data-i') == '0'
+            assert page.locator('#rv-ref').inner_text() == 'ref-0'
+            page.keyboard.press('j')
+            assert page.locator('[data-id="draft-card"].focus').get_attribute('data-i') == '2'
+            assert page.locator('[data-id="draft-card"].focus').is_visible()
+            assert page.locator('#rv-ref').inner_text() == 'ref-2'
+            page.keyboard.press('k')
+            assert page.locator('[data-id="draft-card"].focus').get_attribute('data-i') == '0'
+            assert page.locator('#rv-ref').inner_text() == 'ref-0'
+            page.locator('[data-id="review-filter"] [data-f="invalid"]').click()
+            assert page.locator('[data-id="draft-card"]').count() == 0
+            assert page.locator('#rv-ref').inner_text() == ''
+            page.keyboard.press('a')
+            page.keyboard.press('r')
+            assert page.evaluate('window.reviewWrites') == []
             browser.close()
     with ThreadPoolExecutor(max_workers=1) as pool:
         pool.submit(check).result(timeout=60)

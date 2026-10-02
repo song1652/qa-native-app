@@ -28,7 +28,7 @@
   <header class="page-header">
     <div class="ph-top">
       <h1 class="page-title">TC 스튜디오</h1>
-      <select class="suite-select" id="suite-select" data-id="suite-select" aria-label="스위트 선택"></select>
+      <label class="suite-label" for="suite-select">스위트</label><select class="suite-select" id="suite-select" data-id="suite-select" aria-label="스위트 선택"></select>
       <div class="suite-menu-wrap">
         <button class="icon-btn suite-menu-btn" type="button" id="suite-menu-btn" data-id="suite-menu-btn" aria-label="스위트 관리" aria-haspopup="menu" aria-expanded="false">⋯</button>
         <div class="suite-menu" id="suite-menu" data-id="suite-menu" role="menu" hidden>

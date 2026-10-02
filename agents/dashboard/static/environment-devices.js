@@ -35,7 +35,7 @@ function renderDeviceList(containerId, devices, platform, mode, runtime) {
       + '<div class="env-device-name"><strong>' + esc(name) + '</strong><span class="env-device-version">' + esc(version) + '</span>'
       + (isDefault ? '<span class="env-default-badge">기본</span>' : '') + '</div>'
       + '<div class="env-device-key">' + esc(sub) + '</div></div></div>'
-      + '<div class="env-device-actions">'
+      + '<div class="env-device-actions"><span class="env-row-status">'+(isActive&&runtimeBusy?'시작 중':isActive&&runtimeRunning?'실행 중':'꺼짐')+'</span>'
       + '<button class="env-row-action' + (action === 'stop' ? ' stop' : '') + '" type="button" aria-label="' + envAttr(actionLabel) + '" data-env-platform="' + platform + '" data-env-action="' + action + '" data-env-target="' + encodeURIComponent(sub) + '" onclick="envVirtualActionFromButton(this)"' + (actionDisabled ? ' disabled' : '') + '>' + actionText + '</button>'
       + '<button class="env-row-remove" type="button" aria-label="' + envAttr(rmTooltip) + '" title="' + envAttr(rmTooltip) + '" data-platform="' + encodeURIComponent(platform) + '" data-mode="' + encodeURIComponent(mode) + '" data-device-name="' + encodeURIComponent(name) + '" onclick="envRemoveDeviceFromButton(this)"' + (isLastVirtual ? ' disabled' : '') + '>×</button>'
       + '</div>'
@@ -70,9 +70,10 @@ function renderRealDevices(containerId, realDevices, platform) {
       ? '<button data-platform="' + encodeURIComponent(platform) + '" data-mode="real_device" data-device-name="' + encodeURIComponent(label) + '" data-is-last="' + isLastReal + '" onclick="envRemoveDeviceFromButton(this)" '
         + 'style="font-size:10px;color:var(--fail);background:none;border:none;cursor:pointer;padding:0 4px" title="삭제">&#10005;</button>'
       : '';
-    return '<div style="display:flex;align-items:center;gap:7px;margin-bottom:4px;font-size:12px;flex-wrap:wrap">'
-      + dot + ' <span>' + esc(label) + '</span>'
+    return '<div class="env-real-row">'
+      + dot + ' <div class="env-real-copy"><strong>' + esc(label) + '</strong>'
       + (sub ? '<span style="color:var(--text3);font-size:10px;font-family:monospace">' + esc(sub) + '</span>' : '')
+      + '</div><span class="env-real-status">'+(dev.connected?'연결됨':'연결 안 됨')+'</span>'
       + (wifiBtns ? '<span style="margin-left:4px">' + wifiBtns + '</span>' : '')
       + delBtn
       + '</div>';
