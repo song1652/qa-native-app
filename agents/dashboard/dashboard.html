@@ -45,7 +45,7 @@
       <a class="sidebar-item" data-view="tc_studio" href="/tc-studio" onclick="event.preventDefault();selectView('tc_studio',this)" style="text-decoration:none">
         <span class="sidebar-dot"></span><span>TC 스튜디오</span>
       </a>
-      <a class="sidebar-item" data-view="tc_import" href="/tc-studio?import=1"><span>엑셀 가져오기</span></a>
+      <a class="legacy-import-link" data-view="tc_import" href="/tc-studio?import=1" hidden style="display:none"><span>엑셀 가져오기</span></a>
       <div class="sidebar-item" data-view="capture" onclick="selectView('capture',this)" id="sidebar-capture">
         <span class="sidebar-dot" style="background:var(--accent-bg)"></span><span>화면 캡처로 작성</span>
       </div>
