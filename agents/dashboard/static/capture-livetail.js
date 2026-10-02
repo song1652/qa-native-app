@@ -71,12 +71,12 @@ function csInfoStripMcp(on) {
 }
 
 var _csMcpTooltipTimer = null;
-function csMcpChipClick() {
+async function csMcpChipClick() {
   var chip = document.getElementById('cs-info-mcp');
   if (!chip) return;
   if (chip.classList.contains('mcp-on')) {
     // ON → 해제 확인 후 disconnect
-    if (!confirm('MCP 연결을 해제할까요?\nClaude Code에서 다시 도구를 호출하면 자동으로 재연결됩니다.')) return;
+    if (!await dashboardConfirm('MCP 연결을 해제할까요?\nClaude Code에서 다시 도구를 호출하면 자동으로 재연결됩니다.')) return;
     fetch('/mcp/session', {method: 'DELETE'}).then(function(r){ return r.json(); }).then(function(d){
       if (d.ok) csInfoStripMcp(false);
     }).catch(function(){});

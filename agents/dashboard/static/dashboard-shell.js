@@ -1,3 +1,20 @@
+// In-page confirmation preserves cancellation and keyboard focus.
+function dashboardConfirm(message){
+  return new Promise(function(resolve){
+    var trigger=document.activeElement;
+    var dialog=document.createElement('dialog');
+    dialog.className='ui-confirm';dialog.setAttribute('role','alertdialog');
+    dialog.setAttribute('aria-modal','true');dialog.setAttribute('aria-labelledby','dashboard-confirm-title');
+    dialog.innerHTML='<h2 id="dashboard-confirm-title">작업 확인</h2><p></p><div class="ui-confirm-actions"><button type="button" data-confirm="cancel">취소</button><button type="button" class="confirm-accept" data-confirm="accept">확인</button></div>';
+    dialog.querySelector('p').textContent=message;
+    function finish(value){dialog.close();dialog.remove();if(trigger&&trigger.isConnected)trigger.focus();resolve(value);}
+    dialog.querySelector('[data-confirm="cancel"]').onclick=function(){finish(false);};
+    dialog.querySelector('[data-confirm="accept"]').onclick=function(){finish(true);};
+    dialog.addEventListener('cancel',function(event){event.preventDefault();finish(false);});
+    document.body.appendChild(dialog);dialog.showModal();dialog.querySelector('[data-confirm="cancel"]').focus();
+  });
+}
+
 // ── 상태 ────────────────────────────────────────────────────
 var _pollTimer = null;
 var _currentLog = 'run_execute.txt';
@@ -256,8 +273,8 @@ function recordRunHistory(entry){
   renderRunHistory();
 }
 
-function resetHistory(){
-  if(!window.confirm('실행 히스토리를 초기화할까요?')) return;
+async function resetHistory(){
+  if(!await dashboardConfirm('실행 히스토리를 초기화할까요?')) return;
   document.getElementById('history-total').textContent='0';
   document.getElementById('history-rate').textContent='0%';
   document.getElementById('history-first').innerHTML='0<span class="history-kpi-suffix">/0</span>';
@@ -345,7 +362,7 @@ function clearLog(){
 }
 
 async function resetDashboard(){
-  if(!window.confirm('실행 중인 파이프라인을 중지하고 상태를 초기화할까요?')) return;
+  if(!await dashboardConfirm('실행 중인 파이프라인을 중지하고 상태를 초기화할까요?')) return;
   var btn=document.getElementById('reset-btn');
   if(btn){ btn.disabled=true; btn.textContent='초기화 중...'; }
   try{
@@ -370,7 +387,7 @@ async function resetDashboard(){
 }
 
 async function resetOverviewDashboard(){
-  if(!window.confirm('대시보드의 실행 요약, 로그와 누적 히스토리를 초기화할까요?\n생성 테스트와 리포트 파일은 유지됩니다.')) return;
+  if(!await dashboardConfirm('대시보드의 실행 요약, 로그와 누적 히스토리를 초기화할까요?\n생성 테스트와 리포트 파일은 유지됩니다.')) return;
   var btn=document.getElementById('overview-reset-btn');
   if(btn){btn.disabled=true;btn.textContent='초기화 중...';}
   try{

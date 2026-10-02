@@ -15,8 +15,8 @@ function csSendBack() {
   }).catch(function(err){ csStatusMsg('Back 오류: ' + err); });
 }
 
-function csClearActions() {
-  if(!confirm('Action Timeline을 초기화하시겠습니까?')) return;
+async function csClearActions() {
+  if(!await dashboardConfirm('Action Timeline을 초기화하시겠습니까?')) return;
   _cs.actions = [];
   csRenderTimeline();
   // 서버 session["actions"]와 actions.json도 동기화
@@ -435,8 +435,8 @@ function csForceNewSession() {
   });
 }
 
-function csEndSession() {
-  if(!confirm('Capture 세션을 종료하시겠습니까? 저장하지 않은 기록은 유실됩니다.')) return;
+async function csEndSession() {
+  if(!await dashboardConfirm('Capture 세션을 종료하시겠습니까? 저장하지 않은 기록은 유실됩니다.')) return;
   fetch('/capture/end', {
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({session_id: _cs.sessionId})

@@ -288,3 +288,24 @@ def _check_browser(tc_server):
         direct.locator('#view-pipeline').wait_for(state='visible')
         direct.close()
         browser.close()
+
+
+def test_dashboard_confirmation_keeps_history_until_confirmed(tc_server):
+    def check():
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(headless=True)
+            page = browser.new_page()
+            page.goto(tc_server)
+            page.evaluate("localStorage.setItem('qa-native-app.run-history', '[]')")
+            page.evaluate('void resetHistory()')
+            dialog = page.get_by_role('alertdialog', name='작업 확인')
+            dialog.wait_for(state='visible', timeout=3000)
+            dialog.get_by_role('button', name='취소', exact=True).click()
+            assert page.evaluate("localStorage.getItem('qa-native-app.run-history')") == '[]'
+            page.evaluate('void resetHistory()')
+            dialog.get_by_role('button', name='확인', exact=True).click()
+            assert page.evaluate("localStorage.getItem('qa-native-app.run-history')") is None
+            assert dialog.count() == 0
+            browser.close()
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        pool.submit(check).result(timeout=60)
