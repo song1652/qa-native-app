@@ -5,7 +5,7 @@
 | 파일 | 화면 |
 |---|---|
 | [recovery-notices.png](recovery-notices.png) | 2026-10-03 실제 기기 연결 실패의 알림 패널(360×480px) — 대상·시각·환경 확인·확인했어요 |
-| [dashboard.png](dashboard.png) | 2026-10-03 재촬영: 대시보드의 빠른 실행·파이프라인 구분과 통과율 추이 |
+| [dashboard.png](dashboard.png) | 2026-10-03 재촬영: 대시보드의 빠른 실행·파이프라인 구분과 6개 기준선·작은 지점으로 표시한 통과율 추이 |
 | [pipeline.png](pipeline.png) | 파이프라인 설정과 기기 선택 |
 | [quick-run.png](quick-run.png) | 빠른 실행과 생성된 테스트 선택 |
 | [quick-run-result.png](quick-run-result.png) | 저장된 11:08 실행 결과의 TC 목록과 증거(실제 실패 영상) |
