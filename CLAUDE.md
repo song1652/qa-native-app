@@ -145,7 +145,7 @@ python scripts/02_generate.py --platform ios --strict-locators
 
 `config/locators.json` target key는 `{tc_slug}.{selector_key}` 형식입니다. entry의 `surface`는 `auto`(native 우선), `native`, `webview` 중 하나이며 WebView locator는 `webview` 객체에 별도로 둡니다. WebView가 감지되지 않으면 Playwright를 시작하지 않으며, CDP 미지원 WebView는 Appium context로 실행합니다.
 
-대시보드 전체 실행이 healing 3회 후에도 실패하면 `scripts/jira_reporter.py`가 이 프로젝트의 Jira 설정으로 Bug를 생성하고 스크린샷/영상을 첨부합니다. `JIRA_TOKEN`이 없으면 Jira 보고만 건너뛰며 테스트 결과는 유지합니다. Jira 설정은 다른 제품과 공유하지 않습니다.
+대시보드 전체 실행이 Locator 오류로 허용된 자동 복구·후속 실행을 최대 3회 진행한 뒤에도 실패하면 `scripts/jira_reporter.py`가 이 프로젝트의 Jira 설정으로 Bug를 생성하고 스크린샷/영상을 첨부합니다. `JIRA_TOKEN`이 없으면 Jira 보고만 건너뛰며 테스트 결과는 유지합니다. Jira 설정은 다른 제품과 공유하지 않습니다.
 
 ## 실행 명령
 
@@ -246,21 +246,21 @@ git diff --check
 - 기본 보존: `on_failure`; 대시보드에서 `always` 선택 가능
 - 조회: 대시보드 증거 패널 또는 `GET /api/run_artifacts/{run_id}`
 - 보존 상한: 최근 20 run 및 총 2GB
-- healing과 pytest rerun은 최초 run_id 아래 다음 attempt로 누적
+- Locator 자동 복구 검증과 성공한 복구 후 실행은 최초 run_id 아래 시도로 누적합니다. pytest의 일괄 실패 반복은 비활성화합니다.
 - `QA_OBS_DISABLE=1` 또는 `QA_OBS_KEEP=never`이면 수집 프로세스를 시작하지 않음
 - iOS 실기기는 M1에서 미지원
 
 ## 연속 Appium 세션 주의사항
 
-3개 이상의 테스트를 순차 실행할 때 3번째 이후 세션에서 UiAutomator2 초기화 실패가 발생할 수 있습니다. `pytest-rerunfailures`(`--reruns 2 --reruns-delay 5`)가 이를 제품 레벨에서 처리합니다. 테스트 파일을 수정하지 않아도 됩니다. 재시도 후에도 반복 실패하면 `agents/lessons_learned.md`를 확인하고 Appium 서버를 재기동하세요.
+여러 테스트의 순차 실행 중 UiAutomator2 초기화 실패가 발생하면 이전 세션 정리와 선택 기기·Appium 상태를 확인합니다. 세션 오류는 Locator 복구 대상이 아니며 테스트를 자동 반복하지 않습니다. `scripts/error_policy.py`의 대응 안내와 `agents/lessons_learned.md`를 참고하고, 환경 복구와 기존 실행 종료가 확인된 뒤 사용자가 다시 실행합니다.
 
 ## 대시보드 서버 재시작 시 프로세스 복구
 
-대시보드 서버(`serve.py`)가 재시작되면 `state/running_procs.json`에 저장된 PID를 읽어 살아있는 프로세스를 자동으로 `_running` dict에 복원합니다(`shared.restore_running_procs()`). 덕분에:
+대시보드 서버(`serve.py`) 재시작 시 `state/running_procs.json`의 실행 예약·로그·실행 ID와 PID·시작 시각·명령을 확인합니다. 소유권이 확인된 살아 있는 실행을 복원하고 종료된 실행은 저장 결과와 대조합니다. 남은 단계나 기기 조작은 자동 재개하지 않습니다.
 
-- 재시작 후에도 `/api/cancel`로 실행 중인 프로세스를 정상 취소할 수 있습니다.
-- 폴링(`/api/run_log`)이 `done: false`를 올바르게 반환해 UI가 "완료"로 오판하지 않습니다.
-- 중복 실행 가드가 재시작 전 프로세스도 감지합니다.
+- 복원된 실행도 취소 후 프로세스 그룹 종료가 확인되어야 새 실행을 허용합니다.
+- 로그 조회는 실행별 결과를 연결하며 복원할 수 없는 작업을 중단·미완료로 구분합니다.
+- 실행 예약을 복원하므로 재시작 전 작업과 새 작업의 충돌을 막습니다.
 
 대시보드 WebSocket(Livetail)이 서버 재시작으로 끊기면 지수 백오프(1초→2초→…→30초)로 자동 재연결합니다. 재연결 후 이후 이벤트부터 정상 수신됩니다.
 

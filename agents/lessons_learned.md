@@ -198,8 +198,8 @@ appium --address 127.0.0.1 --port 4723 --allow-insecure=uiautomator2:adb_screen_
 ### [세션 초기화 실패] 연속 Appium 세션 실행 시 3번째 세션 UiAutomator2 초기화 오류
 **문제**: 3개 이상의 테스트를 순차 실행할 때 3번째 세션에서 UiAutomator2 서버 초기화 실패
 **원인**: 이전 세션 정리가 완료되기 전 새 세션이 시작되어 서버가 충돌
-**해결**: `pytest-rerunfailures`로 제품 레벨에서 처리 (`--reruns 2 --reruns-delay 5` 자동 적용). 테스트 파일 수정 불필요
-**적용 범위**: `requirements.txt`에 `pytest-rerunfailures` 추가, `05_execute.py`에 설치 여부 감지 후 자동 적용
+**현재 대응**: 기존 일괄 재실행 정책은 폐기했습니다. 실행·복구 검증에서 `rerunfailures`를 비활성화하고, 세션 초기화 오류는 기기·Appium 상태와 이전 세션 정리를 확인한 뒤 사용자가 다시 실행합니다. 탭·입력처럼 전달 여부가 불분명한 동작을 자동 반복하지 않습니다.
+**적용 범위**: `scripts/error_policy.py`, `05_execute.py`, `06_heal.py`의 오류별 정책. 시작 전 읽기 확인만 제한적으로 재시도합니다.
 
 ---
 
