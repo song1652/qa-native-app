@@ -50,6 +50,7 @@ from utils.capture_validation import (  # noqa: E402
 )
 from utils.capture_driver import (  # noqa: E402
     IOS_MJPEG_PORT as _IOS_MJPEG_PORT,
+    CAPTURE_LAUNCH_TIMEOUTS,
     appium_back as _do_appium_back,
     appium_tap as _do_appium_tap,
     resolve_capture_device,
@@ -66,6 +67,8 @@ router = APIRouter()
 # sessions for the same simulator concurrently makes both Appium requests race
 # for WDA's port and can leave WDA running without a session.
 _capture_launch_lock = threading.Lock()
+_capture_launch_tasks = set()
+CAPTURE_LIVENESS_TIMEOUT = 10
 
 
 # ── Appium 드라이버 헬퍼 ──────────────────────────────────────
@@ -167,7 +170,7 @@ async def capture_start_session(request: Request):
 
     try:
         _driver = get_capture_driver()
-        _size = _driver.get_window_size() if _driver else {}
+        _size = await asyncio.wait_for(asyncio.to_thread(_driver.get_window_size), CAPTURE_LIVENESS_TIMEOUT) if _driver else {}
         device_width  = _size.get("width",  1080)
         device_height = _size.get("height", 1920)
     except Exception:
@@ -536,14 +539,15 @@ async def capture_page_source_hash():
     import hashlib
     driver = get_capture_driver()
     if driver is None:
-        return JSONResponse({"ok": False, "hash": None})
+        return JSONResponse({"ok": False, "hash": None, "reconnect_required": True})
     loop = asyncio.get_running_loop()
     try:
-        src = await loop.run_in_executor(None, lambda: driver.page_source)
+        src = await asyncio.wait_for(loop.run_in_executor(None, lambda: driver.page_source), CAPTURE_LIVENESS_TIMEOUT)
         h = hashlib.md5(src[:8192].encode("utf-8", errors="ignore")).hexdigest()[:8]
         return JSONResponse({"ok": True, "hash": h})
     except Exception as exc:
-        return JSONResponse({"ok": False, "hash": None, "error": str(exc)})
+        driver._capture_disconnected = True
+        return JSONResponse({"ok": False, "hash": None, "reconnect_required": True, "error": str(exc)})
 
 
 @router.get("/capture/screenshot")
@@ -557,7 +561,7 @@ async def capture_screenshot():
         return JSONResponse({"ok": False, "error": "Appium 세션 없음"}, status_code=409)
     loop = asyncio.get_running_loop()
     try:
-        data = await loop.run_in_executor(None, driver.get_screenshot_as_base64)
+        data = await asyncio.wait_for(loop.run_in_executor(None, driver.get_screenshot_as_base64), CAPTURE_LIVENESS_TIMEOUT)
         return JSONResponse({
             "ok":   True,
             "data": data,
@@ -578,11 +582,13 @@ async def capture_driver_alive():
     alive  = driver is not None
     if alive:
         try:
-            _ = driver.get_window_size()  # 표준 WebDriver — Android·iOS 공통
+            await asyncio.wait_for(asyncio.to_thread(driver.get_window_size), CAPTURE_LIVENESS_TIMEOUT)
+            alive = get_capture_driver() is driver
         except Exception:
-            set_capture_driver(None)
+            # Retain the raw driver for serialized quit on explicit reconnect.
+            driver._capture_disconnected = True
             alive = False
-    return JSONResponse({"alive": alive})
+    return JSONResponse({"alive": alive, "reconnect_required": not alive})
 
 
 @router.get("/capture/session")
@@ -593,13 +599,15 @@ async def capture_get_session():
     return JSONResponse({
         "ok":      True,
         "active":  active,
+        "reconnect_required": active and get_capture_driver() is None,
+        "launch_in_progress": _capture_launch_lock.locked(),
         "session": session if active else {},
     })
 
 
 @router.post("/capture/launch")
 async def capture_launch(request: Request):
-    """Appium 세션 시작 및 앱 실행 (blocking ~10–30s)."""
+    """Launch with a bounded response and retain ownership until worker cleanup."""
     body       = await request.json()
     session_id = body.get("session_id", "")
     session    = load_capture_session()
@@ -613,24 +621,65 @@ async def capture_launch(request: Request):
             "code": "capture_launch_in_progress",
         }, status_code=409)
 
+    cancelled = threading.Event()
+    deadline = _time.monotonic() + CAPTURE_LAUNCH_TIMEOUTS[session.get("platform", "android")]
+    worker_session = {**session, "_launch_cancelled": cancelled, "_launch_deadline": deadline}
+    with shared._process_lock:
+        if shared.execution_active_locked():
+            _capture_launch_lock.release()
+            return JSONResponse({"ok": False, "code": "capture_execution_conflict", "error": "실행 중입니다. 완료 후 Capture 세션을 재연결하세요."}, status_code=409)
+        current = load_capture_session()
+        if not current.get("active") or any(current.get(key) != session.get(key) for key in ("session_id", "platform", "target", "udid")):
+            _capture_launch_lock.release()
+            return JSONResponse({"ok": False, "code": "capture_session_changed", "error": "Capture 세션이 변경되었습니다. 현재 세션을 확인한 뒤 다시 시도하세요."}, status_code=409)
+        shared._capture_launch_active = True
+
+    async def finish_launch():
+        driver = None
+        published = False
+        try:
+            result = await asyncio.to_thread(_do_start_appium_session, worker_session)
+            driver = result.pop("_driver", None) or worker_session.get("_launch_driver")
+            if cancelled.is_set() or _time.monotonic() >= deadline:
+                return {"ok": False, "code": "capture_launch_timeout", "reconnect_required": True, "error": "앱 실행 제한 시간이 지났습니다. 작성 내용은 유지됩니다. 같은 기기로 세션 재연결을 눌러주세요."}
+            if result.get("ok") and result.get("udid"):
+                with shared._process_lock:
+                    updated = load_capture_session()
+                    if not updated.get("active") or any(updated.get(key) != session.get(key) for key in ("session_id", "platform", "target", "udid")):
+                        return {"ok": False, "code": "capture_target_mismatch", "error": "Capture 세션이 변경되어 이전 앱 실행을 취소했습니다. 실행 대상을 다시 확인하세요."}
+                    save_capture_session({**updated, "device_name": result["device_name"], "udid": result["udid"]})
+                    if driver is not None:
+                        set_capture_driver(driver)
+                        published = True
+            return result
+        except Exception as exc:
+            return {"ok": False, "error": str(exc)}
+        finally:
+            driver = driver or worker_session.get("_launch_driver")
+            if driver is not None and not published:
+                try:
+                    await asyncio.to_thread(driver.quit)
+                except Exception:
+                    pass
+            with shared._process_lock:
+                shared._capture_launch_active = False
+                _capture_launch_lock.release()
+
+    # Shield keeps ownership until the real thread and late-driver cleanup end.
+    task = asyncio.create_task(finish_launch())
+    _capture_launch_tasks.add(task)
+    task.add_done_callback(_capture_launch_tasks.discard)
     try:
-        loop   = asyncio.get_event_loop()
-        result = await loop.run_in_executor(None, _do_start_appium_session, session)
-        if result.get("ok") and result.get("udid"):
-            updated = load_capture_session()
-            if not updated.get("active") or any(updated.get(key) != session.get(key) for key in ("session_id", "platform", "target", "udid")):
-                driver = clear_capture_driver()
-                if driver is not None:
-                    try:
-                        await asyncio.to_thread(driver.quit)
-                    except Exception:
-                        pass
-                return JSONResponse({"ok": False, "code": "capture_target_mismatch", "error": "Capture 세션이 변경되어 이전 앱 실행을 취소했습니다. 실행 대상을 다시 확인하세요."}, status_code=409)
-            save_capture_session({**updated, "device_name": result["device_name"], "udid": result["udid"]})
-        status = 200 if result["ok"] else (409 if result.get("code", "").startswith("capture_") else 500)
+        result = await asyncio.wait_for(asyncio.shield(task), CAPTURE_LAUNCH_TIMEOUTS[session.get("platform", "android")])
+        status = 200 if result["ok"] else (504 if result.get("code") == "capture_launch_timeout" else 409 if result.get("code", "").startswith("capture_") else 500)
         return JSONResponse(result, status_code=status)
-    finally:
-        _capture_launch_lock.release()
+    except asyncio.TimeoutError:
+        cancelled.set()
+        return JSONResponse({"ok": False, "code": "capture_launch_timeout", "reconnect_required": True,
+                             "error": "앱 실행 제한 시간이 지났습니다. 작성 내용은 유지됩니다. 이전 연결 정리가 끝난 뒤 같은 기기로 세션 재연결을 누르세요."}, status_code=504)
+    except asyncio.CancelledError:
+        cancelled.set()
+        raise
 
 
 @router.post("/capture/snapshot")

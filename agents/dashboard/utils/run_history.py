@@ -1,4 +1,4 @@
-"""Durable execution summaries from saved App QA reports and completed manifests."""
+"""Durable execution history with run results taking precedence over artifacts."""
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -124,7 +124,7 @@ def _cached(path, loader):
 def _manifest_summary(data, run_id):
     finished = _date(data.get('finished_at'))
     started = _date(data.get('started_at'))
-    if finished is None or started is None:
+    if started is None:
         return None
     entries = data.get('entries', [])
     attempts = [entry.get('attempts') or [entry] for entry in entries]
@@ -135,18 +135,56 @@ def _manifest_summary(data, run_id):
         if match and match[1] not in groups:
             groups.append(match[1])
     kind = data.get('type')
+    complete = finished is not None and bool(latest) and all(outcome in {'passed', 'failed', 'error', 'skipped'} for outcome in latest)
+    status = ('failed' if any(outcome in {'failed', 'error'} for outcome in latest) else 'passed') if complete else 'incomplete'
     return {'id': run_id, 'runId': run_id, 'type': kind if kind in {'quick', 'pipeline'} else 'execution',
-            'platform': data.get('platform', run_id.split('_')[1]), 'executedAt': finished.isoformat(),
-            'duration': max(0, (finished-started).total_seconds()), 'total': len(latest),
+            'platform': data.get('platform', run_id.split('_')[1]), 'executedAt': (finished or started).isoformat(),
+            'duration': max(0, (finished-started).total_seconds()) if finished else None, 'total': len(latest),
             'passed': latest.count('passed'), 'failed': latest.count('failed')+latest.count('error'),
             'skipped': latest.count('skipped'), 'groups': groups, 'reportName': None,
-            'firstPass': bool(attempts) and all(items[0].get('outcome') == 'passed' for items in attempts),
+            'status': status, 'countsComplete': complete,
+            'firstPass': complete and bool(attempts) and all(items[0].get('outcome') == 'passed' for items in attempts),
             '_started': started}
+
+
+def execution_summary(data, run_id, fallback_time):
+    """Normalize owned result metadata for history and artifact-list consumers."""
+    if not isinstance(data, dict) or data.get('run_id') != run_id:
+        return None
+    status = data.get('status')
+    if status not in {'running', 'passed', 'failed', 'cancelled', 'interrupted', 'timed_out'}:
+        return None
+    result = data.get('execute_results') or {}
+    summary = result.get('summary') or {} if isinstance(result, dict) else {}
+    if not isinstance(summary, dict):
+        summary = {}
+    counts = {name: value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else 0
+              for name in ('total', 'passed', 'failed', 'skipped') for value in [summary.get(name, 0)]}
+    # Older JSON summaries omit skipped; retain the known total without inventing outcomes.
+    complete = (status in {'passed', 'failed'} and counts['total'] > 0
+                and counts['passed'] + counts['failed'] + counts['skipped'] == counts['total'])
+    started = _date(data.get('started_at'))
+    finished = _date(data.get('finished_at'))
+    timestamp = finished or _date(data.get('updated_at')) or started or fallback_time
+    groups = []
+    for value in (result.get('passed', []) + [item.get('file', '') for item in result.get('errors', []) if isinstance(item, dict)]) if isinstance(result, dict) else []:
+        match = re.match(r'tests/generated/(?:android|ios)/([^/]+)/', str(value))
+        if match and match[1] not in groups:
+            groups.append(match[1])
+    return {**counts, 'id': run_id, 'runId': run_id, 'status': status,
+            'platform': data.get('platform') or run_id.split('_')[1],
+            'type': data.get('run_type', 'execution'), 'executedAt': timestamp.isoformat(),
+            'duration': max(0, (finished-started).total_seconds()) if finished and started else None,
+            'groups': groups, 'reportName': None, 'countsComplete': complete,
+            'error': str(data.get('error') or ''),
+            'recoveredAfterRestart': data.get('recovered_after_restart') is True,
+            'workflowStatus': data.get('workflow_status'),
+            'workflowError': str(data.get('workflow_error') or ''),
+            '_started': started or fallback_time}
 
 
 def _entries(root, reports_dir):
     manifests = {}
-    unfinished = set()
     for path in (root/'state/runs').glob('*/artifacts/manifest.json'):
         if path.is_symlink() or not _RUN_ID.fullmatch(path.parent.parent.name):
             continue
@@ -160,8 +198,6 @@ def _entries(root, reports_dir):
             continue
         if summary:
             manifests[rid] = summary
-        else:
-            unfinished.add(rid)
     combined = dict(manifests)
     for path in sorted(reports_dir.glob('report_*.html')):
         if path.is_symlink():
@@ -179,8 +215,6 @@ def _entries(root, reports_dir):
                        and all(value[name] == entry[name] for name in ('total', 'passed', 'failed', 'skipped'))]
             if len(matches) == 1:
                 rid = matches[0]
-        if rid in unfinished:
-            continue
         if rid in manifests:
             current = combined[rid]
             # A retry may write multiple reports for one logical run. Keep its last report.
@@ -193,9 +227,39 @@ def _entries(root, reports_dir):
                 entry['id'] = rid
                 entry['runId'] = rid
             combined[entry['id']] = entry
+    for path in (root/'state/runs').glob('*/execution_result.json'):
+        rid = path.parent.name
+        if path.is_symlink() or not _RUN_ID.fullmatch(rid):
+            continue
+        data = _cached(path, _json_cached)
+        previous = combined.get(rid, {})
+        try:
+            fallback = _date(previous.get('executedAt')) or datetime.fromtimestamp(path.stat().st_mtime, timezone.utc)
+            entry = execution_summary(data, rid, fallback)
+        except (OSError, TypeError, AttributeError):
+            continue
+        if entry is None:
+            continue
+        if entry['duration'] is None and not data.get('started_at') and not data.get('finished_at'):
+            entry['duration'] = previous.get('duration')
+        entry['groups'] = entry['groups'] or previous.get('groups', [])
+        entry['type'] = data.get('run_type') or previous.get('type', 'execution')
+        entry['reportName'] = previous.get('reportName')
+        if data.get('report_path'):
+            report = Path(data['report_path'])
+            if report.name == data['report_path'] or report.resolve().parent == reports_dir.resolve():
+                if (reports_dir/report.name).is_file():
+                    entry['reportName'] = report.name
+        if not entry['countsComplete']:
+            entry['firstPass'] = False
+        elif 'firstPass' in previous:
+            entry['firstPass'] = previous['firstPass']
+        combined[rid] = entry
     for value in combined.values():
         value.pop('_started', None)
-        value['rate'] = round(value['passed']/value['total']*100) if value['total'] else 0
+        value.setdefault('status', 'failed' if value['failed'] else 'passed')
+        value.setdefault('countsComplete', True)
+        value['rate'] = round(value['passed']/value['total']*100) if value['countsComplete'] and value['total'] else None
     return sorted(combined.values(), key=lambda item: (item['executedAt'], item['id']), reverse=True)
 
 

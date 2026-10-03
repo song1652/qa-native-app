@@ -74,7 +74,7 @@ def test_capture_launch_rejects_concurrent_appium_session_creation():
         first_response = await first
         return first_response, second
 
-    session = {"session_id": "capture-1", "platform": "ios"}
+    session = {"session_id": "capture-1", "platform": "ios", "active": True}
     with (
         patch.object(capture, "is_capture_active", return_value=True),
         patch.object(capture, "load_capture_session", return_value=session),
@@ -315,15 +315,18 @@ def test_delayed_capture_launch_cannot_rebind_superseding_session():
     driver = Mock()
     with (
         patch.object(capture, 'is_capture_active', return_value=True),
-        patch.object(capture, 'load_capture_session', side_effect=[session, replacement]),
-        patch.object(capture, '_do_start_appium_session', return_value={'ok': True, 'udid': 'emulator-5554', 'device_name': 'Old AVD'}),
+        patch.object(capture, 'load_capture_session', side_effect=[session, session, replacement]),
+        patch.object(capture, '_do_start_appium_session', return_value={'ok': True, '_driver': driver, 'udid': 'emulator-5554', 'device_name': 'Old AVD'}),
         patch.object(capture, 'save_capture_session') as save,
-        patch.object(capture, 'clear_capture_driver', return_value=driver),
+        patch.object(capture, 'clear_capture_driver') as clear,
+        patch.object(capture, 'set_capture_driver') as publish,
     ):
         response = _run_async(capture.capture_launch(_Request()))
     assert response.status_code == 409
     save.assert_not_called()
     driver.quit.assert_called_once()
+    clear.assert_not_called()
+    publish.assert_not_called()
 
 
 def test_new_capture_start_does_not_overwrite_active_session():

@@ -1158,7 +1158,7 @@ class TestPostAndroidRealConnect:
         """adb connect 성공 → ok=True."""
         def fake_run(cmd, **kwargs):
             class R:
-                stdout = "connected to 192.168.1.100:5555"
+                stdout = "device\n" if cmd[-1] == "get-state" else "connected to 192.168.1.100:5555"
                 returncode = 0
             return R()
 

@@ -7,6 +7,9 @@ routes/pipeline.py — 파이프라인 실행 엔드포인트.
 from __future__ import annotations
 
 import os
+import math
+import time
+from datetime import datetime, timezone
 import subprocess
 import sys
 import threading
@@ -30,6 +33,8 @@ from shared import (  # noqa: E402
     _test_runs,
     _execution_reservation,
     save_running_pids,
+    _pipeline_batches,
+    _PidOnlyProc,
 )
 from utils.state import (  # noqa: E402
     is_capture_active,
@@ -46,27 +51,152 @@ if str(PROJECT_ROOT) not in sys.path:
 from scripts.run_results import read_execution_result, write_execution_result  # noqa: E402
 
 router = APIRouter()
-_pipeline_batches: dict[str, dict] = {}
 _SERIAL_FOLDER_GAP_SECONDS = 12
+_run_id_lock = threading.Lock()
+_last_run_ms = 0
+
+
+def _stage_timeout():
+    try:
+        value = float(os.environ.get("QA_STAGE_TIMEOUT_SECONDS", "1800"))
+        return value if math.isfinite(value) and value > 0 else 1800
+    except ValueError:
+        return 1800
+
+
+def _track_stage(proc, run):
+    proc.deadline_at = time.time() + _stage_timeout()
+    run.update(status="running", deadline_at=proc.deadline_at)
+
+
+def _wait_stage(proc, run):
+    timeout = max(0, getattr(proc, "deadline_at", time.time() + _stage_timeout()) - time.time())
+    deadline = time.monotonic() + timeout
+    while True:
+        try:
+            proc.wait(timeout=min(1, max(0, deadline - time.monotonic())))
+            if proc.returncode is not None and proc.returncode < 0 and not run.get("cancelled"):
+                with _process_lock:
+                    run.update(cancelled=True, stopping=True, ok=False, status="interrupted",
+                               error=f"단계 프로세스가 신호로 종료되었습니다 ({proc.returncode})")
+                    save_running_pids()
+                _terminate_group(proc)
+                with _process_lock:
+                    run["stopping"] = False
+                    save_running_pids()
+            return
+        except subprocess.TimeoutExpired:
+            if time.monotonic() < deadline:
+                with _process_lock:
+                    save_running_pids()
+                continue
+            with _process_lock:
+                run.update(cancelled=True, stopping=True, ok=False, status="timed_out",
+                           error="단계 실행 제한 시간을 초과했습니다")
+                save_running_pids()
+            _terminate_group(proc)
+            with _process_lock:
+                run["stopping"] = False
+                save_running_pids()
+            return
+
+
+def reconcile_recovered_execution():
+    """Reconcile one recovered snapshot. Never resume subsequent stages."""
+    with _process_lock:
+        run = _execution_reservation.get("run")
+        procs = list(_running.items())
+        logs = {key: meta for key, meta in _test_runs.items() if not meta.get("done")}
+        batches = {key: batch for key, batch in _pipeline_batches.items() if not batch.get("done")}
+        if any(not isinstance(proc, _PidOnlyProc) for _, proc in procs):
+            return True  # A new live worker owns subsequent lifecycle transitions.
+    for key, proc in procs:
+        if proc.poll() is None:
+            if proc.deadline_at and time.time() >= proc.deadline_at and proc.owned():
+                if run:
+                    run.update(status="timed_out", cancelled=True, stopping=True,
+                               error="단계 실행 제한 시간을 초과했습니다", ok=False)
+                try:
+                    _terminate_group(proc)
+                except Exception as exc:
+                    if run:
+                        run["error"] = str(exc)
+                    continue
+                if run:
+                    run["stopping"] = False
+            else:
+                continue
+        with _process_lock:
+            if _running.get(key) is proc:
+                _running.pop(key, None)
+    with _process_lock:
+        if _execution_reservation.get("run") is not run:
+            return True
+        if _running:
+            save_running_pids()
+            return False
+        status = "timed_out" if run and run.get("status") == "timed_out" else "interrupted"
+        error = "단계 실행 제한 시간을 초과했습니다" if status == "timed_out" else "서버 재시작으로 작업이 중단되었습니다. 남은 단계는 자동 실행하지 않습니다"
+        if run and status != "timed_out" and not any(batch is run for batch in _pipeline_batches.values()):
+            completed = read_execution_result(PROJECT_ROOT, run.get("run_id", "")) or {}
+            if completed.get("status") in ("passed", "failed", "cancelled", "timed_out"):
+                status, error = completed["status"], completed.get("error")
+        if run:
+            run.update(done=True, ok=status == "passed", status=status, error=error, stopping=False)
+            _finalize_run(run, error or "서버 재시작 후 완료 결과를 복원했습니다")
+        for key, meta in logs.items():
+            if _test_runs.get(key) is not meta or meta.get("done"):
+                continue
+            result = read_execution_result(PROJECT_ROOT, meta.get("run_id", "")) or {}
+            meta.update(done=True, returncode=result.get("exit_code"),
+                        status=result.get("status", status), error=result.get("error", error))
+        for key, batch in batches.items():
+            if _pipeline_batches.get(key) is batch and not batch.get("done"):
+                batch.update(done=True, ok=False, status=status, error=error)
+        _execution_reservation.clear()
+        save_running_pids()
+    return True
+
+
+def monitor_recovered_execution():
+    if reconcile_recovered_execution():
+        return
+    def monitor():
+        while not reconcile_recovered_execution():
+            time.sleep(1)
+    threading.Thread(target=monitor, daemon=True).start()
 
 
 def _reserve(platform, step):
     with _process_lock:
-        if _execution_reservation or any(p.poll() is None for p in _running.values()):
+        import shared
+        if shared._capture_launch_active or _execution_reservation or any(p.poll() is None for p in _running.values()):
             return None
         if is_capture_active(None):
             return None
         run = {"id": uuid.uuid4().hex, "platform": platform, "step": step,
-               "cancelled": False, "done": False}
+               "cancelled": False, "done": False, "run_id": _gen_run_id(platform),
+               "started_at": datetime.now(timezone.utc).isoformat()}
         _execution_reservation.update(run=run)
+        try:
+            save_running_pids()
+        except Exception:
+            _execution_reservation.clear()
+            raise
         return run
 
 
 def _release(run):
     with _process_lock:
         run["done"] = True
-        if _execution_reservation.get("run") is run and not run.get("stopping"):
+        for meta in _test_runs.values():
+            if meta.get("run_id") == run.get("run_id") and (run.get("status") in ("timed_out", "interrupted") or run.get("error")):
+                status = run.get("status") if run.get("status") in ("timed_out", "interrupted") else "failed"
+                meta.update(status=status, error=run.get("error"), done=not run.get("stopping"),
+                            returncode=None if status != "failed" else run.get("exit_code", -1))
+        if _execution_reservation.get("run") is run and not run.get("stopping") and not any(p.poll() is None for p in _running.values()):
             _execution_reservation.clear()
+        save_running_pids()
 
 
 def _finalize_run(run, error=None):
@@ -75,14 +205,42 @@ def _finalize_run(run, error=None):
     if not run_id or (not run.get("cancelled") and not error):
         return
     result = read_execution_result(PROJECT_ROOT, run_id) or {}
+    if run.get("recovered_after_restart") and run.get("status") != "timed_out" and result.get("status") in ("passed", "failed", "cancelled", "timed_out"):
+        result["recovered_after_restart"] = True
+        if run.get("status") == "interrupted" and any(batch is run for batch in _pipeline_batches.values()):
+            result.update(workflow_status="interrupted", workflow_error=run.get("error") or error)
+        write_execution_result(PROJECT_ROOT, run_id, result)
+        return
     result.setdefault("execute_results", {"passed": [], "errors": [], "summary": {}})
-    result.update(status="failed" if error else "cancelled", exit_code=-1 if error else -15)
+    status = run.get("status") if run.get("status") in ("timed_out", "interrupted") else ("failed" if error else "cancelled")
+    result.update(status=status, exit_code=None if status in ("timed_out", "interrupted") else (run.get("exit_code", -1) if error else -15),
+                  platform=run.get("platform", result.get("platform")),
+                  started_at=result.get("started_at", run.get("started_at")),
+                  finished_at=datetime.now(timezone.utc).isoformat(),
+                  recovered_after_restart=bool(run.get("recovered_after_restart")))
     result["execute_results"]["exit_code"] = result["exit_code"]
-    if error:
-        result["error"] = error
+    if error or run.get("error"):
+        result["error"] = error or run["error"]
     else:
         result["error"] = "실행이 취소되었습니다"
     write_execution_result(PROJECT_ROOT, run_id, result)
+
+
+def _cleanup_failed_worker(run):
+    """A spawn may succeed before persistence/thread startup fails."""
+    with _process_lock:
+        if _execution_reservation.get("run") is not run or run.get("stopping"):
+            return
+        procs = list(_running.items())
+        if procs:
+            run["stopping"] = True
+    for _, proc in procs:
+        _terminate_group(proc)
+    with _process_lock:
+        for key, proc in procs:
+            if _running.get(key) is proc:
+                del _running[key]
+        run["stopping"] = False
 
 
 def _start_worker(run, target, args=()):
@@ -94,6 +252,8 @@ def _start_worker(run, target, args=()):
             raise
         finally:
             try:
+                if run.get("error"):
+                    _cleanup_failed_worker(run)
                 if not run.get("stopping"):
                     _finalize_run(run, None if run["cancelled"] else run.get("error"))
             finally:
@@ -102,7 +262,7 @@ def _start_worker(run, target, args=()):
         threading.Thread(target=work, daemon=True).start()
     except Exception as exc:
         try:
-            _stop_execution()
+            _cleanup_failed_worker(run)
         finally:
             _finalize_run(run, str(exc))
             _release(run)
@@ -125,6 +285,8 @@ def _terminate_group(proc):
             proc.wait(timeout=3)
         return
     # Every child is started in its own session: its PID is also its PGID.
+    if isinstance(proc, _PidOnlyProc) and not proc.owned():
+        raise RuntimeError("복구된 프로세스의 소유권을 확인할 수 없어 종료하지 않았습니다")
     pgid = proc.pid
     try:
         os.killpg(pgid, 15)
@@ -136,6 +298,8 @@ def _terminate_group(proc):
                 os.killpg(pgid, signal_number)
             except ProcessLookupError:
                 return
+            except PermissionError:
+                pass  # Still require a disappearance probe within the bounded wait.
         deadline = time.monotonic() + 3
         while time.monotonic() < deadline:
             proc.poll()  # reap the direct child before probing its process group
@@ -143,6 +307,8 @@ def _terminate_group(proc):
                 os.killpg(pgid, 0)
             except ProcessLookupError:
                 return
+            except PermissionError:
+                pass  # macOS can deny probes briefly while a signalled group exits.
             time.sleep(0.05)
     raise RuntimeError("프로세스 종료를 확인하지 못했습니다")
 
@@ -268,9 +434,11 @@ async def get_devices(platform: str = "android"):
 
 
 def _gen_run_id(platform: str) -> str:
-    """PRD §3-2: run_{platform}_{YYYYMMDD}_{HHMMSS}_{mmm}."""
-    from datetime import datetime
-    stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
+    """Keep the public millisecond format unique even if the clock stalls."""
+    global _last_run_ms
+    with _run_id_lock:
+        _last_run_ms = max(int(time.time() * 1000), _last_run_ms + 1)
+        stamp = datetime.fromtimestamp(_last_run_ms / 1000).strftime("%Y%m%d_%H%M%S_%f")[:-3]
     return f"run_{platform}_{stamp}"
 
 
@@ -481,8 +649,8 @@ async def post_run(request: Request):
             run_env = _build_run_env(run_id, platform, obs_keep,
                                      previous_result["device_mode"], previous_result.get("device_udid", ""))
         else:
-            run_id = None
-            run_env = None
+            run_id = run["run_id"]
+            run_env = _build_run_env(run_id, platform, obs_keep, device_mode, device_udid)
 
         run["run_id"] = run_id
         with _process_lock:
@@ -498,12 +666,17 @@ async def post_run(request: Request):
                     **extra_popen,
                 )
 
+            _track_stage(proc, run)
             _running[step] = proc
             _test_runs[log_name] = {"key": step, "done": False, "returncode": None, "run_id": run_id}
             save_running_pids()
     except Exception as exc:
-        _finalize_run(run, None if run["cancelled"] else str(exc))
-        _release(run)
+        run["error"] = str(exc)
+        try:
+            _cleanup_failed_worker(run)
+            _finalize_run(run, None if run["cancelled"] else str(exc))
+        finally:
+            _release(run)
         raise
 
     broadcast_timeline_sync({
@@ -512,7 +685,11 @@ async def post_run(request: Request):
     })
 
     def _wait_and_notify(p, s, plat, lname, rid):
-        p.wait()
+        _wait_stage(p, run)
+        if p.returncode and not run.get("cancelled") and s != "execute":
+            run["error"] = f"{s} 단계 실행 실패 (종료 코드 {p.returncode})"
+            run["exit_code"] = p.returncode
+            _finalize_run(run, run["error"])
         with _process_lock:
             if _running.get(s) is p:
                 del _running[s]
@@ -573,6 +750,14 @@ async def post_run_all(request: Request):
                  folder=tc_folders[0], step="", log="")
     with _process_lock:
         _pipeline_batches[batch_id] = batch
+        try:
+            save_running_pids()
+        except Exception:
+            _pipeline_batches.pop(batch_id, None)
+            if _execution_reservation.get("run") is run:
+                _execution_reservation.clear()
+            run["done"] = True
+            raise
 
     def _spawn(step, folder="", extra=None, log_suffix="", env=None, script_spec=None):
         script_rel, extra_args_tmpl, log_name = script_spec or SCRIPT_MAP[step]
@@ -609,6 +794,7 @@ async def post_run_all(request: Request):
                     env=env,
                     **extra_popen,
                 )
+            _track_stage(proc, run)
             _running[step] = proc
             _test_runs[lname] = {"key": step, "done": False, "returncode": None, "run_id": run.get("run_id")}
             save_running_pids()
@@ -616,7 +802,11 @@ async def post_run_all(request: Request):
             "type": "pipeline_stage_start", "source": "pipeline",
             "platform": platform, "stage": step, "log": lname,
         })
-        proc.wait()
+        _wait_stage(proc, run)
+        if proc.returncode and not run.get("cancelled") and step in ("analyze", "generate", "lint"):
+            run["error"] = f"{step} 단계 실행 실패 (종료 코드 {proc.returncode})"
+            run["exit_code"] = proc.returncode
+            _finalize_run(run, run["error"])
         with _process_lock:
             if _running.get(step) is proc:
                 del _running[step]
@@ -637,7 +827,10 @@ async def post_run_all(request: Request):
                 "scripts/jira_reporter.py", ["--platform", "{platform}"], "run_report.txt"))
 
     def _run_pipeline(folder):
-        run["run_id"] = None
+        run.pop("error", None)
+        run.pop("exit_code", None)
+        run.pop("status", None)
+        run["run_id"] = _gen_run_id(platform)
         run_id = None
         run_env = None
 
@@ -645,8 +838,7 @@ async def post_run_all(request: Request):
             """Execute with one logical run_id and a child-only environment."""
             nonlocal run_id, run_env
             if run_id is None:
-                run_id = _gen_run_id(platform)
-                run["run_id"] = run_id
+                run_id = run["run_id"]
                 run_env = _build_run_env(
                     run_id, platform, obs_keep, device_mode, device_udid
                 )
@@ -671,7 +863,7 @@ async def post_run_all(request: Request):
             if step == "execute":
                 rc, _ = _execute_with_obs()
             else:
-                rc, _ = _spawn(step, folder=folder)
+                rc, _ = _spawn(step, folder=folder, env=_build_run_env(run["run_id"], platform, obs_keep, device_mode, device_udid))
             if batch["cancelled"]:
                 return False
             if rc != 0 and step != "execute":
@@ -713,6 +905,7 @@ async def post_run_all(request: Request):
                     # Retain the last visible step while waiting between folders,
                     # so its cancel control still addresses this active batch.
                     batch.update(folder_index=idx, folder=folder, log="")
+                    save_running_pids()
                 if idx > 0:
                     # 이전 Appium/UiAutomator2 세션이 완전히 종료된 후 다음 세션 시작
                     _time.sleep(_SERIAL_FOLDER_GAP_SECONDS)
@@ -777,7 +970,19 @@ async def post_run_test(request: Request):
     run["run_id"] = run_id
     log_path = LOGS_DIR / log_name
     with _process_lock:
+        previous_meta = _test_runs.get(log_name)
         _test_runs[log_name] = {"key": run_key, "done": False, "returncode": None, "run_id": run_id}
+        try:
+            save_running_pids()
+        except Exception:
+            if previous_meta is None:
+                _test_runs.pop(log_name, None)
+            else:
+                _test_runs[log_name] = previous_meta
+            if _execution_reservation.get("run") is run:
+                _execution_reservation.clear()
+            run["done"] = True
+            raise
 
     def spawn(args, mode="a", env=None):
         popen_opts = {"start_new_session": True} if sys.platform != "win32" else {}
@@ -793,9 +998,10 @@ async def post_run_test(request: Request):
                     env=env,
                     **popen_opts,
                 )
+            _track_stage(proc, run)
             _running[run_key] = proc
             save_running_pids()
-        proc.wait()
+        _wait_stage(proc, run)
         with _process_lock:
             if _running.get(run_key) is proc:
                 del _running[run_key]
@@ -897,6 +1103,7 @@ def _stop_execution(step=None):
                 procs.append(proc)
         if run:
             _execution_reservation["stopping_procs"] = procs
+        save_running_pids()
     # Keep ownership and group identities when termination cannot be confirmed.
     for proc in procs:
         _terminate_group(proc)
@@ -908,9 +1115,15 @@ def _stop_execution(step=None):
         if run:
             _execution_reservation.pop("stopping_procs", None)
             run["stopping"] = False
+            if run.get("recovered_after_restart"):
+                run["done"] = True
+                for meta in _test_runs.values():
+                    if not meta.get("done"):
+                        meta.update(done=True, returncode=None, status="cancelled", error="실행이 취소되었습니다")
             if run["done"] and _execution_reservation.get("run") is run:
                 _finalize_run(run)
                 _execution_reservation.clear()
+        save_running_pids()
     return bool(run or procs)
 
 
@@ -950,7 +1163,9 @@ async def post_run_log(request: Request):
         else (proc.returncode if (proc and proc.poll() is not None) else None)
     )
 
-    response: dict = {"ok": True, "log": content, "done": done, "exit_code": exit_code}
+    response: dict = {"ok": True, "log": content, "done": done, "exit_code": exit_code,
+                      "run_id": (test_meta or {}).get("run_id"),
+                      "status": (test_meta or {}).get("status"), "error": (test_meta or {}).get("error")}
     if done:
         result = read_execution_result(PROJECT_ROOT, test_meta.get("run_id", "")) if test_meta else None
         execute_results = (result or {}).get("execute_results", {})
@@ -958,8 +1173,8 @@ async def post_run_log(request: Request):
             "passed": execute_results.get("passed", []),
             "errors": execute_results.get("errors", []),
             "summary": execute_results.get("summary", {}),
-            "status": (result or {}).get("status"),
-            "error": (result or {}).get("error"),
+            "status": (result or {}).get("status", (test_meta or {}).get("status")),
+            "error": (result or {}).get("error", (test_meta or {}).get("error")),
         }
     return JSONResponse(response)
 

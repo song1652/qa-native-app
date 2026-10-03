@@ -14,7 +14,6 @@ try:
         PROJECT_ROOT,
         clear_capture_driver,
         get_capture_driver as _get_capture_driver,
-        set_capture_driver,
     )
     from utils.system import get_default_device
     from utils.state import load_capture_session
@@ -24,16 +23,38 @@ except ModuleNotFoundError:
         PROJECT_ROOT,
         clear_capture_driver,
         get_capture_driver as _get_capture_driver,
-        set_capture_driver,
     )
     from agents.dashboard.utils.system import get_default_device
     from agents.dashboard.utils.state import load_capture_session
 
 
+CAPTURE_LAUNCH_TIMEOUTS = {"android": 120, "ios": 400}
+CAPTURE_COMMAND_TIMEOUT = 8
+
+
+def _remote_driver(appium_wd, options, platform):
+    # Bound transport independently of the HTTP endpoint. Never repeat writes.
+    from appium.webdriver.client_config import AppiumClientConfig
+    config = AppiumClientConfig(
+        remote_server_addr="http://localhost:4723",
+        timeout=390 if platform == "ios" else 90,
+        init_args_for_pool_manager={"init_args_for_pool_manager": {"retries": 0}},
+    )
+    driver = appium_wd.Remote("http://localhost:4723", options=options, client_config=config)
+    config.timeout = CAPTURE_COMMAND_TIMEOUT
+    return driver
+
+
+def _launch_cancelled(session):
+    event = session.get("_launch_cancelled")
+    return ((event is not None and event.is_set())
+            or _time.monotonic() >= session.get("_launch_deadline", float("inf")))
+
+
 def get_capture_driver():
     """Reject a driver whose identity differs from the saved Capture target."""
     driver = _get_capture_driver()
-    if driver is None:
+    if driver is None or getattr(driver, "_capture_disconnected", False) is True:
         return None
     session = load_capture_session()
     udid = session.get("udid")
@@ -221,6 +242,8 @@ def _do_start_android_session(session: dict) -> dict:
     opts.set_capability("mjpegScalingFactor", _mjpeg_scale)
     opts.set_capability("mjpegServerScreenshotQuality", _mjpeg_quality)
 
+    if _launch_cancelled(session):
+        return {"ok": False, "code": "capture_launch_timeout"}
     old_driver = clear_capture_driver()
     if old_driver is not None:
         try:
@@ -228,13 +251,18 @@ def _do_start_android_session(session: dict) -> dict:
         except Exception:
             pass
 
+    if _launch_cancelled(session):
+        return {"ok": False, "code": "capture_launch_timeout"}
     try:
-        driver = appium_wd.Remote("http://localhost:4723", options=opts)
+        driver = _remote_driver(appium_wd, opts, "android")
     except Exception as exc:
         return {"ok": False, "error": _friendly_appium_error(exc)}
 
     driver._capture_binding = ("android", session.get("target", "emulator"), _udid)
-    set_capture_driver(driver)
+    # The route publishes only after checking the still-current session.
+    session["_launch_driver"] = driver
+    if _launch_cancelled(session):
+        return {"ok": False, "_driver": driver}
 
     # UiAutomator2 MJPEG 포트 포워딩 — Android 8093, iOS 9100으로 분리되어 충돌 없음
     _actual_mjpeg_port = session.get("mjpeg_port", _mjpeg_port)
@@ -242,7 +270,7 @@ def _do_start_android_session(session: dict) -> dict:
     if _udid:
         _fwd_cmd += ["-s", _udid]
     _fwd_cmd += ["forward", f"tcp:{_actual_mjpeg_port}", "tcp:7810"]
-    _subprocess.run(_fwd_cmd, capture_output=True)
+    _subprocess.run(_fwd_cmd, capture_output=True, timeout=5)
 
     _time.sleep(2)
     try:
@@ -253,6 +281,7 @@ def _do_start_android_session(session: dict) -> dict:
     _display_name = resolved["device_name"]
     return {
         "ok":                True,
+        "_driver":           driver,
         "appium_session_id": driver.session_id,
         "initial_snapshot_id": snap_id,
         "screenshot_mode":   "mjpeg",
@@ -309,6 +338,8 @@ def _do_start_ios_session(session: dict) -> dict:
     opts.set_capability("mjpegServerScreenshotQuality", 40) # JPEG 품질
     opts.set_capability("mjpegServerFramerate", 20)         # 목표 20fps
 
+    if _launch_cancelled(session):
+        return {"ok": False, "code": "capture_launch_timeout"}
     old_driver = clear_capture_driver()
     if old_driver is not None:
         try:
@@ -316,19 +347,26 @@ def _do_start_ios_session(session: dict) -> dict:
         except Exception:
             pass
 
+    if _launch_cancelled(session):
+        return {"ok": False, "code": "capture_launch_timeout"}
     try:
-        driver = appium_wd.Remote("http://localhost:4723", options=opts)
+        driver = _remote_driver(appium_wd, opts, "ios")
     except Exception as exc:
         return {"ok": False, "error": _friendly_appium_error(exc)}
 
     driver._capture_binding = ("ios", session.get("target", "emulator"), _ios_udid)
-    set_capture_driver(driver)
+    # The route publishes only after checking the still-current session.
+    session["_launch_driver"] = driver
+    if _launch_cancelled(session):
+        return {"ok": False, "_driver": driver}
 
     # WDA 안정화 대기: 기존 세션 종료 → 새 세션 초기화 전환 기간 동안
     # get_screenshot_as_base64()가 일시적으로 실패할 수 있음.
     # launch 반환 전에 스크린샷이 실제로 동작하는지 확인(최대 10초 재시도).
     _screenshot_ready = False
     for _attempt in range(10):
+        if _launch_cancelled(session):
+            break
         _time.sleep(1)
         try:
             driver.get_screenshot_as_base64()
@@ -342,6 +380,8 @@ def _do_start_ios_session(session: dict) -> dict:
 
     snap_id = None
     for _snap_attempt in range(3):
+        if _launch_cancelled(session):
+            break
         try:
             snap_id = _take_hierarchy_snapshot(session["session_id"], driver, "native")
             break
@@ -351,6 +391,7 @@ def _do_start_ios_session(session: dict) -> dict:
 
     return {
         "ok":                True,
+        "_driver":           driver,
         "appium_session_id": driver.session_id,
         "initial_snapshot_id": snap_id,
         "screenshot_mode":   "mjpeg",

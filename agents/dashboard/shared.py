@@ -204,83 +204,162 @@ _running:    dict[str, subprocess.Popen] = {}
 _test_runs:  dict[str, dict]             = {}
 # ponytail: serialize execution while pipeline state and generated files are shared.
 _execution_reservation: dict = {}
+_pipeline_batches: dict[str, dict] = {}
+_capture_launch_active = False
 
 
 def execution_active_locked() -> bool:
     """Caller holds _process_lock; includes queued work and gaps between stages."""
-    return bool(_execution_reservation) or any(p.poll() is None for p in _running.values())
+    return _capture_launch_active or bool(_execution_reservation) or any(p.poll() is None for p in _running.values())
 
 # ── 서버 재시작 후 고아 프로세스 복구 ────────────────────────────
 
 _RUNNING_PIDS_PATH = PROJECT_ROOT / "state" / "running_procs.json"
 
 
+def process_identity(pid: int) -> dict | None:
+    """PID creation time and command protect against a recycled PID (macOS/Linux)."""
+    try:
+        output = subprocess.run(
+            ["ps", "-p", str(pid), "-o", "lstart=", "-o", "pgid=", "-o", "command="],
+            capture_output=True, text=True, timeout=3,
+        ).stdout.strip().split(None, 6)
+        if len(output) != 7:
+            return None
+        return {"started": " ".join(output[:5]), "pgid": int(output[5]), "command": output[6]}
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        return None
+
+
+def process_group_members(pgid):
+    try:
+        output = subprocess.run(["ps", "-axo", "pid=,pgid=,lstart=,command="],
+                                capture_output=True, text=True, timeout=3).stdout
+        members = {}
+        for line in output.splitlines():
+            parts = line.split(None, 7)
+            if len(parts) == 8 and int(parts[1]) == pgid:
+                members[str(int(parts[0]))] = {"pgid": pgid, "started": " ".join(parts[2:7]), "command": parts[7]}
+        return members
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        return {}
+
+
 class _PidOnlyProc:
-    """서버 재시작 후 Popen 객체 없이 PID만 알 때 사용하는 경량 래퍼."""
+    """Recovered process: disappearance is not an observed child exit code."""
 
-    def __init__(self, pid: int) -> None:
+    def __init__(self, pid, identity=None, deadline_at=None, members=None):
         self.pid = pid
-        self.returncode: int | None = None
+        self.identity = identity
+        self.deadline_at = deadline_at
+        self.returncode = None
+        self.members = members or {}
 
-    def poll(self) -> int | None:
+    def owned(self):
+        current = process_identity(self.pid)
+        if current is not None:
+            return bool(self.identity and current == self.identity and current.get("pgid") == self.pid)
+        return any(process_identity(int(pid)) == identity and identity.get("pgid") == self.pid
+                   for pid, identity in self.members.items())
+
+    def poll(self):
+        current = process_identity(self.pid)
+        if current is not None and (not self.identity or current == self.identity):
+            return None
+        # A surviving descendant can still own the Appium session. Keep the
+        # reservation until the group disappears, but never signal an unverified PID.
         try:
-            os.kill(self.pid, 0)
-            return None   # 살아있음
+            os.killpg(self.pid, 0)
+            return None
         except ProcessLookupError:
-            self.returncode = -1
             return -1
         except PermissionError:
-            return None   # 다른 사용자 소유지만 살아있음
-
-    def terminate(self) -> None:
-        try:
-            os.kill(self.pid, 15)
-        except ProcessLookupError:
-            pass
+            return None
 
 
 def save_running_pids() -> None:
-    """_running의 살아있는 PID를 파일에 기록. _process_lock 안에서 호출."""
+    """Atomic logical execution snapshot. Caller holds _process_lock."""
     import json
-    data = {k: v.pid for k, v in _running.items() if v.poll() is None}
+    import tempfile
+    processes = {}
+    for key, proc in _running.items():
+        if not hasattr(proc, "identity"):
+            proc.identity = process_identity(proc.pid)
+        if not isinstance(proc, _PidOnlyProc):
+            proc.members = process_group_members(proc.pid)
+        processes[key] = {"pid": proc.pid, "identity": proc.identity, "members": proc.members,
+                          "deadline_at": getattr(proc, "deadline_at", None)}
+    data = {"version": 2, "processes": processes,
+            "reservation": {"run": _execution_reservation["run"]} if _execution_reservation.get("run") else {},
+            "test_runs": _test_runs, "batches": _pipeline_batches}
+    _RUNNING_PIDS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    temporary = None
     try:
-        tmp = _RUNNING_PIDS_PATH.with_suffix(".json.tmp")
-        tmp.write_text(json.dumps(data), encoding="utf-8")
-        tmp.replace(_RUNNING_PIDS_PATH)
-    except Exception:
-        pass
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=_RUNNING_PIDS_PATH.parent,
+                                         prefix=".running-", suffix=".tmp", delete=False) as stream:
+            temporary = Path(stream.name)
+            json.dump(data, stream, ensure_ascii=False)
+            stream.flush()
+            os.fsync(stream.fileno())
+        temporary.replace(_RUNNING_PIDS_PATH)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
 
 
 def restore_running_procs() -> dict[str, list[str]]:
-    """서버 시작 시 살아있는 PID를 복원하고 죽은 항목을 영구 제거한다."""
+    """Restore durable metadata; legacy identities block but cannot be signalled."""
     import json
-    result: dict[str, list[str]] = {"restored": [], "discarded": []}
-    if not _RUNNING_PIDS_PATH.exists():
-        return result
+    result = {"restored": [], "discarded": []}
     try:
         data = json.loads(_RUNNING_PIDS_PATH.read_text(encoding="utf-8"))
-    except Exception:
+    except (OSError, ValueError):
         return result
     if not isinstance(data, dict):
         return result
     with _process_lock:
-        for key, pid in data.items():
-            if not isinstance(key, str) or not isinstance(pid, int) or pid <= 0:
+        if data.get("version") == 2:
+            for field, target in (("test_runs", _test_runs), ("batches", _pipeline_batches)):
+                records = data.get(field)
+                if isinstance(records, dict):
+                    target.update({key: value for key, value in records.items()
+                                   if isinstance(key, str) and isinstance(value, dict)})
+            for meta in _test_runs.values():
+                meta.setdefault("key", "")
+                meta.setdefault("done", False)
+                meta.setdefault("returncode", None)
+            reservation = data.get("reservation")
+            if isinstance(reservation, dict) and isinstance(reservation.get("run"), dict):
+                _execution_reservation["run"] = reservation["run"]
+            run = _execution_reservation.get("run")
+            if run:
+                run["recovered_after_restart"] = True
+                for key, batch in _pipeline_batches.items():
+                    if batch.get("id") == run.get("id"):
+                        _pipeline_batches[key] = run
+            processes = data.get("processes", {})
+            if not isinstance(processes, dict):
+                processes = {}
+        else:
+            processes = {key: {"pid": pid} for key, pid in data.items()}
+        for key, record in processes.items():
+            pid = record.get("pid") if isinstance(record, dict) else None
+            if not isinstance(pid, int) or isinstance(pid, bool) or pid <= 0:
                 result["discarded"].append(str(key))
                 continue
-            try:
-                os.kill(pid, 0)
-                _running[key] = _PidOnlyProc(pid)
+            identity = record.get("identity")
+            identity = identity if isinstance(identity, dict) else None
+            members = record.get("members")
+            members = {key: value for key, value in members.items() if str(key).isdigit() and isinstance(value, dict)} if isinstance(members, dict) else {}
+            deadline = record.get("deadline_at")
+            import math
+            deadline = deadline if isinstance(deadline, (float, int)) and math.isfinite(deadline) and deadline > 0 else None
+            proc = _PidOnlyProc(pid, identity, deadline, members)
+            if proc.poll() is None:
+                _running[key] = proc
                 result["restored"].append(key)
-            except PermissionError:
-                _running[key] = _PidOnlyProc(pid)
-                result["restored"].append(key)
-            except ProcessLookupError:
+            else:
                 result["discarded"].append(key)
-        save_running_pids()
-    if result["restored"]:
-        labels = [f"{key}(pid={_running[key].pid})" for key in result["restored"]]
-        print(f"[Dashboard] 고아 프로세스 복구: {', '.join(labels)}")
     return result
 
 
@@ -303,11 +382,13 @@ def set_capture_driver(driver) -> None:
         _capture_driver = driver
 
 
-def clear_capture_driver():
+def clear_capture_driver(expected=None):
     """_capture_driver를 None으로 초기화하고 이전 값을 반환."""
     global _capture_driver
     with _capture_driver_lock:
         old = _capture_driver
+        if expected is not None and old is not expected:
+            return None
         _capture_driver = None
     return old
 

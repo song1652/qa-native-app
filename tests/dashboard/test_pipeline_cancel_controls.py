@@ -20,7 +20,7 @@ def test_stop_prevents_queued_batch_from_starting_next_folder(monkeypatch, tmp_p
         def __init__(self, command, **_kwargs):
             self.finished = False
             spawned.append(command)
-        def wait(self):
+        def wait(self, timeout=None):
             if when == 'running' and not stopped:
                 stopped.append(True)
                 if action == 'reset':

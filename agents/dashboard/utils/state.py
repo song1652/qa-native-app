@@ -8,6 +8,7 @@ import json
 import os
 import sys
 import threading
+import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -61,9 +62,19 @@ def load_capture_session() -> dict:
 
 
 def save_capture_session(data: dict) -> None:
-    CAPTURE_SESSION_PATH.write_text(
-        json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
+    CAPTURE_SESSION_PATH.parent.mkdir(parents=True, exist_ok=True)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=CAPTURE_SESSION_PATH.parent,
+                                         prefix=".capture-", suffix=".tmp", delete=False) as stream:
+            temporary = Path(stream.name)
+            json.dump(data, stream, ensure_ascii=False, indent=2)
+            stream.flush()
+            os.fsync(stream.fileno())
+        temporary.replace(CAPTURE_SESSION_PATH)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
 
 
 def is_capture_active(platform: str | None = None) -> bool:

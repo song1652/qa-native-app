@@ -368,6 +368,10 @@ function _obsRenderWorkspace(runId,manifest,nodeid){
   var latestEntries=(manifest.entries||[]).map(_obsLatestAttempt);
   var failed=latestEntries.filter(function(a){return a.outcome==='failed'||a.outcome==='error';}).length;
   var passed=latestEntries.filter(function(a){return a.outcome==='passed';}).length;
+  var runLabels={running:'실행 중',passed:'통과',failed:'실패',cancelled:'중단',interrupted:'중단됨',timed_out:'시간 초과',incomplete:'완료 확인 안 됨'};
+  var runLabel=runLabels[manifest.status]||'';
+  var runDetail=[manifest.recovered_after_restart?'재시작 후 복구':'',manifest.workflow_status==='interrupted'?'남은 파이프라인 중단':'',manifest.workflow_error||'',manifest.error||'',manifest.counts_complete===false?'일부 증거만 표시될 수 있습니다.':''].filter(Boolean).join(' · ');
+  var resultText=runLabel?'<b>'+esc(runLabel)+'</b>':'<b class="pass">'+passed+' 통과</b><b class="fail">'+failed+' 실패</b>';
   var casePageCount=Math.max(1,Math.ceil(filteredEntries.length/_obsCasePageSize));
   if(!sameRun){
     var selectedIndex=filteredEntries.findIndex(function(item){return item.nodeid===_obsWorkspace.nodeid;});
@@ -397,9 +401,10 @@ function _obsRenderWorkspace(runId,manifest,nodeid){
     +'<div class="obs-run-summary">'
     +'<div class="obs-summary-cell"><span class="obs-summary-label">실행 ID</span><span class="obs-summary-value">'+esc(runId)+'</span></div>'
     +'<div class="obs-summary-cell"><span class="obs-summary-label">기기</span><span class="obs-summary-value">'+esc(device)+'</span></div>'
-    +'<div class="obs-summary-cell"><span class="obs-summary-label">결과</span><span class="obs-summary-value obs-summary-result"><b class="pass">'+passed+' 통과</b><b class="fail">'+failed+' 실패</b></span></div>'
+    +'<div class="obs-summary-cell"><span class="obs-summary-label">결과</span><span class="obs-summary-value obs-summary-result">'+resultText+'</span></div>'
     +'<div class="obs-summary-cell"><span class="obs-summary-label">증거 용량</span><span class="obs-summary-value">'+_obsFormatBytes(totalBytes)+'</span></div>'
     +'<div class="obs-summary-cell"><span class="obs-summary-label">보존</span><span class="obs-summary-value">'+keepLabel+'</span></div></div>'
+    +(runDetail?'<p class="obs-run-state" role="status" style="padding:8px 16px;overflow-wrap:anywhere">'+esc(runDetail)+'</p>':'')
     +'<div class="obs-run-main"><section class="obs-run-list-panel"><div class="obs-panel-head"><strong>TC 결과</strong><span class="obs-panel-count">'+passed+' 통과</span><span class="obs-panel-hint">실패 TC 클릭 → 증거</span></div>'
     +'<div class="obs-case-filters" role="group" aria-label="TC 결과 필터">'
     +'<button type="button" class="obs-case-filter '+(_obsWorkspace.caseFilter==='all'?'active':'')+'" onclick="_obsSetCaseFilter(\'all\')">전체 '+allEntries.length+'</button>'

@@ -67,7 +67,7 @@ def test_serial_run_stays_active_until_second_folder_finishes(monkeypatch, tmp_p
             self.command = command
             calls.append(command)
 
-        def wait(self):
+        def wait(self, timeout=None):
             if "05_execute.py" in self.command[2] and "second" in self.command:
                 entered_second_execute.set()
                 assert release_second_execute.wait(3)

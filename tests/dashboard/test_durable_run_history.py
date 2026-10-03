@@ -124,11 +124,15 @@ def test_legacy_filename_uses_linked_platform_without_inventing_it(history_clien
     assert entries[1]['platform']=='ios'
 
 
-def test_unfinished_runs_are_not_history_even_if_report_exists(history_client,tmp_path):
+def test_unfinished_manifest_is_visible_without_claiming_report_success(history_client,tmp_path):
     rid='run_android_20261002_120000_000'
     manifest(tmp_path,rid,finished=None)
     report(tmp_path,'report_android_20261002_120000_001.html',run_id=rid)
-    assert history_client.get('/api/run-history').json()['entries']==[]
+    entries = history_client.get('/api/run-history').json()['entries']
+    assert len(entries) == 1
+    assert entries[0]['status'] == 'incomplete'
+    assert entries[0]['rate'] is None
+    assert entries[0]['countsComplete'] is False
 
 
 def test_reset_is_persistent_and_does_not_delete_report_or_artifact(history_client,tmp_path,monkeypatch):
@@ -156,3 +160,117 @@ def test_bad_files_are_ignored_and_latest_fifty_are_returned(history_client,tmp_
     entries=history_client.get('/api/run-history').json()['entries']
     assert len(entries)==50
     assert entries[0]['executedAt']>entries[-1]['executedAt']
+
+
+def execution_result(root, rid, **overrides):
+    directory = root / 'state/runs' / rid
+    directory.mkdir(parents=True, exist_ok=True)
+    data = {'run_id': rid, 'platform': 'android', 'status': 'failed',
+            'started_at': '2026-10-02T03:00:00+00:00',
+            'finished_at': '2026-10-02T03:00:09+00:00',
+            'execute_results': {'passed': [], 'errors': [],
+                                'summary': {'total': 0, 'passed': 0, 'failed': 0}}}
+    data.update(overrides)
+    (directory / 'execution_result.json').write_text(json.dumps(data))
+
+
+@pytest.mark.parametrize('status', ['failed', 'cancelled', 'interrupted', 'timed_out'])
+def test_result_without_manifest_or_report_is_visible(history_client, tmp_path, status):
+    rid = 'run_android_20261002_120000_000'
+    execution_result(tmp_path, rid, status=status, error='Appium disconnected', recovered_after_restart=True)
+    entries = history_client.get('/api/run-history').json()['entries']
+    assert len(entries) == 1
+    assert entries[0]['runId'] == rid
+    assert entries[0]['status'] == status
+    assert entries[0]['error'] == 'Appium disconnected'
+    assert entries[0]['recoveredAfterRestart'] is True
+    assert entries[0]['total'] == 0
+    assert entries[0]['rate'] is None
+
+
+def test_terminal_result_overrides_unfinished_manifest_and_old_success_report(history_client, tmp_path):
+    rid = 'run_android_20261002_120000_000'
+    manifest(tmp_path, rid, finished=None, outcomes=('passed',))
+    report(tmp_path, 'report_android_20261002_120000_001.html', run_id=rid)
+    execution_result(tmp_path, rid, status='timed_out', error='deadline exceeded')
+    entries = history_client.get('/api/run-history').json()['entries']
+    assert len(entries) == 1
+    entry = entries[0]
+    assert entry['status'] == 'timed_out'
+    assert entry['passed'] == 0
+    assert entry['rate'] is None
+    assert entry['firstPass'] is False
+    assert entry['countsComplete'] is False
+    assert entry['groups'] == ['settings']
+    assert entry['reportName'] == 'report_android_20261002_120000_001.html'
+
+
+def test_running_result_does_not_publish_previous_attempt_as_success(history_client, tmp_path):
+    rid = 'run_android_20261002_120000_000'
+    manifest(tmp_path, rid)
+    execution_result(tmp_path, rid, status='running', finished_at=None, recovered_after_restart=True,
+                     execute_results={'passed': ['tc.py::test_ok'], 'errors': [],
+                                      'summary': {'total': 1, 'passed': 1, 'failed': 0}})
+    entry = history_client.get('/api/run-history').json()['entries'][0]
+    assert entry['status'] == 'running'
+    assert entry['countsComplete'] is False
+    assert entry['rate'] is None
+    assert entry['recoveredAfterRestart'] is True
+
+
+def test_mismatched_result_run_id_is_ignored(history_client, tmp_path):
+    execution_result(tmp_path, 'run_android_20261002_120000_000', run_id='run_ios_20261002_120000_000')
+    assert history_client.get('/api/run-history').json()['entries'] == []
+
+
+@pytest.mark.parametrize('with_manifest', [False, True])
+def test_legacy_result_rewrite_preserves_known_execution_time(history_client, tmp_path, with_manifest):
+    import os
+    rid = 'run_android_20261002_120000_000'
+    if with_manifest:
+        manifest(tmp_path, rid)
+    report(tmp_path, 'report_android_20261002_120000_001.html', run_id=rid)
+    previous = history_client.get('/api/run-history').json()['entries'][0]
+    execution_result(tmp_path, rid, status='passed', started_at=None, finished_at=None,
+                     recovered_after_restart=True,
+                     execute_results={'passed': ['tc.py::test_ok'], 'errors': [],
+                                      'summary': {'total': 1, 'passed': 1, 'failed': 0}})
+    path = tmp_path / 'state/runs' / rid / 'execution_result.json'
+    os.utime(path, (1900000000, 1900000000))
+    restored = history_client.get('/api/run-history').json()['entries'][0]
+    assert restored['executedAt'] == previous['executedAt']
+    assert restored['duration'] == previous['duration']
+    assert restored['recoveredAfterRestart'] is True
+
+
+def test_finished_manifest_without_test_outcomes_is_not_success(history_client, tmp_path):
+    rid = 'run_android_20261002_120000_000'
+    manifest(tmp_path, rid, outcomes=())
+    entry = history_client.get('/api/run-history').json()['entries'][0]
+    assert entry['status'] == 'incomplete'
+    assert entry['countsComplete'] is False
+    assert entry['rate'] is None
+
+
+def test_unaccounted_terminal_counts_are_not_complete(history_client, tmp_path):
+    rid = 'run_android_20261002_120000_000'
+    execution_result(tmp_path, rid, status='passed', execute_results={
+        'passed': ['tc.py::test_ok'], 'errors': [],
+        'summary': {'total': 5, 'passed': 2, 'failed': 0}})
+    entry = history_client.get('/api/run-history').json()['entries'][0]
+    assert entry['countsComplete'] is False
+    assert entry['rate'] is None
+    assert entry['skipped'] == 0
+
+
+def test_completed_folder_retains_pass_and_exposes_interrupted_remaining_work(history_client, tmp_path):
+    rid = 'run_android_20261002_120000_000'
+    execution_result(tmp_path, rid, status='passed', recovered_after_restart=True,
+                     workflow_status='interrupted', workflow_error='남은 단계는 자동 실행하지 않습니다',
+                     execute_results={'passed': ['tc.py::test_ok'], 'errors': [],
+                                      'summary': {'total': 1, 'passed': 1, 'failed': 0}})
+    entry = history_client.get('/api/run-history').json()['entries'][0]
+    assert entry['status'] == 'passed'
+    assert entry['passed'] == 1 and entry['rate'] == 100
+    assert entry['workflowStatus'] == 'interrupted'
+    assert entry['workflowError'] == '남은 단계는 자동 실행하지 않습니다'

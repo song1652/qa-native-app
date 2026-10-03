@@ -15,14 +15,14 @@ import sys
 import time
 import uuid
 import xml.etree.ElementTree as ET
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
 STATE_DIR = ROOT / "state"
 if str(Path(__file__).parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).parent))
-from run_results import execution_result_path, write_execution_result
+from run_results import execution_result_path, read_execution_result, write_execution_result
 
 
 def _find_adb() -> str:
@@ -397,11 +397,13 @@ def main():
 
     # run_id 발급 (QA_RUN_ID가 이미 설정된 경우 — pipeline.py에서 발급 — 재사용)
     run_id = os.environ.get("QA_RUN_ID", "").strip() or f"run_{platform}_{report_stamp}"
+    previous = read_execution_result(ROOT, run_id) or {}
 
     execute_results = {"exit_code": None, "errors": [], "passed": [],
                        "summary": {"total": 0, "passed": 0, "failed": 0}}
     outcome = {
         "status": "running", "exit_code": None, "execute_results": execute_results,
+        "started_at": previous.get("started_at") or datetime.now(timezone.utc).isoformat(),
         "platform": platform,
         "device_mode": args.mode or os.environ.get("DEVICE_MODE") or (
             "simulator" if platform == "ios" else "emulator"
@@ -415,7 +417,8 @@ def main():
         exit_code = 1
         outcome["error"] = str(exc)
         print(f"[05_execute] ERROR: {exc}")
-    outcome.update(status="passed" if exit_code == 0 else "failed", exit_code=exit_code)
+    outcome.update(status="passed" if exit_code == 0 else "failed", exit_code=exit_code,
+                   finished_at=datetime.now(timezone.utc).isoformat())
     outcome["execute_results"]["exit_code"] = exit_code
     write_execution_result(ROOT, run_id, outcome)
     # Compatibility only: log-specific consumers read the run-owned file above.

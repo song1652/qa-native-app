@@ -127,3 +127,52 @@ def test_dashboard_trend_and_summary_use_server_history_without_local_cache(over
     assert page.locator('#overview-rate-chart svg').count() == 1
     assert page.locator('#overview-quick-status').inner_text() == '실패 2/3'
     assert page.evaluate("localStorage.getItem('qa-native-app.run-history')") is None
+
+
+def test_interrupted_history_stays_visible_without_success_badges_or_rates(history_page):
+    page, state = history_page
+    state['entries'] = [
+        dict(ENTRIES[1], status='interrupted', recoveredAfterRestart=True,
+             countsComplete=False, error='재시작 중 실행 종료', groups=['recovered']),
+        dict(ENTRIES[1], status='timed_out', countsComplete=False,
+             error='제한 시간 초과', groups=['timeout']),
+        dict(ENTRIES[1], status='running', countsComplete=False, groups=['active']),
+        dict(ENTRIES[1], status='incomplete', countsComplete=False, groups=['unknown']),
+    ]
+    page.locator('[data-view="history"]').click()
+    page.wait_for_function("document.getElementById('history-total').textContent === '4'")
+    assert page.locator('.history-result').all_text_contents() == ['중단됨', '시간 초과', '실행 중', '완료 확인 안 됨']
+    assert page.locator('.history-pass').all_text_contents() == ['—'] * 4
+    assert '재시작 후 복구' in page.locator('#history-list').inner_text()
+    assert '재시작 중 실행 종료' in page.locator('#history-list').inner_text()
+    assert page.locator('#history-rate').inner_text() == '—'
+    assert page.evaluate('renderOverviewRateChart(loadRunHistory()).includes("overview-chart-point")') is False
+    assert page.evaluate('overviewResult(loadRunHistory()[0]).kind') == 'warn'
+
+
+def test_evidence_workspace_explains_interruption_without_artifacts(navigation_page):
+    from pathlib import Path
+    page = navigation_page
+    page.add_script_tag(path=str(Path(__file__).parents[2] / 'agents/dashboard/static/observability.js'))
+    page.evaluate("const host=document.createElement('div');host.id='quick-generated-result';document.body.append(host)")
+    page.evaluate("""_obsRenderWorkspace('run_android_20261002_120000_000', {
+      platform:'android',status:'interrupted',error:'연결 중단',
+      recovered_after_restart:true,counts_complete:false,counts:{total:0,passed:0,failed:0},entries:[]
+    })""")
+    assert '중단됨' in page.locator('.obs-summary-result').inner_text()
+    assert '연결 중단' in page.locator('.obs-run-state').inner_text()
+    assert '재시작 후 복구' in page.locator('.obs-run-state').inner_text()
+    assert page.locator('.obs-run-case').count() == 0
+
+
+def test_completed_folder_shows_remaining_pipeline_interruption(history_page):
+    page, state = history_page
+    state['entries'] = [dict(ENTRIES[1], recoveredAfterRestart=True,
+                             workflowStatus='interrupted', workflowError='남은 단계는 자동 실행하지 않습니다')]
+    page.locator('[data-view="history"]').click()
+    page.wait_for_function("document.getElementById('history-total').textContent === '1'")
+    assert page.locator('.history-result').inner_text() == '통과'
+    assert page.locator('.history-pass').inner_text() == '100%'
+    assert '남은 파이프라인 중단' in page.locator('#history-list').inner_text()
+    assert '남은 단계는 자동 실행하지 않습니다' in page.locator('#history-list').inner_text()
+    assert '남은 파이프라인 중단' in page.evaluate('renderOverviewTrend()')

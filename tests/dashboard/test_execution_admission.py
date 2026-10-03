@@ -218,7 +218,9 @@ def test_next_folder_preflight_log_never_inherits_previous_result(harness, monke
     monkeypatch.setattr(pipeline.subprocess, 'Popen', Process)
     client.post('/api/run_all', json={'tc_folders': ['one', 'two'], 'from_tc_studio': True})
     jobs[0]()
-    assert pipeline._test_runs['run_generate.txt']['run_id'] is None
+    current_id = pipeline._test_runs['run_generate.txt']['run_id']
+    assert current_id
+    assert current_id != pipeline._test_runs['run_execute.txt']['run_id']
     assert client.post('/api/run_log', json={'log': 'run_generate.txt'}).json()['result']['summary'] == {}
 
 
@@ -254,13 +256,19 @@ def test_spawn_exception_finalizes_failed_result_with_reason(harness, monkeypatc
     assert polled['result']['summary'] == {}
 
 
-def test_analyze_spawn_exception_does_not_create_execution_record(harness, monkeypatch, tmp_path):
+def test_analyze_spawn_exception_records_failed_stage_without_test_counts(harness, monkeypatch, tmp_path):
     client, _, _ = harness
     def fail(*args, **kwargs): raise OSError('spawn unavailable')
     monkeypatch.setattr(pipeline.subprocess, 'Popen', fail)
     with pytest.raises(OSError):
         client.post('/api/run', json={'step': 'analyze'})
-    assert not (tmp_path / 'state' / 'runs').exists()
+    import json
+    records = list((tmp_path / 'state' / 'runs').glob('*/execution_result.json'))
+    assert len(records) == 1
+    result = json.loads(records[0].read_text())
+    assert result['status'] == 'failed'
+    assert result['error'] == 'spawn unavailable'
+    assert result['execute_results']['summary'] == {}
 
 
 def test_standalone_heal_reuses_owned_run_and_target(harness, monkeypatch, tmp_path):
@@ -293,3 +301,117 @@ def test_standalone_heal_rejects_missing_or_different_execution(harness, monkeyp
     assert client.post('/api/run', json=body).status_code == 409
     assert commands == []
     assert not pipeline._execution_reservation
+
+
+def test_failed_generation_is_recorded_before_next_folder_without_leaking_error(harness, monkeypatch, tmp_path):
+    from scripts.run_results import write_execution_result, read_execution_result
+    client, jobs, commands = harness
+    ids = {}
+    base = pipeline.subprocess.Popen
+    class Process(base):
+        def __init__(self, command, **kwargs):
+            super().__init__(command, **kwargs)
+            self.command, self.env = command, kwargs['env']
+        def wait(self, timeout=None):
+            rid = self.env['QA_RUN_ID']
+            if '02_generate.py' in self.command[2]:
+                folder = self.command[self.command.index('--tc-dir') + 1]
+                ids[folder] = rid
+                if folder == 'android/two':
+                    assert read_execution_result(tmp_path, ids['android/one'])['status'] == 'failed'
+                self.returncode = 1 if folder == 'android/one' else 0
+            else:
+                self.returncode = 0
+                if '05_execute.py' in self.command[2]:
+                    write_execution_result(tmp_path, rid, {'status': 'passed', 'exit_code': 0,
+                        'execute_results': {'summary': {'passed': 1, 'failed': 0}}})
+            return self.returncode
+    monkeypatch.setattr(pipeline.subprocess, 'Popen', Process)
+    response = client.post('/api/run_all', json={'tc_folders': ['one', 'two'], 'from_tc_studio': True})
+    jobs[0]()
+    failed = read_execution_result(tmp_path, ids['android/one'])
+    passed = read_execution_result(tmp_path, ids['android/two'])
+    assert ids['android/one'] != ids['android/two']
+    assert failed['status'] == 'failed' and failed['execute_results']['summary'] == {}
+    assert passed['status'] == 'passed' and not passed.get('error')
+    assert pipeline._test_runs['run_generate.txt']['run_id'] == ids['android/two']
+    assert pipeline._pipeline_batches[response.json()['batch_id']]['ok'] is False
+
+
+def test_postspawn_persistence_failure_terminates_child_and_releases_slot(harness, monkeypatch):
+    client, jobs, commands = harness
+    saves = [0]
+    stopped = []
+    def save():
+        saves[0] += 1
+        if saves[0] > 1:
+            raise OSError('disk full')
+    def stop(proc):
+        stopped.append(proc)
+        proc.returncode = -15
+    monkeypatch.setattr(pipeline, 'save_running_pids', save)
+    monkeypatch.setattr(pipeline, '_terminate_group', stop)
+    with pytest.raises(OSError, match='disk full'):
+        client.post('/api/run', json={'step': 'generate'})
+    assert len(stopped) == 1
+    assert pipeline._running == {}
+    assert not pipeline._execution_reservation
+    assert jobs == []
+
+
+def test_single_preflight_nonzero_exit_has_owned_failure(harness, monkeypatch, tmp_path):
+    from scripts.run_results import read_execution_result
+    client, jobs, commands = harness
+    base = pipeline.subprocess.Popen
+    class Process(base):
+        def wait(self, timeout=None):
+            self.returncode = 2
+            return 2
+    monkeypatch.setattr(pipeline.subprocess, 'Popen', Process)
+    response = client.post('/api/run', json={'step': 'lint'})
+    jobs[0]()
+    meta = pipeline._test_runs[response.json()['log']]
+    result = read_execution_result(tmp_path, meta['run_id'])
+    assert result['status'] == 'failed'
+    assert result['exit_code'] == 2
+    assert meta['done'] and meta['returncode'] == 2
+    assert result['execute_results']['summary'] == {}
+
+
+def test_postspawn_persistence_failure_keeps_guard_if_termination_unconfirmed(harness, monkeypatch):
+    client, jobs, commands = harness
+    saves = [0]
+    def save():
+        saves[0] += 1
+        if saves[0] > 1:
+            raise OSError('disk full')
+    def stop(proc):
+        raise RuntimeError('termination unconfirmed')
+    monkeypatch.setattr(pipeline, 'save_running_pids', save)
+    monkeypatch.setattr(pipeline, '_terminate_group', stop)
+    with pytest.raises(OSError, match='disk full'):
+        client.post('/api/run', json={'step': 'generate'})
+    assert pipeline._execution_reservation['run']['stopping'] is True
+    assert pipeline._running['generate'].poll() is None
+    assert jobs == []
+
+
+@pytest.mark.parametrize('route,body', [
+    ('/api/run_all', {'platform': 'android', 'tc_folders': ['one']}),
+    ('/api/run_test', {'platform': 'android', 'test_folder': 'one'}),
+])
+def test_preworker_metadata_failure_releases_unstarted_execution(harness, monkeypatch, route, body):
+    client, jobs, commands = harness
+    saves = [0]
+    def fail_metadata_save():
+        saves[0] += 1
+        if saves[0] == 2:
+            raise OSError('metadata disk full')
+    monkeypatch.setattr(pipeline, 'save_running_pids', fail_metadata_save)
+    with pytest.raises(OSError, match='metadata disk full'):
+        client.post(route, json=body)
+    assert not pipeline._execution_reservation
+    assert not pipeline._running
+    assert jobs == [] and commands == []
+    assert not any(not item.get('done') for item in pipeline._pipeline_batches.values())
+    assert not any(not item.get('done') for item in pipeline._test_runs.values())

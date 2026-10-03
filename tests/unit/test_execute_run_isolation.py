@@ -116,3 +116,23 @@ def test_execution_result_preserves_target_context_on_preflight_failure(execute,
     saved = outcome(execute)
     assert saved['platform'] == 'android'
     assert (saved['device_mode'], saved['device_udid']) == expected
+
+
+def test_execution_records_start_and_finish_timestamps(execute, monkeypatch):
+    from datetime import datetime
+    monkeypatch.setattr(execute, 'check_android_device', lambda: False)
+    with pytest.raises(SystemExit):
+        execute.main()
+    result = outcome(execute)
+    assert datetime.fromisoformat(result['started_at']) <= datetime.fromisoformat(result['finished_at'])
+    assert datetime.fromisoformat(result['started_at']).tzinfo is not None
+
+
+def test_repeated_attempt_keeps_logical_run_start(execute, monkeypatch):
+    monkeypatch.setattr(execute, 'check_android_device', lambda: False)
+    with pytest.raises(SystemExit):
+        execute.main()
+    started = outcome(execute)['started_at']
+    with pytest.raises(SystemExit):
+        execute.main()
+    assert outcome(execute)['started_at'] == started

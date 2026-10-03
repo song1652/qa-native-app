@@ -79,10 +79,19 @@ function overviewEntries(){
 function overviewResult(entry){
   if(!entry)return {text:'—',kind:''};
   if(entry.status==='running')return {text:'실행 중',kind:'warn'};
+  if(entry.status==='timed_out')return {text:'시간 초과',kind:'warn'};
+  if(entry.status==='interrupted')return {text:'중단됨',kind:'warn'};
+  if(entry.status==='incomplete')return {text:'완료 확인 안 됨',kind:'warn'};
   if(['cancelled','canceled','stopped','aborted'].indexOf(entry.status)>=0)return {text:'중단',kind:'warn'};
   if(Number(entry.failed)>0||entry.status==='failed')return {text:'실패',kind:'fail'};
   if(Number(entry.total)>0 && Number(entry.passed)===Number(entry.total))return {text:'통과',kind:'pass'};
   return {text:'정보 없음',kind:''};
+}
+function runCountsComplete(entry){
+  return entry.countsComplete!==false&&['running','timed_out','interrupted','incomplete','cancelled','canceled','stopped','aborted'].indexOf(entry.status)<0;
+}
+function runHistoryDetail(entry){
+  return [entry.recoveredAfterRestart?'재시작 후 복구':'',entry.workflowStatus==='interrupted'?'남은 파이프라인 중단':'',entry.workflowError||'',entry.error||'',!runCountsComplete(entry)?(Number(entry.total)>0?'부분 결과':'집계된 테스트 없음')+' · 통과율 집계 제외':''].filter(Boolean).join(' · ');
 }
 function overviewTime(value){
   var date=new Date(value);
@@ -97,11 +106,11 @@ function renderOverviewTrend(){
   if(!allEntries.length) return '<div class="overview-empty"><strong>실행 이력이 없습니다</strong><p>테스트를 실행하면 결과가 여기에 표시됩니다.</p><button class="btn" onclick="selectView(\'pipeline\',document.querySelector(\'[data-view=pipeline]\'))">파이프라인 열기</button></div>';
   return '<table class="overview-history-table"><thead><tr><th>시작</th><th>종류</th><th>대상</th><th>결과</th><th>통과</th><th>소요</th></tr></thead><tbody>'+allEntries.map(function(entry){
     var result=overviewResult(entry);
-    return '<tr data-platform="'+esc(entry.platform||'')+'"><td>'+esc(entry.executedAt?overviewTime(entry.executedAt):'—')+'</td><td>'+esc(entry.type==='quick'?'빠른 실행':entry.type==='pipeline'?'파이프라인':'테스트 실행')+'</td><td>'+esc(Array.isArray(entry.groups)&&entry.groups.length?entry.groups.join(' · '):'—')+'</td><td><span class="result-badge '+result.kind+'">'+result.text+'</span></td><td>'+esc(Number.isFinite(Number(entry.passed))&&Number.isFinite(Number(entry.total))?entry.passed+'/'+entry.total:'—')+'</td><td>'+esc(overviewDuration(entry.duration))+'</td></tr>';
+    return '<tr data-platform="'+esc(entry.platform||'')+'"><td>'+esc(entry.executedAt?overviewTime(entry.executedAt):'—')+'</td><td>'+esc(entry.type==='quick'?'빠른 실행':entry.type==='pipeline'?'파이프라인':'테스트 실행')+'</td><td>'+esc(Array.isArray(entry.groups)&&entry.groups.length?entry.groups.join(' · '):'—')+'</td><td><span class="result-badge '+result.kind+'">'+result.text+'</span><small style="display:block">'+esc(runHistoryDetail(entry))+'</small></td><td>'+esc(Number.isFinite(Number(entry.passed))&&Number.isFinite(Number(entry.total))?entry.passed+'/'+entry.total:'—')+'</td><td>'+esc(overviewDuration(entry.duration))+'</td></tr>';
   }).join('')+'</tbody></table>';
 }
 function renderOverviewRateChart(entries){
-  var points=entries.slice().reverse().filter(function(entry){return Number(entry.total)>0;}).map(function(entry,index,all){
+  var points=entries.slice().reverse().filter(function(entry){return runCountsComplete(entry)&&Number(entry.total)>0;}).map(function(entry,index,all){
     var rate=Math.max(0,Math.min(100,Math.round(Number(entry.passed||0)/Number(entry.total)*100)));
     var time=entry.executedAt?new Date(entry.executedAt):null;
     return {entry:entry,rate:rate,x:all.length===1?40:40+index*400/(all.length-1),y:32+(100-rate)*.8,label:time&&!isNaN(time.getTime())?time.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false}):'시간 정보 없음',kind:rate===100?'pass':rate>=80?'warn':'fail'};
@@ -141,10 +150,11 @@ function renderOverviewData(data){
   var result=overviewResult(latest);
   set('overview-last-result',result.text);
   var resultEl=document.getElementById('overview-last-result');if(resultEl)resultEl.className=result.kind;
-  set('overview-last-detail',latest?(latest.total||0)+'건 중 '+(latest.passed||0)+'건 통과 · 실패 '+(latest.failed||0)+' · 건너뜀 '+(latest.skipped||0)+' · '+overviewDuration(latest.duration):'실행 정보 없음');
+  set('overview-last-detail',latest?(latest.total||0)+'건 중 '+(latest.passed||0)+'건 통과 · 실패 '+(latest.failed||0)+' · 건너뜀 '+(latest.skipped||0)+' · '+overviewDuration(latest.duration)+(runHistoryDetail(latest)?' · '+runHistoryDetail(latest):''):'실행 정보 없음');
   set('overview-context',latest?'마지막 실행 '+overviewTime(latest.executedAt)+' · '+(latest.platform==='ios'?'iOS':latest.platform==='android'?'Android':'플랫폼 정보 없음'):'최근 실행 없음');
-  var pass=entries.reduce(function(sum,entry){return sum+(Number(entry.passed)||0);},0);
-  var runTotal=entries.reduce(function(sum,entry){return sum+(Number(entry.total)||0);},0);
+  var completed=entries.filter(runCountsComplete);
+  var pass=completed.reduce(function(sum,entry){return sum+(Number(entry.passed)||0);},0);
+  var runTotal=completed.reduce(function(sum,entry){return sum+(Number(entry.total)||0);},0);
   set('overview-history-rate',runTotal?Math.round(pass/runTotal*100)+'%':'—');
   set('overview-history-count',entries.length?'통과 '+pass+' · 전체 '+runTotal:'실행 이력 없음');
   var groups=generated.filter(function(group){return _overviewPlatform==='all'||group.platform===_overviewPlatform;});
@@ -388,7 +398,7 @@ async function refreshRunHistory(){
       if(!response.ok||!Array.isArray(data.entries))throw new Error('실행 기록 조회 실패');
       if(generation!==_historyGeneration)return;
       _serverRunHistory=data.entries.map(function(entry){
-        return Object.assign({},entry,{rate:entry.total?Math.round(entry.passed/entry.total*100):0});
+        return Object.assign({},entry,{rate:runCountsComplete(entry)&&entry.total?Math.round(entry.passed/entry.total*100):null});
       });
       if(status)status.textContent='서버에 저장된 최근 50회 실행 · 다른 브라우저에서도 동일하게 표시됩니다.';
       renderRunHistory();
@@ -432,18 +442,21 @@ function renderRunHistory(){
     var date=new Date(entry.executedAt||Date.now()), dateText=date.toLocaleDateString('ko-KR').replace(/\. /g,'-').replace(/\.$/,'');
     var time=date.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
     var groups=(entry.groups||[]).map(function(group){return '<span class="history-group">'+esc(group)+'</span>';}).join('');
-    var ok=!entry.failed;
+    var result=overviewResult(entry), complete=runCountsComplete(entry)&&Number(entry.total)>0;
+    var color=result.kind==='pass'?'var(--pass)':result.kind==='fail'?'var(--fail)':'var(--warn)';
+    var rate=complete?Math.round(Number(entry.passed||0)/Number(entry.total)*100):null;
     return '<div class="history-row" data-history-type="'+esc(entry.type||'quick')+'" data-history-platform="'+esc(entry.platform||'unknown')+'" data-history-groups="'+esc((entry.groups||[]).join(' '))+'">'
-      +'<div class="history-date"><strong>'+esc(dateText)+' '+esc(time)+'</strong></div>'
-      +'<div><div class="history-pass" style="color:'+(ok?'var(--pass)':'var(--fail)')+'">'+entry.rate+'%</div><div class="history-progress"><span style="width:'+entry.rate+'%;background:'+(ok?'var(--pass)':'var(--fail)')+'"></span></div></div>'
+      +'<div class="history-date"><strong>'+esc(dateText)+' '+esc(time)+'</strong><small style="display:block;overflow-wrap:anywhere">'+esc(runHistoryDetail(entry))+'</small></div>'
+      +'<div><div class="history-pass" style="color:'+color+'">'+(rate===null?'—':rate+'%')+'</div><div class="history-progress"><span style="width:'+(rate||0)+'%;background:'+color+'"></span></div></div>'
       +'<div><span class="history-count">'+entry.passed+'<small> / '+entry.total+'</small></span></div><div class="history-duration">'+esc(overviewDuration(entry.duration))+'</div>'
       +'<div><span class="history-type">'+(entry.type==='pipeline'?'파이프라인 실행':entry.type==='quick'?'빠른 실행':'테스트 실행')+'</span></div><div><span class="history-platform '+esc(entry.platform||'unknown')+'">'+(entry.platform==='ios'?'iOS':entry.platform==='android'?'Android':'—')+'</span></div>'
-      +'<div class="history-groups">'+groups+'</div><div><span class="history-result" style="color:'+(ok?'var(--pass)':'var(--fail)')+';border-color:'+(ok?'var(--pass)':'var(--fail)')+'">'+(ok?(entry.rate===100?'통과':'건너뜀 포함'):'실패')+'</span></div></div>';
+      +'<div class="history-groups">'+groups+'</div><div><span class="history-result" style="color:'+color+';border-color:'+color+'">'+result.text+'</span></div></div>';
   }).join('')||'<div class="history-empty">실행 이력이 없습니다.</div>';
-  var total=entries.length, passedRate=total?Math.round(entries.reduce(function(sum,item){return sum+(item.rate||0);},0)/total):0;
+  var completed=entries.filter(function(entry){return runCountsComplete(entry)&&Number(entry.total)>0;});
+  var total=entries.length, passedRate=completed.length?Math.round(completed.reduce(function(sum,item){return sum+(item.rate||0);},0)/completed.length):(entries.length?null:0);
   var passedFirst=entries.filter(function(item){return item.firstPass===true;}).length;
   document.getElementById('history-total').textContent=total;
-  document.getElementById('history-rate').textContent=passedRate+'%';
+  document.getElementById('history-rate').textContent=passedRate===null?'—':passedRate+'%';
   document.getElementById('history-first').innerHTML=entries.length&&entries.some(function(item){return typeof item.firstPass!=='boolean';})?'—':passedFirst+'<span class="history-kpi-suffix">/'+total+'</span>';
   document.getElementById('history-heal').textContent=entries.length&&entries.some(function(item){return typeof item.healCount!=='number';})?'—':entries.reduce(function(sum,item){return sum+(item.healCount||0);},0);
   applyHistoryFilters();

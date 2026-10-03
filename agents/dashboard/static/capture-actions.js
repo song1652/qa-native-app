@@ -405,7 +405,7 @@ function csReLaunchFromSetup() {
   _cs.launching = true;
   var sessionId = _cs.sessionId;
   var _rfsIsIos = (_cs.platform === 'ios' || _cs.screenshotMode === 'poll');
-  var _rfsTimeout = _rfsIsIos ? 420000 : 45000;
+  var _rfsTimeout = _rfsIsIos ? 420000 : 130000;
   var _rfsStartTs = Date.now();
   if(statusEl){ statusEl.textContent = ' 앱 재실행 중...'; statusEl.style.color='var(--accent)'; }
   var _rfsProgress = setInterval(function(){
@@ -428,6 +428,7 @@ function csReLaunchFromSetup() {
       document.getElementById('cs-session-badge').style.display='';
       csRenderTimeline();
       csMirrorConnect();
+      csStartScreenWatcher();
       setTimeout(function(){ csRefreshHierarchy(); }, 1500);
       var saveStatus = document.getElementById('cs-save-status');
       if(saveStatus){ saveStatus.textContent = ' 앱 재실행됨'; saveStatus.style.color='var(--pass)'; }

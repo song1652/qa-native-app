@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import re
 import shutil
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -29,17 +30,51 @@ RUNS_DIR = PROJECT_ROOT / "state" / "runs"
 _RUN_ID_RE = re.compile(r"^run_[a-z]+_\d{8}_\d{6}_\d{3}$")
 
 
-def _artifact_root(run_id: str) -> Path:
-    """run_id 검증 + artifacts 디렉토리 반환. 실패 시 HTTPException."""
+def _run_root(run_id: str) -> Path:
+    """Validate the owned run directory, including runs without artifacts."""
     if not _RUN_ID_RE.match(run_id):
         raise HTTPException(status_code=400, detail="invalid_run_id")
-    root = (RUNS_DIR / run_id / "artifacts").resolve()
+    root = (RUNS_DIR / run_id).resolve()
     base = RUNS_DIR.resolve()
     if not root.is_relative_to(base):
         raise HTTPException(status_code=404, detail="run_not_found")
     if not root.is_dir():
         raise HTTPException(status_code=404, detail="run_not_found")
     return root
+
+
+def _artifact_root(run_id: str) -> Path:
+    root = _run_root(run_id) / 'artifacts'
+    if not root.is_dir() or not root.resolve().is_relative_to(RUNS_DIR.resolve()):
+        raise HTTPException(status_code=404, detail='run_not_found')
+    return root
+
+
+def _result_metadata(run_dir: Path) -> dict:
+    try:
+        from utils.run_history import execution_summary
+    except ModuleNotFoundError:
+        from agents.dashboard.utils.run_history import execution_summary
+    path = run_dir / 'execution_result.json'
+    if path.is_symlink():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding='utf-8'))
+        summary = execution_summary(data, run_dir.name, datetime.fromtimestamp(path.stat().st_mtime, timezone.utc))
+    except (OSError, ValueError, TypeError, AttributeError):
+        return {}
+    if summary is None:
+        return {}
+    return {'run_id': run_dir.name, 'platform': summary['platform'],
+            'status': summary['status'], 'error': summary['error'],
+            'mode': data.get('device_mode', ''), 'udid': data.get('device_udid', ''),
+            'started_at': data.get('started_at') or summary['_started'].isoformat(),
+            'finished_at': data.get('finished_at'),
+            'recovered_after_restart': summary['recoveredAfterRestart'],
+            'workflow_status': summary['workflowStatus'],
+            'workflow_error': summary['workflowError'],
+            'counts_complete': summary['countsComplete'],
+            'counts': {key: summary[key] for key in ('total', 'passed', 'failed', 'skipped')}}
 
 
 def _load_manifest(artifact_dir: Path) -> dict:
@@ -76,6 +111,13 @@ def _select_attempt(entry: dict, attempt: Optional[int]) -> Optional[dict]:
     if attempt is None:
         return attempts[-1] if attempts else None
     return next((item for item in attempts if int(item.get("n", 0)) == attempt), None)
+
+
+def _manifest_outcome(manifest: dict) -> dict:
+    outcomes = [(_attempts(entry) or [{}])[-1].get('outcome') for entry in manifest.get('entries', [])]
+    complete = bool(manifest.get('finished_at')) and bool(outcomes) and all(value in {'passed', 'failed', 'error', 'skipped'} for value in outcomes)
+    status = ('failed' if any(value in {'failed', 'error'} for value in outcomes) else 'passed') if complete else 'incomplete'
+    return {'status': status, 'counts_complete': complete}
 
 
 def _artifact_urls(run_id: str, nodeid: str, attempt: dict) -> dict:
@@ -137,15 +179,21 @@ async def list_run_artifacts(
         return JSONResponse({"ok": True, "runs": []})
 
     for run_dir in RUNS_DIR.iterdir():
-        if not run_dir.is_dir():
+        if not run_dir.is_dir() or run_dir.is_symlink() or not _RUN_ID_RE.fullmatch(run_dir.name):
             continue
+        metadata = _result_metadata(run_dir)
         mf = run_dir / "artifacts" / "manifest.json"
-        if not mf.exists():
-            continue
         try:
             m = json.loads(mf.read_text(encoding="utf-8"))
         except Exception:
+            m = {}
+        if not isinstance(m, dict):
+            m = {}
+        if not m and not metadata:
             continue
+        m.update(_manifest_outcome(m))
+        if metadata:
+            m.update({key: value for key, value in metadata.items() if key != 'counts'})
         if platform and m.get("platform") != platform:
             continue
         entries = m.get("entries", [])
@@ -165,9 +213,16 @@ async def list_run_artifacts(
             "started_at": m.get("started_at", ""),
             "finished_at": m.get("finished_at"),
             "keep_policy": m.get("keep_policy", "on_failure"),
+            "status": m.get('status') or ('incomplete' if not m.get('finished_at') else 'failed' if failed else 'passed'),
+            "error": m.get('error', ''),
+            "recovered_after_restart": m.get('recovered_after_restart', False),
+            "workflow_status": m.get('workflow_status'),
+            "workflow_error": m.get('workflow_error', ''),
+            "counts_complete": m.get('counts_complete', bool(m.get('finished_at'))),
             "counts": {
                 "total": total,
                 "failed": failed,
+                **metadata.get('counts', {}),
                 "with_video": with_video,
                 "with_syslog": with_syslog,
             },
@@ -182,8 +237,15 @@ async def list_run_artifacts(
 @router.get("/api/run_artifacts/{run_id}")
 async def get_run_artifacts(run_id: str):
     """manifest 전체 + 각 아티팩트 조회 URL 포함."""
-    artifact_dir = _artifact_root(run_id)
-    manifest = _load_manifest(artifact_dir)
+    run_dir = _run_root(run_id)
+    metadata = _result_metadata(run_dir)
+    artifact_dir = run_dir / 'artifacts'
+    if metadata and not (artifact_dir / 'manifest.json').exists():
+        manifest = {'entries': []}
+    else:
+        artifact_dir = _artifact_root(run_id)
+        manifest = _load_manifest(artifact_dir)
+    manifest = {**manifest, **_manifest_outcome(manifest), **metadata}
 
     entries_out = []
     for entry in manifest.get("entries", []):
@@ -314,11 +376,14 @@ async def delete_run_artifacts(run_id: str):
     if not run_dir.exists():
         raise HTTPException(status_code=404, detail="run_not_found")
 
+    metadata = _result_metadata(run_dir)
+    if metadata.get('status') == 'running':
+        raise HTTPException(status_code=409, detail='run_active')
     mf = run_dir / "artifacts" / "manifest.json"
     if mf.exists():
         try:
             m = json.loads(mf.read_text(encoding="utf-8"))
-            if m.get("finished_at") is None:
+            if m.get("finished_at") is None and not metadata:
                 raise HTTPException(status_code=409, detail="run_active")
         except HTTPException:
             raise

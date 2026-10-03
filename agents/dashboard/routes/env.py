@@ -43,6 +43,7 @@ from shared import (  # noqa: E402
 from utils.state import (  # noqa: E402
     is_capture_active,
     is_pipeline_active,
+    load_capture_session,
     load_devices_json,
     save_devices_json,  # env_registry가 deps.save_devices_json으로 사용
     load_env_session,
@@ -635,22 +636,26 @@ def post_android_real_connect(body: Optional[dict] = Body(default=None)):
     """WiFi ADB로 Android 실기기를 연결한다.
 
     가드:
-    - Android Capture 세션 활성 → 403 capture_session_active
+    - 실행 중에는 연결 변경 금지; Capture는 동일한 무선 대상만 재연결 허용
     body.serial 있으면 해당 serial 사용.
     없으면 devices.json android.real_device[].wifi_ip:5555 사용.
     성공/실패 모두 200, ok 필드로 구분.
     """
-    if is_capture_active("android"):
-        return JSONResponse(
-            {"ok": False, "error": "capture_session_active"}, status_code=403
-        )
-
+    if is_pipeline_active():
+        return JSONResponse({"ok": False, "error": "pipeline_running"}, status_code=403)
+    capture_active = is_capture_active("android")
+    capture = load_capture_session() if capture_active else {}
     if body is None:
         body = {}
 
     serial: str | None = (body.get("serial") or "").strip() or None
     if not serial:
-        serial = _get_wifi_serial()
+        serial = capture.get("udid") if capture_active else _get_wifi_serial()
+
+    if capture_active:
+        if (capture.get("target") != "device" or not serial or ":" not in serial
+                or serial != capture.get("udid")):
+            return JSONResponse({"ok": False, "error": "capture_session_active"}, status_code=403)
 
     if not serial:
         return JSONResponse({"ok": False, "error": "no_wifi_ip_configured"})
@@ -665,6 +670,11 @@ def post_android_real_connect(body: Optional[dict] = Body(default=None)):
         output = (result.stdout or result.stderr or "").strip()
         if isinstance(result.returncode, int) and result.returncode != 0:
             return JSONResponse({"ok": False, "error": output or "adb connect failed"})
+        ready = subprocess.run(
+            [ADB_BIN, "-s", serial, "get-state"], capture_output=True, text=True, timeout=10,
+        )
+        if ready.returncode != 0 or ready.stdout.strip() != "device":
+            return JSONResponse({"ok": False, "error": "선택한 기기가 연결되지 않았습니다. 무선 디버깅 주소·페어링·네트워크를 확인한 뒤 다시 연결하세요.", "output": output})
         return JSONResponse({"ok": True, "serial": serial, "output": output})
     except Exception as exc:
         return JSONResponse({"ok": False, "error": str(exc)})
@@ -682,6 +692,8 @@ def post_android_real_disconnect(body: Optional[dict] = Body(default=None)):
     없으면 devices.json android.real_device[].wifi_ip:5555 사용.
     성공/실패 모두 200, ok 필드로 구분.
     """
+    if is_pipeline_active():
+        return JSONResponse({"ok": False, "error": "pipeline_running"}, status_code=403)
     if is_capture_active("android"):
         return JSONResponse(
             {"ok": False, "error": "capture_session_active"}, status_code=403

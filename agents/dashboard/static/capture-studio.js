@@ -26,11 +26,16 @@ function csStartScreenWatcher() {
   csStopScreenWatcher();
   _cs.screenHash = null;
   _cs.screenHashTs = 0;
+  var generation = _cs.mirrorGeneration;
+  var checking = false;
   _cs.screenWatcher = setInterval(function() {
-    if (!_cs.sessionId) return;
-    fetch('/capture/page_source_hash')
+    if (!_cs.sessionId || _cs.launching || checking) return;
+    checking = true;
+    fetch('/capture/page_source_hash', {signal: AbortSignal.timeout(12000)})
       .then(function(r){ return r.json(); })
       .then(function(d){
+        if(generation !== _cs.mirrorGeneration) return;
+        if(d.reconnect_required){ csLaunchFailed("기기 연결이 끊겼습니다. 작성 내용은 유지됩니다. 같은 기기로 세션 재연결을 눌러주세요."); return; }
         if (!d.ok || !d.hash) return;
         if (_cs.screenHash && _cs.screenHash !== d.hash) {
           // 화면이 바뀜 — hierarchy 새로고침 (쿨다운 3초)
@@ -42,7 +47,9 @@ function csStartScreenWatcher() {
         }
         _cs.screenHash = d.hash;
       })
-      .catch(function(){});
+      .catch(function(){
+        if(generation === _cs.mirrorGeneration) csLaunchFailed("서버 연결을 확인한 뒤 세션 재연결을 눌러주세요. 작성 내용은 유지됩니다.");
+      }).finally(function(){ checking = false; });
   }, 4000);
 }
 function csStopScreenWatcher() {
@@ -165,13 +172,14 @@ function csInit() {
             csInfoStripShow(_rPlatform, _rDevice, _rGroup);
             csRenderTimeline();
             csMirrorConnect();
+            csStartScreenWatcher();
             var saveStatus = document.getElementById('cs-save-status');
             if(saveStatus){ saveStatus.textContent = ' 세션 복원됨 (드라이버 연결)'; saveStatus.style.color='var(--pass)'; }
             setTimeout(function(){ csRefreshHierarchy(); }, 600);
           } else {
             // 드라이버 죽음 → setup 화면 유지, 안내 메시지 + 버튼 표시
             if(statusEl2){
-              statusEl2.innerHTML = ' 이전 세션이 있지만 서버 재시작으로 드라이버가 끊겼습니다.<br>'
+              statusEl2.innerHTML = ' 이전 작성 내용이 보관되어 있습니다. 기기 연결을 확인하고 같은 기기로 재연결하세요.<br>'
                 + '<div style="margin-top:6px;display:flex;gap:8px">'
                 + '<button class="cs-btn primary" onclick="csReLaunchFromSetup()" style="padding:4px 14px;font-size:11px">▶ 앱 재실행</button>'
                 + '<button class="cs-btn" onclick="csForceNewSession()" style="padding:4px 14px;font-size:11px;color:var(--text3)">새 세션 시작</button>'
@@ -196,9 +204,11 @@ function csReLaunch() {
     return;
   }
   _cs.launching = true;
+  csMirrorDisconnect();
+  csStopScreenWatcher();
   var sessionId = _cs.sessionId;
   var _reIsIos = (_cs.platform === 'ios' || _cs.screenshotMode === 'poll');
-  var _reTimeoutMs = _reIsIos ? 420000 : 45000;
+  var _reTimeoutMs = _reIsIos ? 420000 : 130000;
   var _reStartTs = Date.now();
   saveStatus.textContent = ' 앱 재실행 중...'; saveStatus.style.color='var(--accent)';
   var _reProgressTimer = setInterval(function(){
@@ -222,6 +232,7 @@ function csReLaunch() {
       saveStatus.textContent = ' 앱 재실행됨 — 미러링 재연결 중';
       saveStatus.style.color='var(--pass)';
       csMirrorConnect();
+      csStartScreenWatcher();
       setTimeout(csRefreshHierarchy, 1500);
     } else {
       csLaunchFailed(' 재실행 실패: ' + (d.error||'알 수 없는 오류'));
@@ -423,7 +434,7 @@ function csStartSession() {
 
       // ── 앱 실행 단계 ──
       // WDA 180초 대기 × 2회와 서버 응답 여유를 포함한다.
-      var _launchTimeoutMs = isIos ? 420000 : 45000;
+      var _launchTimeoutMs = isIos ? 420000 : 130000;
       var _launchStartTs   = Date.now();
 
       // iOS 대기 중 경과 시간을 실시간으로 표시 (매 2초 갱신)

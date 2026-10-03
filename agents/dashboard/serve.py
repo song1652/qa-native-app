@@ -58,6 +58,8 @@ app.include_router(tc_studio_router)
 def main():
     kill_port(PORT)
     restore_running_procs()
+    from routes.pipeline import monitor_recovered_execution
+    monitor_recovered_execution()
     url = f"http://localhost:{PORT}"
     print(f"[Dashboard] 서버 시작: {url}")
     print(f"[Dashboard] WebSocket: ws://localhost:{PORT}/ws/timeline")

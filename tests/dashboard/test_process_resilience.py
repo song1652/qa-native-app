@@ -18,6 +18,9 @@ def test_restore_running_process_keeps_test_owned_live_pid(tmp_path, monkeypatch
     registry.write_text(json.dumps({"execute:android": child.pid}), encoding="utf-8")
     monkeypatch.setattr(shared, "_RUNNING_PIDS_PATH", registry)
     monkeypatch.setattr(shared, "_running", {})
+    monkeypatch.setattr(shared, "_execution_reservation", {})
+    monkeypatch.setattr(shared, "_test_runs", {})
+    monkeypatch.setattr(shared, "_pipeline_batches", {})
 
     try:
         result = shared.restore_running_procs()
@@ -32,7 +35,7 @@ def test_restore_running_process_keeps_test_owned_live_pid(tmp_path, monkeypatch
         child.wait(timeout=5)
 
 
-def test_restore_running_process_discards_dead_pid_and_rewrites_registry(
+def test_restore_running_process_discards_dead_pid_then_reconciliation_rewrites_registry(
     tmp_path, monkeypatch
 ):
     registry = tmp_path / "running_procs.json"
@@ -41,9 +44,16 @@ def test_restore_running_process_discards_dead_pid_and_rewrites_registry(
     registry.write_text(json.dumps({"execute:ios": child.pid}), encoding="utf-8")
     monkeypatch.setattr(shared, "_RUNNING_PIDS_PATH", registry)
     monkeypatch.setattr(shared, "_running", {})
+    monkeypatch.setattr(shared, "_execution_reservation", {})
+    monkeypatch.setattr(shared, "_test_runs", {})
+    monkeypatch.setattr(shared, "_pipeline_batches", {})
 
     result = shared.restore_running_procs()
 
     assert result == {"restored": [], "discarded": ["execute:ios"]}
     assert shared._running == {}
-    assert json.loads(registry.read_text(encoding="utf-8")) == {}
+    # Startup reconciliation owns the final snapshot after restoring metadata.
+    shared.save_running_pids()
+    snapshot = json.loads(registry.read_text(encoding="utf-8"))
+    assert snapshot["version"] == 2
+    assert snapshot["processes"] == {}
