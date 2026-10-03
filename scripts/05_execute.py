@@ -485,7 +485,9 @@ def main():
     selected_path = Path(args.test_file).parent if args.test_file else Path(args.tc_dir or "")
     groups = ([selected_path.parts[0]] if selected_path.parts and not selected_path.is_absolute()
               and ".." not in selected_path.parts else [])
+    run_type = os.environ.get("QA_RUN_TYPE", "execution")
     outcome = {
+        "run_type": run_type if run_type in {"quick", "pipeline"} else "execution",
         "groups": groups,
         "status": "running", "exit_code": None, "execute_results": execute_results,
         "started_at": previous.get("started_at") or datetime.now(timezone.utc).isoformat(),
@@ -511,7 +513,7 @@ def main():
     # Compatibility only: log-specific consumers read the run-owned file above.
     state = load_state()
     state.update(step="executed", execute_results=outcome["execute_results"],
-                 last_exit_code=exit_code, last_run_id=run_id)
+                 last_exit_code=exit_code, last_run_id=run_id, run_type=outcome["run_type"])
     state.pop("report_path", None)
     if outcome.get("report_path"):
         state["report_path"] = outcome["report_path"]
@@ -650,6 +652,7 @@ def _execute(args, run_id, report_stamp, outcome):
     state["last_exit_code"] = result.returncode
     # PRD §4-1: last_run_id 기록 — 리포트·대시보드가 역참조
     state["last_run_id"] = run_id
+    state["run_type"] = outcome.get("run_type", "execution")
     save_state(state)
 
     summary = report_data["summary"]
@@ -705,6 +708,7 @@ def _generate_html_report(state: dict, platform: str,
         groups_data, summary, created_at, subtitle,
         video_path=rel_video, platform=platform,
         run_id=state.get("last_run_id") or state.get("obs_last_run_id") or "",
+        run_type=state.get("run_type", "execution"),
     )
 
     stamp = report_stamp or datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]

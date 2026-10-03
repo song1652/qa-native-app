@@ -167,14 +167,14 @@ def monitor_recovered_execution():
     threading.Thread(target=monitor, daemon=True).start()
 
 
-def _reserve(platform, step):
+def _reserve(platform, step, run_type="pipeline"):
     with _process_lock:
         import shared
         if shared._capture_launch_active or _execution_reservation or any(p.poll() is None for p in _running.values()):
             return None
         if is_capture_active(None):
             return None
-        run = {"id": uuid.uuid4().hex, "platform": platform, "step": step,
+        run = {"id": uuid.uuid4().hex, "platform": platform, "step": step, "run_type": run_type,
                "cancelled": False, "done": False, "run_id": _gen_run_id(platform),
                "started_at": datetime.now(timezone.utc).isoformat()}
         _execution_reservation.update(run=run)
@@ -205,6 +205,8 @@ def _finalize_run(run, error=None):
     if not run_id or (not run.get("cancelled") and not error):
         return
     result = read_execution_result(PROJECT_ROOT, run_id) or {}
+    if run.get("run_type") in {"quick", "pipeline"}:
+        result.setdefault("run_type", run["run_type"])
     if run.get("recovered_after_restart") and run.get("status") != "timed_out" and result.get("status") in ("passed", "failed", "cancelled", "timed_out"):
         result["recovered_after_restart"] = True
         if run.get("status") == "interrupted" and any(batch is run for batch in _pipeline_batches.values()):
@@ -452,11 +454,13 @@ def _build_run_env(
     obs_keep: str = "",
     device_mode: str = "",
     device_udid: str = "",
+    run_type: str = "pipeline",
 ) -> dict[str, str]:
     """Build child-only execution environment without mutating the server."""
     env = os.environ.copy()
     env["QA_RUN_ID"] = run_id
     env["QA_PLATFORM"] = platform
+    env["QA_RUN_TYPE"] = run_type if run_type in {"quick", "pipeline"} else "execution"
     env["QA_OBS_KEEP"] = (
         obs_keep if obs_keep in {"on_failure", "always", "never"} else "on_failure"
     )
@@ -974,7 +978,7 @@ async def post_run_test(request: Request):
         run_key    = f"test:{platform}:{test_file}"
         log_name   = "run_test_" + platform + "_" + test_file.replace("/", "_").replace(".py", "") + ".txt"
 
-    run = _reserve(platform, run_key)
+    run = _reserve(platform, run_key, run_type="quick")
     if run is None:
         return _busy()
     run_id = _gen_run_id(platform)
@@ -1021,7 +1025,7 @@ async def post_run_test(request: Request):
 
     def run_quick():
         run_env = _build_run_env(
-            run_id, platform, obs_keep, device_mode, device_udid
+            run_id, platform, obs_keep, device_mode, device_udid, run_type="quick"
         )
         _purge_old_runs()
         try:

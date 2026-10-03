@@ -33,7 +33,7 @@ code{font:13px/1.6 var(--font-mono);padding:2px 5px;border:1px solid var(--borde
 <div class="nav-label">환경 및 도움말</div><a href="#config">환경 설정</a><a href="#faq">자주 묻는 질문</a>
 </nav>
 <main class="main">
-<div class="hero"><div class="version">사용자 가이드 · 2026-10-03</div><h1>화면에서 TC 작성부터 실행 결과 확인까지</h1><p><a href="http://localhost:8767/">QA Control Center</a>에서 Android·iOS 테스트를 준비하고 실행하는 방법입니다. 왼쪽 메뉴 이름과 버튼은 현재 밝은 UI를 기준으로 설명합니다.</p><p>주요 화면 이미지는 2026-10-02에 실제 대시보드를 1440px 너비로 열어 촬영했습니다. 실행 결과와 연결 상태를 그대로 보여 줍니다. 오류 알림 패널은 2026-10-03에 추가 촬영했으며, 이전 전체 화면에는 새 알림이 없을 수 있습니다. 상태를 설명하기 위한 예시는 캡션에 따로 표시했습니다. 숫자·기기·스위트 이름은 사용 중인 환경에 따라 달라집니다. 이미지를 누르면 원본 크기로 볼 수 있습니다.</p>
+<div class="hero"><div class="version">사용자 가이드 · 2026-10-03</div><h1>화면에서 TC 작성부터 실행 결과 확인까지</h1><p><a href="http://localhost:8767/">QA Control Center</a>에서 Android·iOS 테스트를 준비하고 실행하는 방법입니다. 왼쪽 메뉴 이름과 버튼은 현재 밝은 UI를 기준으로 설명합니다.</p><p>주요 화면 이미지는 2026-10-02에 실제 대시보드를 1440px 너비로 열어 촬영했습니다. 실행 결과와 연결 상태를 그대로 보여 줍니다. 대시보드·실행 기록은 종류 구분 수정 후 2026-10-03에 1920px 너비로 다시 촬영했습니다. 오류 알림 패널도 2026-10-03에 추가 촬영했으며, 이전 전체 화면에는 새 알림이 없을 수 있습니다. 상태를 설명하기 위한 예시는 캡션에 따로 표시했습니다. 숫자·기기·스위트 이름은 사용 중인 환경에 따라 달라집니다. 이미지를 누르면 원본 크기로 볼 수 있습니다.</p>
 <details class="mobile-toc"><summary>목차 열기</summary><nav aria-label="모바일 가이드 목차"><a href="#getting-started">시작하기 · 작업 경로</a><a href="#dashboard">대시보드</a><a href="#tc-studio">TC 스튜디오</a><a href="#capture">화면 캡처로 작성</a><a href="#pipeline">파이프라인</a><a href="#quickrun">빠른 실행</a><a href="#reports">리포트</a><a href="#history">실행 기록</a><a href="#config">환경 설정</a><a href="#faq">자주 묻는 질문</a></nav></details>
 <div class="note"><strong>처음 시작한다면:</strong> <a href="#getting-started">시작하기</a>에서 작업 경로를 고르고 <a href="#config">환경 설정</a>에서 Appium과 기기를 준비한 뒤, <a href="#tc-studio">TC 스튜디오</a> 또는 <a href="#capture">화면 캡처로 작성</a>에서 TC를 만드세요. TC가 이미 생성되어 있으면 <a href="#quickrun">빠른 실행</a>으로 이동합니다.</div></div>
 
@@ -47,7 +47,7 @@ code{font:13px/1.6 var(--font-mono);padding:2px 5px;border:1px solid var(--borde
 </section>
 
 <section id="dashboard"><h2>대시보드</h2><p class="section-intro">최근 실행 현황과 Appium·기기 연결 상태를 확인하는 첫 화면입니다. 상단의 실행 상태를 펼치거나 왼쪽 메뉴에서 작업 화면으로 이동합니다. 오류가 있으면 상단 <strong>알림</strong>에서 대상·발생 시각·권장 조치를 확인합니다.</p>
-<figure class="shot"><a href="../images/user-guide/dashboard.png" target="_blank" rel="noopener"><img src="../images/user-guide/dashboard.png" alt="현재 밝은 대시보드의 최근 실행 요약과 환경 연결 상태" width="1440" loading="lazy"></a><figcaption>대시보드의 실제 실행·환경 요약. 기록이 없는 환경에서는 빈 상태가 표시됩니다.</figcaption></figure>
+<figure class="shot"><a href="../images/user-guide/dashboard.png" target="_blank" rel="noopener"><img src="../images/user-guide/dashboard.png" alt="현재 밝은 대시보드의 최근 실행 요약과 환경 연결 상태" width="1920" loading="lazy"></a><figcaption>대시보드의 실제 실행·환경 요약. 기록이 없는 환경에서는 빈 상태가 표시됩니다.</figcaption></figure>
 <div class="card">
 <h3 id="dashboard-read-summary">대시보드에서 실행 상태 읽기</h3>
 <ol><li>제품 이름을 클릭하거나 왼쪽 <strong>대시보드</strong> 메뉴를 선택합니다. 상단의 Appium·기기 표시로 연결 상태를 먼저 확인합니다.</li><li><strong>전체 / Android / iOS</strong>를 선택해 요약 범위를 정합니다. 최근 실행 결과, 통과·실패·건너뜀 수, 생성 테스트 수와 플랫폼별 그룹을 확인합니다.</li><li>통과율 추이는 실행별 통과율입니다. 누적 통과율은 기록된 통과 TC 수를 전체 TC 수로 나눈 값이며, <strong>실행 기록</strong> 화면의 실행별 평균 통과율과 계산 방식이 다릅니다.</li><li>최근 실행 표는 서버에 저장된 최신 8건을 표시합니다. 더 오래된 실행은 <strong>실행 기록</strong>에서 확인하고, 개별 TC의 실제 결과·재시도·증거는 <strong>리포트</strong> 또는 <strong>빠른 실행</strong> 결과에서 확인합니다.</li><li>로그 영역에서 파이프라인 로그와 빠른 실행 로그를 전환합니다. 새로고침 버튼은 선택한 탭의 서버 로그를 다시 읽으며 아래에 갱신 시각 또는 실패 안내를 표시합니다. 빠른 실행은 마지막 실행 폴더의 로그를 표시합니다. 이전 기록에 서버 로그 정보가 없으면 저장된 로그라고 따로 안내합니다.</li></ol>
@@ -254,10 +254,10 @@ code{font:13px/1.6 var(--font-mono);padding:2px 5px;border:1px solid var(--borde
 
 <section id="history"><h2>실행 기록</h2><p class="section-intro">서버에 저장된 완료 실행을 브라우저와 관계없이 확인합니다. 실행별 통과율과 저장된 실행 요약을 비교합니다.</p>
 <nav class="section-links" aria-label="이 절의 상세 목차"><a href="#history-browser-storage">실행 기록의 저장 범위</a><a href="#history-filter-statistics">필터와 통계 읽기</a><a href="#history-reset-navigation">기록 초기화와 브라우저 이동</a></nav>
-<figure class="shot"><a href="../images/user-guide/history.png" target="_blank" rel="noopener"><img src="../images/user-guide/history.png" alt="실행 기록의 총 실행 수·평균 통과율·자동 복구 요약과 유형·플랫폼 필터" width="1440" loading="lazy"></a><figcaption>서버에 저장된 실행 기록과 플랫폼·그룹 필터. 완료된 기록이 없으면 빈 상태가 보입니다.</figcaption></figure>
+<figure class="shot"><a href="../images/user-guide/history.png" target="_blank" rel="noopener"><img src="../images/user-guide/history.png" alt="실행 기록의 총 실행 수·평균 통과율·자동 복구 요약과 유형·플랫폼 필터" width="1920" loading="lazy"></a><figcaption>서버에 저장된 실행 기록과 플랫폼·그룹 필터. 완료된 기록이 없으면 빈 상태가 보입니다.</figcaption></figure>
 <div class="card">
 <h3 id="history-browser-storage">실행 기록의 저장 범위</h3>
-<p><strong>실행 기록</strong>은 서버에 저장된 실행별 결과·리포트·실행 증거를 기준으로 최근 50건을 표시합니다. 테스트 시작 전 실패해 HTML 리포트가 없는 실행도 표시합니다. 같은 서버에 접속하면 다른 브라우저나 시크릿 창에서도 같은 기록과 대시보드 추이를 볼 수 있습니다. 기존 리포트도 자동으로 반영하며 하나의 실행에 리포트와 증거가 모두 있어도 중복 집계하지 않습니다. 실행 경로를 확인할 수 없는 이전 기록은 <strong>테스트 실행</strong>, 확인할 수 없는 소요 시간·첫 시도·복구 정보는 <strong>—</strong>로 표시합니다.</p>
+<p><strong>실행 기록</strong>은 서버에 저장된 실행별 결과·리포트·실행 증거를 기준으로 최근 50건을 표시합니다. 테스트 시작 전 실패해 HTML 리포트가 없는 실행도 표시합니다. 같은 서버에 접속하면 다른 브라우저나 시크릿 창에서도 같은 기록과 대시보드 추이를 볼 수 있습니다. 종류는 시작한 경로를 기준으로 <strong>빠른 실행 / 파이프라인</strong>으로 구분합니다. 파이프라인의 개별 단계 실행도 파이프라인으로 표시합니다. 실행 경로가 없는 과거 기록이나 별도 CLI 실행은 <strong>테스트 실행</strong>으로 표시하며 임의로 분류하지 않습니다. 새 리포트에는 실행 종류도 저장하므로 증거 보존 정리 후에도 구분을 유지합니다. 기존 리포트도 자동으로 반영하며 하나의 실행에 리포트와 증거가 모두 있어도 중복 집계하지 않습니다. 실행 경로를 확인할 수 없는 이전 기록은 <strong>테스트 실행</strong>, 확인할 수 없는 소요 시간·첫 시도·복구 정보는 <strong>—</strong>로 표시합니다.</p>
 <h3 id="history-filter-statistics">필터와 통계 읽기</h3>
 <ol><li>실행 유형 <strong>전체 / 파이프라인 / 빠른 실행 / 테스트 실행</strong>과 플랫폼 <strong>전체 / Android / iOS</strong>를 선택합니다.</li><li>그룹 메뉴의 제공된 항목으로 범위를 좁힙니다. 그룹 메뉴에는 서버 실행 기록에 있는 그룹이 표시됩니다. 메뉴를 다시 열거나 목록을 갱신해도 선택한 필터가 유지됩니다.</li><li>행에서 실행 시각, 통과율, 통과/전체, 소요, 유형, 플랫폼과 그룹을 확인합니다. 정보가 없는 소요 시간은 <strong>-</strong>로 표시될 수 있습니다.</li><li>상단 평균 통과율은 저장된 실행별 통과율의 평균입니다. 필터는 행 표시를 바꾸며 상단 통계를 해당 필터로 다시 계산하지 않습니다.</li></ol>
 <p class="note"><strong>첫 시도 통과</strong>와 복구 횟수는 서버 기록에서 확인 가능한 정보 기준입니다. 실제 시도 횟수·복구 효과를 확정할 때는 TC별 증거의 시도 목록을 확인하세요. 빠른 실행 요약에는 실제 자동 복구 횟수가 집계되지 않습니다.</p>

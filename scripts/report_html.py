@@ -685,7 +685,9 @@ document.addEventListener('click', function(e) {
 def build_report(groups_data: list, summary: dict,
                  created_at: str, subtitle: str = "App Test Report",
                  video_path: "str | None" = None,
-                 platform: str = "", run_id: str = "") -> str:
+                 platform: str = "", run_id: str = "",
+                 run_type: str = "execution") -> str:
+    run_type = run_type if run_type in ("quick", "pipeline") else "execution"
     pass_total = summary.get("passed", 0)
     fail_total = summary.get("failed", 0) + summary.get("error", 0)
     skip_total = summary.get("skipped", 0)
@@ -735,6 +737,7 @@ def build_report(groups_data: list, summary: dict,
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="qa-run-id" content="{_esc(run_id)}">
+<meta name="qa-run-type" content="{run_type}">
 <title>App QA Report</title>
 <style>{report_css()}</style>
 </head>

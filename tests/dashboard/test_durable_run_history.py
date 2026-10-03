@@ -274,3 +274,43 @@ def test_completed_folder_retains_pass_and_exposes_interrupted_remaining_work(hi
     assert entry['passed'] == 1 and entry['rate'] == 100
     assert entry['workflowStatus'] == 'interrupted'
     assert entry['workflowError'] == '남은 단계는 자동 실행하지 않습니다'
+
+
+@pytest.mark.parametrize('kind', ['quick', 'pipeline'])
+@pytest.mark.parametrize('with_manifest', [False, True])
+def test_report_type_survives_unknown_result_and_manifest(history_client, tmp_path, kind, with_manifest):
+    from scripts.report_html import build_report
+    rid = 'run_android_20261002_120000_000'
+    directory = tmp_path / 'tests/reports'
+    directory.mkdir(parents=True)
+    document = build_report([], {'passed': 1}, '2026-10-02 12:00:10',
+                            platform='android', run_id=rid, run_type=kind)
+    assert f'<meta name="qa-run-type" content="{kind}">' in document
+    (directory / 'report_android_20261002_120000_001.html').write_text(document)
+    if with_manifest:
+        manifest(tmp_path, rid)
+    assert history_client.get('/api/run-history').json()['entries'][0]['type'] == kind
+    execution_result(tmp_path, rid, run_type='execution')
+    assert history_client.get('/api/run-history').json()['entries'][0]['type'] == kind
+
+
+@pytest.mark.parametrize('kind', [None, 'invalid', {}, 'execution'])
+def test_report_type_is_validated_and_legacy_remains_unknown(history_client, tmp_path, kind):
+    from scripts.report_html import build_report
+    directory = tmp_path / 'tests/reports'
+    directory.mkdir(parents=True)
+    document = build_report([], {'passed': 1}, '2026-10-02 12:00:10', run_type=kind)
+    assert '<meta name="qa-run-type" content="execution">' in document
+    (directory / 'report_android_20261002_120000_001.html').write_text(document)
+    assert history_client.get('/api/run-history').json()['entries'][0]['type'] == 'execution'
+
+
+def test_unknown_result_preserves_known_manifest_type(history_client, tmp_path):
+    rid = 'run_android_20261002_120000_000'
+    manifest(tmp_path, rid)
+    path = tmp_path / 'state/runs' / rid / 'artifacts/manifest.json'
+    data = json.loads(path.read_text())
+    data['type'] = 'pipeline'
+    path.write_text(json.dumps(data))
+    execution_result(tmp_path, rid, run_type='execution')
+    assert history_client.get('/api/run-history').json()['entries'][0]['type'] == 'pipeline'

@@ -37,12 +37,15 @@ class _ReportSummary(HTMLParser):
         self.number = None
         self.title = ''
         self.run_id = None
+        self.run_type = "execution"
 
     def handle_starttag(self, tag, attrs):
         if tag == 'meta':
             metadata = dict(attrs)
             if metadata.get('name') == 'qa-run-id' and _RUN_ID.fullmatch(metadata.get('content', '')):
                 self.run_id = metadata['content']
+            if metadata.get('name') == 'qa-run-type' and metadata.get('content') in ('quick', 'pipeline'):
+                self.run_type = metadata['content']
         if tag in {'meta', 'link', 'input', 'img', 'br', 'hr', 'source', 'wbr'}:
             return
         classes = dict(attrs).get('class', '').split()
@@ -101,7 +104,7 @@ def _report_cached(path, mtime, size):
     ids = {parser.run_id} if parser.run_id else {item.group(0) for item in _RUN_ID.finditer(text)}
     platforms = {item.split('_')[1] for item in ids}
     platform = match[1] or (next(iter(platforms)) if len(platforms) == 1 else 'unknown')
-    return {**counts, 'id': 'report:'+Path(path).name, 'type': 'execution', 'platform': platform,
+    return {**counts, 'id': 'report:'+Path(path).name, 'type': parser.run_type, 'platform': platform,
             'executedAt': executed.isoformat(), 'duration': None, 'groups': parser.groups,
             'reportName': Path(path).name, '_started': started,
             'runId': next(iter(ids)) if len(ids) == 1 else None}
@@ -176,7 +179,7 @@ def execution_summary(data, run_id, fallback_time):
                                     if isinstance(group, str) and group.strip()))
     return {**counts, 'id': run_id, 'runId': run_id, 'status': status,
             'platform': data.get('platform') or run_id.split('_')[1],
-            'type': data.get('run_type', 'execution'), 'executedAt': timestamp.isoformat(),
+            'type': data.get('run_type') if data.get('run_type') in ('quick', 'pipeline') else 'execution', 'executedAt': timestamp.isoformat(),
             'duration': max(0, (finished-started).total_seconds()) if finished and started else None,
             'groups': groups, 'reportName': None, 'countsComplete': complete,
             'error': str(data.get('error') or ''),
@@ -222,7 +225,10 @@ def _entries(root, reports_dir):
             current = combined[rid]
             # A retry may write multiple reports for one logical run. Keep its last report.
             if not current['reportName'] or entry['reportName'] > current['reportName']:
+                known_type = current['type']
                 current = dict(manifests[rid])
+                if current['type'] == 'execution':
+                    current['type'] = entry['type'] if entry['type'] != 'execution' else known_type
                 current['reportName'] = entry['reportName']
                 combined[rid] = current
         else:
@@ -246,7 +252,8 @@ def _entries(root, reports_dir):
         if entry['duration'] is None and not data.get('started_at') and not data.get('finished_at'):
             entry['duration'] = previous.get('duration')
         entry['groups'] = entry['groups'] or previous.get('groups', [])
-        entry['type'] = data.get('run_type') or previous.get('type', 'execution')
+        if entry['type'] == 'execution':
+            entry['type'] = previous.get('type', 'execution')
         entry['reportName'] = previous.get('reportName')
         if data.get('report_path'):
             report = Path(data['report_path'])

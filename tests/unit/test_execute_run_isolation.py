@@ -189,3 +189,19 @@ def test_selected_groups_are_persisted_before_preflight_failure(execute, monkeyp
     saved = outcome(execute)
     assert saved['groups'] == groups
     assert saved['execute_results']['summary']['total'] == 0
+
+
+@pytest.mark.parametrize('kind,expected', [('quick', 'quick'), ('pipeline', 'pipeline'), ('', 'execution'), ('invalid', 'execution')])
+def test_owned_result_keeps_execution_kind_even_before_pytest(execute, monkeypatch, kind, expected):
+    monkeypatch.setenv('QA_RUN_TYPE', kind)
+    monkeypatch.setattr(execute, 'resolve_selected_device', _unavailable)
+    with pytest.raises(SystemExit):
+        execute.main()
+    assert outcome(execute)['run_type'] == expected
+
+
+def test_report_receives_current_execution_kind(execute):
+    state = {'last_run_id': 'run_android_20261003_110000_001', 'run_type': 'quick',
+             'execute_results': {'passed': [], 'errors': [], 'summary': {'passed': 0, 'failed': 0}}}
+    execute._generate_html_report(state, 'android')
+    assert '<meta name="qa-run-type" content="quick">' in Path(state['report_path']).read_text()

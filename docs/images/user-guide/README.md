@@ -1,16 +1,16 @@
 # 현재 제품 화면
 
-주요 화면은 2026-10-02에 `main`의 실제 `agents/dashboard/serve.py`(http://localhost:8767/)에서 촬영한 밝은 UI입니다. 브라우저 폭 1440px, 높이 1000px, 배율 1로 전체 페이지를 저장했습니다. 주요 화면은 `main`의 밝은 UI를 기준으로 촬영했고, Capture 실행 대상 정책 변경 뒤 관련 화면을 같은 날 다시 촬영했습니다.
+주요 화면은 2026-10-02에 `main`의 실제 `agents/dashboard/serve.py`(http://localhost:8767/)에서 촬영한 밝은 UI입니다. 브라우저 폭 1440px, 높이 1000px, 배율 1로 전체 페이지를 저장했습니다. 대시보드·실행 기록은 실행 종류 구분 수정 후 2026-10-03에 1920×1000px로 다시 촬영했습니다. 나머지 주요 화면은 `main`의 밝은 UI를 기준으로 촬영했고, Capture 실행 대상 정책 변경 뒤 관련 화면을 같은 날 다시 촬영했습니다.
 
 | 파일 | 화면 |
 |---|---|
 | [recovery-notices.png](recovery-notices.png) | 2026-10-03 실제 기기 연결 실패의 알림 패널(360×480px) — 대상·시각·환경 확인·확인했어요 |
-| [dashboard.png](dashboard.png) | 대시보드와 통과·주의·실패 범례 |
+| [dashboard.png](dashboard.png) | 2026-10-03 재촬영: 대시보드의 빠른 실행·파이프라인 구분과 통과율 추이 |
 | [pipeline.png](pipeline.png) | 파이프라인 설정과 기기 선택 |
 | [quick-run.png](quick-run.png) | 빠른 실행과 생성된 테스트 선택 |
 | [quick-run-result.png](quick-run-result.png) | 저장된 11:08 실행 결과의 TC 목록과 증거(실제 실패 영상) |
 | [reports.png](reports.png) | 리포트 목록과 저장된 실행 결과 미리보기 |
-| [history.png](history.png) | 실행 기록 |
+| [history.png](history.png) | 2026-10-03 재촬영: 실행 종류가 저장된 실행 기록 |
 | [environment.png](environment.png) | Appium·Android·iOS 환경 설정 |
 | [capture.png](capture.png) | 화면 캡처로 작성 |
 | [capture-ios.png](capture-ios.png) | iPhone 17 · iOS 27.0 시뮬레이터에서 설정 앱 실제 연결·미러링·Native 트리 |

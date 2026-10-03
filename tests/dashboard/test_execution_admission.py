@@ -417,3 +417,25 @@ def test_preworker_metadata_failure_releases_unstarted_execution(harness, monkey
     assert jobs == [] and commands == []
     assert not any(not item.get('done') for item in pipeline._pipeline_batches.values())
     assert not any(not item.get('done') for item in pipeline._test_runs.values())
+
+
+@pytest.mark.parametrize('route,body,kind', [
+    ('/api/run_test', {'test_folder': 'one'}, 'quick'),
+    ('/api/run_all', {'tc_folders': ['one'], 'from_tc_studio': True}, 'pipeline'),
+    ('/api/run', {'step': 'execute', 'tc_folder': 'one'}, 'pipeline'),
+])
+def test_execution_kind_is_reserved_and_sent_to_children(harness, route, body, kind):
+    client, jobs, commands = harness
+    assert client.post(route, json=body).status_code == 200
+    assert pipeline._execution_reservation['run']['run_type'] == kind
+    jobs[0]()
+    assert commands and all(env.get('QA_RUN_TYPE') == kind for _, env in commands)
+
+
+def test_cancel_before_pytest_preserves_execution_kind(harness):
+    client, jobs, _ = harness
+    client.post('/api/run_test', json={'test_folder': 'one'})
+    run = pipeline._execution_reservation['run']
+    run['cancelled'] = True
+    jobs[0]()
+    assert pipeline.read_execution_result(pipeline.PROJECT_ROOT, run['run_id'])['run_type'] == 'quick'
