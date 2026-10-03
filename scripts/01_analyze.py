@@ -128,6 +128,7 @@ def main():
             {args.screen: screens[args.screen]} if args.screen else screens
         )
         dom_info = state.get("dom_info", {})
+        collected_screens = []
 
         for screen_name, screen_cfg in target_screens.items():
             platforms = screen_cfg.get("platform", ["android", "ios"])
@@ -155,12 +156,14 @@ def main():
                 "webviews": webviews,
                 "description": screen_cfg.get("description", ""),
             }
+            collected_screens.append(screen_name)
 
+        state["analysis_snapshot"] = {"platform": args.platform, "screens": collected_screens}
         state["dom_info"] = dom_info
         state["step"] = "analyzed"
         state["platform"] = args.platform
         save_state(state)
-        print(f"[01_analyze] done. {len(dom_info)} screen(s) collected.")
+        print(f"[01_analyze] done. {len(collected_screens)} screen(s) collected.")
 
     finally:
         driver.quit()

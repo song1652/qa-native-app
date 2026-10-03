@@ -51,12 +51,13 @@ from utils.capture_validation import (  # noqa: E402
 from utils.capture_driver import (  # noqa: E402
     IOS_MJPEG_PORT as _IOS_MJPEG_PORT,
     CAPTURE_LAUNCH_TIMEOUTS,
+    capture_error,
+    save_hierarchy_snapshot as _save_hierarchy_snapshot,
     appium_back as _do_appium_back,
     appium_tap as _do_appium_tap,
     resolve_capture_device,
     get_capture_driver,
     start_appium_session as _do_start_appium_session,
-    take_hierarchy_snapshot as _take_hierarchy_snapshot,
 )
 from ws import broadcast_timeline_sync  # noqa: E402
 
@@ -69,6 +70,79 @@ router = APIRouter()
 _capture_launch_lock = threading.Lock()
 _capture_launch_tasks = set()
 CAPTURE_LIVENESS_TIMEOUT = 10
+CAPTURE_READ_TIMEOUT = 18
+CAPTURE_READ_RETRY_DELAY = 0.25
+
+
+_CAPTURE_IDENTITY_KEYS = ("session_id", "platform", "target", "udid")
+
+
+class CaptureReadError(Exception):
+    def __init__(self, payload):
+        self.payload = payload
+        super().__init__(payload["error"])
+
+
+def _same_capture_session(first, second):
+    return second.get("active") and all(first.get(key) == second.get(key) for key in _CAPTURE_IDENTITY_KEYS)
+
+
+def _record_connection_issue(session, driver, recovery):
+    """Preserve concurrent actions and one durable notification per incident."""
+    with shared._process_lock:
+        current = load_capture_session()
+        if not _same_capture_session(session, current) or shared.get_capture_driver() is not driver:
+            return
+        if not current.get("connection_issue_at"):
+            save_capture_session({**current, "connection_issue_at": datetime.now().isoformat(),
+                                  "connection_recovery": recovery})
+
+
+def _capture_launch_failure(result, session):
+    if "recovery" not in result:
+        reason = {
+            "capture_device_unavailable": "device unavailable",
+            "capture_launch_timeout": TimeoutError("launch deadline expired"),
+            "capture_target_mismatch": "invalid configuration",
+            "capture_session_changed": "invalid session id",
+        }.get(result.get("code"), result.get("error", ""))
+        result = {**capture_error(reason), **result}
+    _record_connection_issue(session, shared.get_capture_driver(), result["recovery"])
+    return result
+
+
+async def _capture_read(driver, operation):
+    """Retry completed transient reads once, bound to the original session."""
+    session = load_capture_session()
+    deadline = _time.monotonic() + CAPTURE_READ_TIMEOUT
+    for attempts in (1, 2):
+        if not _same_capture_session(session, load_capture_session()) or get_capture_driver() is not driver:
+            payload = capture_error("invalid session id", attempts=attempts - 1, code="capture_session_changed")
+            raise CaptureReadError(payload)
+        task = asyncio.create_task(asyncio.to_thread(operation))
+        try:
+            value = await asyncio.wait_for(task, max(0, deadline - _time.monotonic()))
+        except Exception as exc:
+            if not _same_capture_session(session, load_capture_session()) or get_capture_driver() is not driver:
+                raise CaptureReadError(capture_error("invalid session id", attempts=attempts, code="capture_session_changed")) from exc
+            # A cancelled executor wait may still be running: never start another.
+            outer_timeout = isinstance(exc, asyncio.TimeoutError) and task.cancelled()
+            payload = capture_error(exc if not outer_timeout else TimeoutError("read timed out"),
+                                    attempts=attempts, read=True)
+            if outer_timeout:
+                payload["recovery"]["retryable"] = False
+                payload["recovery"]["read_retryable"] = False
+            if (not outer_timeout and attempts == 1 and payload["recovery"]["retryable"]
+                    and _time.monotonic() + CAPTURE_READ_RETRY_DELAY < deadline):
+                await asyncio.sleep(CAPTURE_READ_RETRY_DELAY)
+                continue
+            if payload["reconnect_required"]:
+                _record_connection_issue(session, driver, payload["recovery"])
+                driver._capture_disconnected = True
+            raise CaptureReadError(payload) from exc
+        if not _same_capture_session(session, load_capture_session()) or get_capture_driver() is not driver:
+            raise CaptureReadError(capture_error("invalid session id", attempts=attempts, code="capture_session_changed"))
+        return value, attempts
 
 
 # ── Appium 드라이버 헬퍼 ──────────────────────────────────────
@@ -535,60 +609,42 @@ async def capture_clear_actions(request: Request):
 
 @router.get("/capture/page_source_hash")
 async def capture_page_source_hash():
-    """page_source 앞부분 MD5 해시 반환 — 화면 전환 감지용 경량 엔드포인트."""
+    """Read the current screen hash with one bounded transient retry."""
     import hashlib
     driver = get_capture_driver()
     if driver is None:
-        return JSONResponse({"ok": False, "hash": None, "reconnect_required": True})
-    loop = asyncio.get_running_loop()
+        return JSONResponse({**capture_error("invalid session id"), "hash": None})
     try:
-        src = await asyncio.wait_for(loop.run_in_executor(None, lambda: driver.page_source), CAPTURE_LIVENESS_TIMEOUT)
-        h = hashlib.md5(src[:8192].encode("utf-8", errors="ignore")).hexdigest()[:8]
-        return JSONResponse({"ok": True, "hash": h})
-    except Exception as exc:
-        driver._capture_disconnected = True
-        return JSONResponse({"ok": False, "hash": None, "reconnect_required": True, "error": str(exc)})
+        src, attempts = await _capture_read(driver, lambda: driver.page_source)
+        digest = hashlib.md5(src[:8192].encode("utf-8", errors="ignore")).hexdigest()[:8]
+        return JSONResponse({"ok": True, "hash": digest, "attempts": attempts})
+    except CaptureReadError as exc:
+        return JSONResponse({**exc.payload, "hash": None})
 
 
 @router.get("/capture/screenshot")
 async def capture_screenshot():
-    """현재 화면 스크린샷을 base64로 반환 (iOS polling 방식 미러링용).
-
-    Android MJPEG 사용 불가 시 fallback으로도 동작합니다.
-    """
     driver = get_capture_driver()
     if driver is None:
-        return JSONResponse({"ok": False, "error": "Appium 세션 없음"}, status_code=409)
-    loop = asyncio.get_running_loop()
+        return JSONResponse(capture_error("invalid session id"), status_code=409)
     try:
-        data = await asyncio.wait_for(loop.run_in_executor(None, driver.get_screenshot_as_base64), CAPTURE_LIVENESS_TIMEOUT)
-        return JSONResponse({
-            "ok":   True,
-            "data": data,
-            "ts":   datetime.now().isoformat(),
-        })
-    except Exception as exc:
-        return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
+        data, attempts = await _capture_read(driver, driver.get_screenshot_as_base64)
+        return JSONResponse({"ok": True, "data": data, "attempts": attempts,
+                             "ts": datetime.now().isoformat()})
+    except CaptureReadError as exc:
+        return JSONResponse(exc.payload, status_code=500)
 
 
 @router.get("/capture/driver_alive")
 async def capture_driver_alive():
-    """_capture_driver 인스턴스가 살아있는지 확인.
-
-    get_window_size()는 표준 WebDriver 명령으로 Android·iOS 양쪽에서 동작합니다.
-    current_context / current_package 는 플랫폼별 차이가 있어 사용하지 않습니다.
-    """
     driver = get_capture_driver()
-    alive  = driver is not None
-    if alive:
-        try:
-            await asyncio.wait_for(asyncio.to_thread(driver.get_window_size), CAPTURE_LIVENESS_TIMEOUT)
-            alive = get_capture_driver() is driver
-        except Exception:
-            # Retain the raw driver for serialized quit on explicit reconnect.
-            driver._capture_disconnected = True
-            alive = False
-    return JSONResponse({"alive": alive, "reconnect_required": not alive})
+    if driver is None:
+        return JSONResponse({**capture_error("invalid session id"), "alive": False})
+    try:
+        _, attempts = await _capture_read(driver, driver.get_window_size)
+        return JSONResponse({"alive": True, "reconnect_required": False, "attempts": attempts})
+    except CaptureReadError as exc:
+        return JSONResponse({**exc.payload, "alive": False})
 
 
 @router.get("/capture/session")
@@ -641,19 +697,21 @@ async def capture_launch(request: Request):
             result = await asyncio.to_thread(_do_start_appium_session, worker_session)
             driver = result.pop("_driver", None) or worker_session.get("_launch_driver")
             if cancelled.is_set() or _time.monotonic() >= deadline:
-                return {"ok": False, "code": "capture_launch_timeout", "reconnect_required": True, "error": "앱 실행 제한 시간이 지났습니다. 작성 내용은 유지됩니다. 같은 기기로 세션 재연결을 눌러주세요."}
+                return _capture_launch_failure({"ok": False, "code": "capture_launch_timeout", "reconnect_required": True, "error": "앱 실행 제한 시간이 지났습니다. 작성 내용은 유지됩니다. 같은 기기로 세션 재연결을 눌러주세요."}, session)
             if result.get("ok") and result.get("udid"):
                 with shared._process_lock:
                     updated = load_capture_session()
                     if not updated.get("active") or any(updated.get(key) != session.get(key) for key in ("session_id", "platform", "target", "udid")):
                         return {"ok": False, "code": "capture_target_mismatch", "error": "Capture 세션이 변경되어 이전 앱 실행을 취소했습니다. 실행 대상을 다시 확인하세요."}
+                    updated.pop("connection_issue_at", None)
+                    updated.pop("connection_recovery", None)
                     save_capture_session({**updated, "device_name": result["device_name"], "udid": result["udid"]})
                     if driver is not None:
                         set_capture_driver(driver)
                         published = True
-            return result
+            return result if result.get("ok") else _capture_launch_failure(result, session)
         except Exception as exc:
-            return {"ok": False, "error": str(exc)}
+            return _capture_launch_failure(capture_error(exc), session)
         finally:
             driver = driver or worker_session.get("_launch_driver")
             if driver is not None and not published:
@@ -675,8 +733,9 @@ async def capture_launch(request: Request):
         return JSONResponse(result, status_code=status)
     except asyncio.TimeoutError:
         cancelled.set()
-        return JSONResponse({"ok": False, "code": "capture_launch_timeout", "reconnect_required": True,
-                             "error": "앱 실행 제한 시간이 지났습니다. 작성 내용은 유지됩니다. 이전 연결 정리가 끝난 뒤 같은 기기로 세션 재연결을 누르세요."}, status_code=504)
+        failure = _capture_launch_failure({"ok": False, "code": "capture_launch_timeout", "reconnect_required": True,
+                             "error": "앱 실행 제한 시간이 지났습니다. 작성 내용은 유지됩니다. 이전 연결 정리가 끝난 뒤 같은 기기로 세션 재연결을 누르세요."}, session)
+        return JSONResponse(failure, status_code=504)
     except asyncio.CancelledError:
         cancelled.set()
         raise
@@ -694,19 +753,25 @@ async def capture_snapshot(request: Request):
 
     driver = get_capture_driver()
     if driver is None:
-        return JSONResponse({"ok": False, "error": "Appium 세션 없음"}, status_code=409)
+        return JSONResponse(capture_error("invalid session id"), status_code=409)
 
-    # hierarchy 조회도 활동으로 간주 → last_activity_at 갱신 (30분 만료 방지)
-    save_capture_session({**session, "last_activity_at": datetime.now().isoformat()})
+    # Reload under the shared lock so concurrent draft/incident updates survive.
+    with shared._process_lock:
+        current = load_capture_session()
+        if not _same_capture_session(session, current) or get_capture_driver() is not driver:
+            return JSONResponse(capture_error("invalid session id", code="capture_session_changed"), status_code=409)
+        save_capture_session({**current, "last_activity_at": datetime.now().isoformat()})
 
-    loop = asyncio.get_running_loop()
     try:
-        snap_id = await loop.run_in_executor(
-            None, _take_hierarchy_snapshot, session_id, driver, context
-        )
-        return JSONResponse({"ok": True, "snapshot_id": snap_id, "context": context})
-    except Exception as exc:
-        return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
+        xml, attempts = await _capture_read(driver, lambda: driver.page_source)
+    except CaptureReadError as exc:
+        return JSONResponse(exc.payload, status_code=500)
+    try:
+        # No await between target validation and persisting the successful read.
+        snap_id = _save_hierarchy_snapshot(session_id, xml, context)
+        return JSONResponse({"ok": True, "snapshot_id": snap_id, "context": context, "attempts": attempts})
+    except OSError:
+        return JSONResponse(capture_error({"error": "invalid configuration: Capture snapshot file write failed", "error_type": "configuration"}, attempts=attempts), status_code=500)
 
 
 @router.post("/capture/back")

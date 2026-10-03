@@ -6,6 +6,11 @@ import pytest
 from agents.dashboard.utils import state
 
 
+def test_dashboard_tests_isolate_capture_session_from_workspace(tmp_path):
+    from utils import state
+    assert state.CAPTURE_SESSION_PATH.is_relative_to(tmp_path)
+
+
 def test_capture_snapshot_failed_replace_keeps_previous_draft(tmp_path, monkeypatch):
     path = tmp_path / 'capture_session.json'
     before = {'session_id': 'draft', 'actions': [{'action': 'tap'}]}

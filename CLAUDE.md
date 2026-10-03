@@ -39,7 +39,7 @@
 - `01_analyze.py`: Appium native hierarchy와 감지된 WebView DOM을 분리 수집
 - `02_generate.py`: native 우선·선택적 Playwright WebView pytest 생성
 - `03_lint.py`: 생성 코드 flake8 검사
-- `05_execute.py`: pytest/Appium 실행 및 리포트 저장. `pytest-rerunfailures`가 설치된 경우 `--reruns 2 --reruns-delay 5` 자동 적용
+- `05_execute.py`: pytest/Appium 실행 및 리포트 저장. 실패한 테스트의 무조건 재실행을 막기 위해 `rerunfailures` 플러그인을 비활성화합니다. 연결 확인 조회만 제한된 횟수로 재시도합니다.
 - `06_heal.py`: 실패 직전 최신 hierarchy를 다시 수집하고 유일 후보만 healing
 
 대시보드의 전체 실행은 위 순서의 단일 파이프라인입니다. 제품에는 단일/병렬 실행 유형을 별도로 노출하지 않습니다.
@@ -72,6 +72,12 @@ testcases/ios/{group}/     → tests/generated/ios/{group}/
 - `execution_result.json`의 실행별 상태를 우선하여 실행 기록을 병합합니다. 불완전한 manifest의 일부 통과 결과로 전체 실행을 통과 처리하지 않습니다.
 - Capture 연결은 Android 120초/iOS 400초 제한, iOS 클라이언트는 420초 여유를 유지합니다. 늦게 완료된 드라이버를 새 세션에 붙이지 않으며 연결 정리 중에는 충돌하는 실행을 막습니다.
 - Capture 세션 JSON은 원자적 교체로 저장합니다. 무선 ADB 재연결은 활성 Capture와 같은 주소에만 허용하고 실제 `get-state`를 검증합니다.
+
+## 오류별 대응·알림 정책
+
+- 연결 상태·화면·hierarchy처럼 읽기만 하는 요청에 한해 알려진 일시적 통신 오류를 제한된 횟수로 재시도합니다. 세션 생성·탭·입력·스크롤·뒤로가기를 자동 재전송하지 않습니다.
+- 실행 실패는 공통 오류 분류와 고정된 사용자 대응 문구를 저장합니다. Locator 실패만 기존 자동 healing 대상이며, 검증·환경 오류와 섞이면 자동 복구를 중단합니다. 원인 불명 오류를 Locator 오류로 추측하지 않습니다. 최신 분석에서 실제 수집한 화면만 복구에 사용하며, 수집·복구 검증 실패 시 변경을 되돌리고 추가 자동 실행을 중단합니다.
+- `/api/recovery-notices`는 실행별 결과·Capture 연결 상태에서 알림을 읽습니다. 알림은 제품 안에 표시하며 원시 traceback·인증 URL을 안내 문구에 노출하지 않습니다. 확인 상태는 브라우저별이며 실행 결과를 삭제하지 않습니다.
 
 ## 화면 캡처로 작성 (Capture)
 
@@ -189,7 +195,7 @@ python3 scripts/02_generate.py --platform ios --strict-locators
 git diff --check
 ```
 
-`pytest-rerunfailures` 동작 확인: `pip show pytest-rerunfailures` 후 `05_execute.py` 실행 로그에서 `--reruns 2 --reruns-delay 5` 포함 여부를 확인합니다.
+오류별 정책은 `scripts/error_policy.py`를 기준으로 확인합니다. pytest 호출에 `-p no:rerunfailures`가 포함되어 실패한 앱 동작을 무조건 반복하지 않는지 확인합니다.
 
 실제 Appium 실행은 연결된 서버와 디바이스가 있을 때 별도로 수행합니다.
 

@@ -22,6 +22,7 @@ EXPECTED_SCRIPTS = [
     "/static/observability.js",
     "/static/environment.js",
     "/static/environment-devices.js",
+    "/static/recovery-notices.js",
     "/static/capture-studio.js",
     "/static/capture-inspector.js",
     "/static/capture-actions.js",

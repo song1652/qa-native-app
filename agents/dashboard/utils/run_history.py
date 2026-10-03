@@ -171,6 +171,9 @@ def execution_summary(data, run_id, fallback_time):
         match = re.match(r'tests/generated/(?:android|ios)/([^/]+)/', str(value))
         if match and match[1] not in groups:
             groups.append(match[1])
+    if not groups and isinstance(data.get('groups'), list):
+        groups = list(dict.fromkeys(group for group in data['groups']
+                                    if isinstance(group, str) and group.strip()))
     return {**counts, 'id': run_id, 'runId': run_id, 'status': status,
             'platform': data.get('platform') or run_id.split('_')[1],
             'type': data.get('run_type', 'execution'), 'executedAt': timestamp.isoformat(),

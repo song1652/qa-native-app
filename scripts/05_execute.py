@@ -9,6 +9,7 @@ import argparse
 import importlib.util
 import json
 import os
+import re
 import struct
 import subprocess
 import sys
@@ -23,6 +24,7 @@ STATE_DIR = ROOT / "state"
 if str(Path(__file__).parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).parent))
 from run_results import execution_result_path, read_execution_result, write_execution_result
+from error_policy import classify_error, recovery_for_result
 
 
 def _find_adb() -> str:
@@ -56,17 +58,94 @@ def _pytest_html_options(report_path: Path) -> list[str]:
 def check_appium_server() -> bool:
     import urllib.request
     try:
-        urllib.request.urlopen("http://localhost:4723/status", timeout=3)
-        return True
+        with urllib.request.urlopen("http://localhost:4723/status", timeout=3) as response:
+            data = json.loads(response.read())
+            return response.status == 200 and data.get("value", {}).get("ready") is True
     except Exception:
         return False
 
 
-def check_android_device() -> bool:
-    result = subprocess.run([ADB, "devices"], capture_output=True, text=True)
-    lines = result.stdout.strip().splitlines()
-    connected = [ln for ln in lines[1:] if ln.strip() and "offline" not in ln]
-    return len(connected) > 0
+def resolve_selected_device(platform, mode, udid):
+    """Resolve exactly one selected target using read-only, bounded discovery."""
+    valid_modes = {"android": ("emulator", "real_device"), "ios": ("simulator", "real_device")}
+    if mode not in valid_modes.get(platform, ()):
+        raise ValueError(f"Invalid configuration: {platform}/{mode}")
+    configured = {}
+    if not udid:
+        try:
+            devices = json.loads((ROOT / "config/devices.json").read_text())[platform][mode]
+            if isinstance(devices, dict):
+                configured = devices
+            else:
+                defaults = [item for item in devices if item.get("default")]
+                if len(defaults) == 1:
+                    configured = defaults[0]
+                elif len(devices) == 1:
+                    configured = devices[0]
+                else:
+                    raise ValueError("device selection ambiguous")
+            udid = configured.get("udid", "")
+        except (OSError, KeyError, TypeError, ValueError) as exc:
+            raise ValueError("Invalid configuration: select an exact device") from exc
+    def probe(command):
+        result = subprocess.run(command, capture_output=True, text=True, timeout=8)
+        if result.returncode:
+            raise RuntimeError(f"Selected {platform} device unavailable")
+        return result.stdout
+    if platform == "android":
+        if udid and udid.startswith("emulator-") != (mode == "emulator"):
+            raise ValueError("Invalid configuration: selected Android device mode mismatch")
+        records = [line.split() for line in probe([ADB, "devices"]).splitlines()]
+        if any(len(parts) >= 2 and parts[0] == udid and parts[1] == "unauthorized" for parts in records):
+            raise RuntimeError("Selected Android device unavailable (unauthorized)")
+        candidates = [parts[0] for parts in records if len(parts) >= 2 and parts[1] == "device"
+                      and parts[0].startswith("emulator-") == (mode == "emulator")]
+        if udid:
+            candidates = [item for item in candidates if item == udid]
+        elif mode == "emulator" and configured.get("avd"):
+            candidates = [item for item in candidates if probe([ADB, "-s", item, "emu", "avd", "name"]).splitlines()[:1] == [configured["avd"]]]
+        else:
+            raise ValueError("Invalid configuration: select an exact Android device")
+    elif mode == "simulator":
+        data = json.loads(probe(["xcrun", "simctl", "list", "devices", "booted", "--json"]))
+        if not udid and not configured.get("deviceName"):
+            raise ValueError("Invalid configuration: select an exact iOS simulator")
+        candidates = [device["udid"] for group in data.get("devices", {}).values() for device in group
+                      if device.get("state") == "Booted" and device.get("isAvailable", True)
+                      and (device.get("udid") == udid if udid else device.get("name") == configured["deviceName"])]
+    else:
+        if not udid:
+            raise ValueError("Invalid configuration: select an exact iOS device")
+        candidates = [item.strip() for item in probe(["idevice_id", "-l"]).splitlines() if item.strip() == udid]
+    if not candidates:
+        raise RuntimeError(f"Selected {platform} device unavailable")
+    if len(candidates) != 1:
+        raise ValueError("Invalid configuration: device selection ambiguous")
+    return candidates[0]
+
+
+def _preflight(outcome):
+    """Only these read-only probes may retry, before pytest or recording starts."""
+    outcome["preflight"] = {"device_attempts": 0, "appium_attempts": 0}
+    for attempt in range(3):
+        outcome["preflight"]["device_attempts"] = attempt + 1
+        try:
+            outcome["device_udid"] = resolve_selected_device(
+                outcome["platform"], outcome["device_mode"], outcome["device_udid"])
+            break
+        except Exception as exc:
+            print(f"[05_execute] Read-only device probe {attempt + 1}/3 did not succeed")
+            if classify_error(exc)["category"] != "device_unavailable" or "unauthorized" in str(exc).lower() or attempt == 2:
+                raise
+            time.sleep((0.5, 1)[attempt])
+    for attempt in range(3):
+        outcome["preflight"]["appium_attempts"] = attempt + 1
+        if check_appium_server():
+            return
+        print(f"[05_execute] Read-only Appium probe {attempt + 1}/3 did not succeed")
+        if attempt < 2:
+            time.sleep((0.5, 1)[attempt])
+    raise RuntimeError("Appium server not running")
 
 
 def _get_device_id() -> str:
@@ -204,10 +283,8 @@ def _has_rerun_plugin() -> bool:
 
 
 def _pytest_rerun_options(disabled: bool) -> list[str]:
-    """Return the existing retry policy unless one-attempt mode is requested."""
-    if disabled or not _has_rerun_plugin():
-        return []
-    return ["--reruns", "2", "--reruns-delay", "5"]
+    """Disable replay even when configuration or a flaky marker requests it."""
+    return ["-p", "no:rerunfailures"]
 
 
 def parse_json_report(json_path: Path) -> dict:
@@ -259,28 +336,30 @@ def parse_json_report(json_path: Path) -> dict:
             filepath = nodeid
             test_name = ""
 
-        if outcome in ("failed", "error"):
-            call_info = test.get("call") or test.get("setup") or {}
-            crash_message = (call_info.get("crash") or {}).get("message", "")
-            if not crash_message:
-                longrepr = call_info.get("longrepr", "") or ""
-                # longrepr의 첫 줄은 "self = <ClassName object at 0x...>"이므로
-                # "E   " 접두 실제 실패 라인을 찾아 사용한다.
-                error_line = next(
-                    (
-                        ln.strip()[2:].strip()
-                        for ln in longrepr.splitlines()
-                        if ln.strip().startswith("E ") or ln.strip() == "E"
-                    ),
-                    "",
-                )
-                crash_message = error_line or (longrepr.splitlines()[-1] if longrepr else "Unknown error")
-            errors.append({"file": filepath, "test": test_name, "error": crash_message})
+        phases = [name for name in ("setup", "call", "teardown")
+                  if (test.get(name) or {}).get("outcome") in ("failed", "error")]
+        if phases or outcome in ("failed", "error", "rerun"):
+            for phase in phases or [""]:
+                call_info = test.get(phase) or test.get("call") or test.get("setup") or {}
+                crash_message = (call_info.get("crash") or {}).get("message", "")
+                if not crash_message:
+                    longrepr = call_info.get("longrepr", "") or ""
+                    error_line = next((line.strip()[2:].strip() for line in longrepr.splitlines()
+                                       if line.strip().startswith("E ") or line.strip() == "E"), "")
+                    crash_message = error_line or (longrepr.splitlines()[-1] if longrepr else "Unknown error")
+                error_type = re.search(r"\b([A-Za-z_][A-Za-z0-9_]*(?:Error|Exception))\b", crash_message)
+                errors.append({"file": filepath, "test": test_name, "error": crash_message,
+                               "phase": phase, "error_type": error_type.group(1) if error_type else ""})
             seen_files[filepath] = False
         elif outcome == "passed":
             if filepath not in seen_files:
                 seen_files[filepath] = True
                 passed.append(f"{filepath}::{test_name}" if test_name else filepath)
+
+    for collector in data.get("collectors", []):
+        if collector.get("outcome") == "failed":
+            errors.append({"file": collector.get("nodeid", ""), "test": "", "phase": "collection",
+                           "error_type": "CollectionError", "error": collector.get("longrepr") or "Collection failed"})
 
     # summary fallback to summary block in JSON report
     summary_block = data.get("summary", {})
@@ -346,7 +425,9 @@ def parse_junit_xml(xml_path: Path) -> dict:
                 msg_el = failure if failure is not None else error_el
                 msg = (msg_el.get("message") or msg_el.text or "").strip()
                 first_line = msg.splitlines()[0] if msg else "Unknown error"
-                errors.append({"file": filepath, "test": name, "error": first_line})
+                errors.append({"file": filepath, "test": name, "error": first_line,
+                               "phase": "call" if failure is not None else "",
+                               "error_type": msg_el.get("type", "")})
                 seen_files[filepath] = False
             else:
                 # Only mark as passed if no prior failure for this file
@@ -401,7 +482,11 @@ def main():
 
     execute_results = {"exit_code": None, "errors": [], "passed": [],
                        "summary": {"total": 0, "passed": 0, "failed": 0}}
+    selected_path = Path(args.test_file).parent if args.test_file else Path(args.tc_dir or "")
+    groups = ([selected_path.parts[0]] if selected_path.parts and not selected_path.is_absolute()
+              and ".." not in selected_path.parts else [])
     outcome = {
+        "groups": groups,
         "status": "running", "exit_code": None, "execute_results": execute_results,
         "started_at": previous.get("started_at") or datetime.now(timezone.utc).isoformat(),
         "platform": platform,
@@ -415,11 +500,13 @@ def main():
         exit_code = _execute(args, run_id, report_stamp, outcome)
     except Exception as exc:
         exit_code = 1
-        outcome["error"] = str(exc)
+        outcome["error"] = f"{type(exc).__name__}: {exc}"
         print(f"[05_execute] ERROR: {exc}")
-    outcome.update(status="passed" if exit_code == 0 else "failed", exit_code=exit_code,
+    outcome.update(status="passed" if exit_code == 0 else ("interrupted" if outcome.get("status") == "interrupted" else "failed"), exit_code=exit_code,
                    finished_at=datetime.now(timezone.utc).isoformat())
     outcome["execute_results"]["exit_code"] = exit_code
+    if exit_code:
+        outcome["recovery"] = recovery_for_result(outcome)
     write_execution_result(ROOT, run_id, outcome)
     # Compatibility only: log-specific consumers read the run-owned file above.
     state = load_state()
@@ -438,18 +525,6 @@ def _execute(args, run_id, report_stamp, outcome):
     invocation_dir.mkdir(parents=True)
     junit_xml = invocation_dir / "pytest_report.xml"
     json_report = invocation_dir / "pytest_report.json"
-
-    # 디바이스 연결 가드
-    if args.platform == "android":
-        if not check_android_device():
-            print("[05_execute] ERROR: Android device/emulator not connected.")
-            print("  Run: adb devices")
-            raise RuntimeError("Android device/emulator not connected")
-
-    if not check_appium_server():
-        print("[05_execute] ERROR: Appium server not running.")
-        print("  Run: appium --address 127.0.0.1 --port 4723")
-        raise RuntimeError("Appium server not running")
 
     state = load_state()
     for key in ("report_path", "video_path", "execute_results"):
@@ -481,6 +556,7 @@ def _execute(args, run_id, report_stamp, outcome):
             print(f"[05_execute] No root tests found at {test_dir}")
             raise RuntimeError(f"No root tests found at {test_dir}")
 
+    _preflight(outcome)
     use_json_report = _has_json_report_plugin()
     cmd = [
         sys.executable, "-m", "pytest",
@@ -495,13 +571,8 @@ def _execute(args, run_id, report_stamp, outcome):
         ]
         print("[05_execute] Using pytest-json-report for result parsing.")
 
-    # Appium 세션 초기화 실패(setup error) 자동 재시도 — 5초 대기 후 최대 2회
-    rerun_options = _pytest_rerun_options(args.no_rerun)
-    if rerun_options:
-        cmd += rerun_options
-        print("[05_execute] pytest-rerunfailures: setup 실패 시 최대 2회 재시도 (5초 대기)")
-    elif args.no_rerun:
-        print("[05_execute] 단일 실행 모드: 실패 재시도 비활성화")
+    cmd += _pytest_rerun_options(args.no_rerun)
+    print("[05_execute] 테스트 자동 재실행 없음; 실행 전 연결 확인만 제한적으로 재시도합니다")
 
     if args.only_failed:
         cmd.append("--lf")
@@ -520,7 +591,7 @@ def _execute(args, run_id, report_stamp, outcome):
     rec_device_id = None
     video_path = None
     if args.record and platform == "android":
-        device_id = _get_device_id()
+        device_id = outcome["device_udid"]
         if device_id:
             rec_device_id = device_id
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -541,12 +612,8 @@ def _execute(args, run_id, report_stamp, outcome):
         run_env["QA_OBS_DISABLE"] = "1"
     print(f"[05_execute] QA_RUN_ID={run_id}")
 
-    if args.mode:
-        run_env['DEVICE_MODE'] = args.mode
-        print(f"[05_execute] DEVICE_MODE={args.mode}")
-    if args.udid:
-        run_env['DEVICE_UDID'] = args.udid
-        print(f"[05_execute] DEVICE_UDID={args.udid}")
+    run_env["DEVICE_MODE"] = outcome["device_mode"]
+    run_env["DEVICE_UDID"] = outcome["device_udid"]
 
     print(f"[05_execute] Running: {' '.join(cmd)}")
     result = subprocess.run(cmd, cwd=ROOT, env=run_env)
@@ -571,8 +638,11 @@ def _execute(args, run_id, report_stamp, outcome):
     }
 
     outcome["execute_results"] = execute_results
+    if result.returncode < 0 or (result.returncode == 2 and not any(error.get("phase") == "collection" for error in report_data["errors"])):
+        outcome["status"] = "interrupted"
     if result.returncode:
-        outcome["error"] = f"pytest exited with code {result.returncode}"
+        outcome["error"] = {4: "pytest usage error", 5: "No tests collected"}.get(
+            result.returncode, f"pytest exited with code {result.returncode}")
 
     state["step"] = "executed"
     state["execute_results"] = execute_results

@@ -27,6 +27,20 @@ h1{font-size:21px;font-weight:800;letter-spacing:.2px;
   background:var(--pass-bg);border:1px solid var(--border);padding:3px 10px;border-radius:16px}
 
 /* 상태 바 */
+.recovery-notices{position:relative;margin-left:auto;flex-shrink:0}
+.recovery-notices[hidden],.recovery-connection-warning[hidden]{display:none}
+.recovery-notices summary{padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius-control);color:var(--text);font-size:12px;cursor:pointer;white-space:nowrap}
+.recovery-notices summary:focus-visible,.recovery-notice-actions a:focus-visible,.recovery-notice-actions button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.recovery-notice-panel{position:absolute;top:calc(100% + 8px);right:0;width:min(360px,calc(100vw - 32px));max-height:min(480px,70vh);overflow:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-card);box-shadow:var(--shadow-modal)}
+#recovery-notice-list{list-style:none}
+.recovery-notice{padding:14px 16px}.recovery-notice+.recovery-notice{border-top:1px solid var(--border)}
+.recovery-notice strong{display:block;font-size:13px;color:var(--text)}.recovery-notice p{margin-top:5px;font-size:12px;color:var(--text2);overflow-wrap:anywhere}
+.recovery-notice-context{display:block;margin-top:4px;font-size:11px;line-height:1.6;color:var(--text3);overflow-wrap:anywhere}
+.recovery-notice-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px;font-size:12px}
+.recovery-notice-actions button{padding:6px 8px;border:1px solid var(--border);background:var(--surface);color:var(--text2)}
+.recovery-connection-warning{font-size:12px;color:var(--warn);background:var(--warn-bg);padding:5px 8px;border-radius:var(--radius-control)}
+.recovery-announcement{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+@media(max-width:760px){.recovery-connection-warning{order:4;flex-basis:100%}.recovery-notices{margin-left:auto}}
 .status-bar{height:46px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;flex-shrink:0;
   background:var(--surface);
   border-bottom:1px solid var(--border-glass);padding:0 24px;margin:0;position:relative;z-index:9}

@@ -169,9 +169,14 @@ def test_heal_uses_owned_errors_and_retains_fresh_snapshot(tmp_path, monkeypatch
     monkeypatch.setattr(heal, 'ROOT', tmp_path)
     monkeypatch.setenv('QA_RUN_ID', 'owned')
     monkeypatch.setattr('sys.argv', ['06_heal.py'])
-    monkeypatch.setattr(heal, 'load_state', lambda: {'execute_results': {'errors': [{'file': 'stale.py'}]}, 'dom_info': {'old': {}}})
+    state = {'execute_results': {'errors': [{'file': 'stale.py'}]}, 'dom_info': {'old': {'ios': {'xml': '<old/>'}}}, 'user_metadata': 'preserve'}
+    monkeypatch.setattr(heal, 'load_state', lambda: state)
     fresh = {'login': {'android': {'xml': '<root/>'}}}
-    monkeypatch.setattr(heal, '_refresh_inspector_snapshot', lambda _: fresh)
+    def refresh(_):
+        state['dom_info'].update(fresh)
+        state['analysis_snapshot'] = {'platform': 'android', 'screens': ['login']}
+        return fresh
+    monkeypatch.setattr(heal, '_refresh_inspector_snapshot', refresh)
     called = []
     monkeypatch.setattr(heal, 'heal_file_xml', lambda file, snapshot, platform: called.append((file, snapshot)) or {'strategy': 'ID'})
     monkeypatch.setattr(heal, '_append_lessons_learned', lambda *args: None)
@@ -179,7 +184,10 @@ def test_heal_uses_owned_errors_and_retains_fresh_snapshot(tmp_path, monkeypatch
     monkeypatch.setattr(heal, 'save_state', saved.append)
     heal.main()
     assert called == [(str(path), fresh)]
-    assert saved[-1]['dom_info'] == fresh
+    assert saved[-1]['dom_info']['login'] == fresh['login']
+    assert saved[-1]['dom_info']['old']['ios']['xml'] == '<old/>'
+    assert saved[-1]['analysis_snapshot'] == {'platform': 'android', 'screens': ['login']}
+    assert saved[-1]['user_metadata'] == 'preserve'
 
 
 def test_sigterm_during_heal_validation_rolls_back(tmp_path, monkeypatch):
@@ -275,3 +283,140 @@ def test_selector_literals_support_quotes_parentheses_and_escapes():
     patched = heal._replace_sel_value_and_strategy(source, 'SEL_TWO', 'new"quote', 'ACCESSIBILITY_ID')
     compile(patched, 'literal.py', 'exec')
     assert heal._find_sel_constants(patched)[1]['value'] == 'new"quote'
+
+
+def test_heal_verification_disables_pytest_replay(tmp_path, monkeypatch):
+    heal = load_script('06_heal')
+    seen = []
+    monkeypatch.setattr(heal.subprocess, 'run', lambda command, **kwargs: seen.append(command) or SimpleNamespace(returncode=1))
+    assert heal._run_pytest_single(str(tmp_path / 'test_fake.py')) is False
+    assert seen[0][seen[0].index('-p') + 1] == 'no:rerunfailures'
+
+
+def test_fallback_stops_after_first_failed_verification_and_rolls_back(tmp_path, monkeypatch):
+    heal = load_script('06_heal')
+    monkeypatch.setattr(heal, 'CONFIG_DIR', tmp_path)
+    source = b'SEL_BUTTON = "login"\nelement = driver.find_element(AppiumBy.ACCESSIBILITY_ID, SEL_BUTTON)\n'
+    path = tmp_path / 'tc_001_login.py'
+    path.write_bytes(source)
+    calls = []
+    monkeypatch.setattr(heal, '_run_pytest_single', lambda file: calls.append(file) or False)
+    result = heal.heal_file_fallback(str(path))
+    assert calls == [str(path)]
+    assert result['validation_failed'] is True
+    assert path.read_bytes() == source
+
+
+def test_failed_verification_stops_other_files_without_overwriting_owned_summary(tmp_path, monkeypatch):
+    heal = load_script('06_heal')
+    from scripts.run_results import write_execution_result, read_execution_result
+    paths = [tmp_path / 'tc_001_login.py', tmp_path / 'tc_002_settings.py']
+    for path in paths:
+        path.write_text('irrelevant')
+    original = {'status': 'failed', 'exit_code': 1, 'execute_results': {'summary': {'failed': 2},
+        'errors': [{'file': str(path), 'error': 'NoSuchElementException'} for path in paths]}}
+    write_execution_result(tmp_path, 'owned', original)
+    original = read_execution_result(tmp_path, 'owned')
+    monkeypatch.setattr(heal, 'ROOT', tmp_path)
+    monkeypatch.setenv('QA_RUN_ID', 'owned')
+    monkeypatch.setattr('sys.argv', ['06_heal.py'])
+    monkeypatch.setattr(heal, 'load_state', lambda: {})
+    monkeypatch.setattr(heal, '_refresh_inspector_snapshot', lambda _: {'login': {'xml': '<fresh/>'}})
+    called = []
+    monkeypatch.setattr(heal, 'heal_file_xml', lambda file, *args: called.append(file) or {'file': file, 'validation_failed': True})
+    monkeypatch.setattr(heal, '_append_lessons_learned', lambda *args: None)
+    saved = []
+    monkeypatch.setattr(heal, 'save_state', saved.append)
+    with pytest.raises(SystemExit) as failure:
+        heal.main()
+    assert failure.value.code == 1
+    assert called == [str(paths[0])]
+    assert saved[-1]['step'] == 'heal_failed'
+    assert read_execution_result(tmp_path, 'owned') == original
+
+
+def test_failed_fresh_snapshot_stops_before_validation_or_source_changes(tmp_path, monkeypatch):
+    heal = load_script('06_heal')
+    from scripts.run_results import write_execution_result
+    path = tmp_path / 'tc_001_login.py'
+    original = b'SEL_BUTTON = "login"\n'
+    path.write_bytes(original)
+    write_execution_result(tmp_path, 'owned', {'status': 'failed', 'exit_code': 1,
+        'execute_results': {'errors': [{'file': str(path), 'error': 'NoSuchElementException'}]}})
+    monkeypatch.setattr(heal, 'ROOT', tmp_path)
+    monkeypatch.setenv('QA_RUN_ID', 'owned')
+    monkeypatch.setattr('sys.argv', ['06_heal.py'])
+    monkeypatch.setattr(heal, 'load_state', lambda: {'dom_info': {'old': {'xml': '<stale/>'}}})
+    calls = []
+    monkeypatch.setattr(heal.subprocess, 'run', lambda command, **kwargs: calls.append(command) or SimpleNamespace(returncode=1))
+    monkeypatch.setattr(heal, 'heal_file_xml', lambda *args: pytest.fail('must not validate using stale snapshot'))
+    monkeypatch.setattr(heal, 'heal_file_fallback', lambda *args: pytest.fail('must not start fallback'))
+    saved = []
+    monkeypatch.setattr(heal, 'save_state', saved.append)
+    with pytest.raises(SystemExit) as failure:
+        heal.main()
+    assert failure.value.code == 1
+    assert len(calls) == 1 and '01_analyze.py' in calls[0][1]
+    assert path.read_bytes() == original
+    assert saved[-1]['step'] == 'heal_failed'
+
+
+@pytest.mark.parametrize('fresh', [{}, {'login': {'android': {'xml': ''}}}])
+def test_empty_fresh_snapshot_never_uses_old_dom_or_fallback(tmp_path, monkeypatch, fresh):
+    heal = load_script('06_heal')
+    from scripts.run_results import write_execution_result
+    path = tmp_path / 'tc_001_login.py'
+    path.write_text('untouched')
+    write_execution_result(tmp_path, 'owned', {'status': 'failed', 'exit_code': 1,
+        'execute_results': {'errors': [{'file': str(path), 'error': 'NoSuchElementException'}]}})
+    monkeypatch.setattr(heal, 'ROOT', tmp_path)
+    monkeypatch.setenv('QA_RUN_ID', 'owned')
+    monkeypatch.setattr('sys.argv', ['06_heal.py'])
+    monkeypatch.setattr(heal, 'load_state', lambda: {'dom_info': {'login': {'xml': '<old/>'}}})
+    monkeypatch.setattr(heal, '_refresh_inspector_snapshot', lambda _: fresh)
+    monkeypatch.setattr(heal, 'save_state', lambda _: None)
+    monkeypatch.setattr(heal, 'heal_file_xml', lambda *args: pytest.fail('must not use old DOM'))
+    monkeypatch.setattr(heal, 'heal_file_fallback', lambda *args: pytest.fail('must not fallback without fresh DOM'))
+    with pytest.raises(SystemExit) as failure:
+        heal.main()
+    assert failure.value.code == 1
+    assert path.read_text() == 'untouched'
+
+
+@pytest.mark.parametrize('selected_platform,screens,expected', [
+    ('android', ['fresh'], {'fresh': {'android': {'xml': '<fresh/>'}}}),
+    ('android', [], {}),
+    ('ios', ['fresh'], {}),
+])
+def test_heal_refresh_uses_only_current_invocation_screen_names(tmp_path, monkeypatch, selected_platform, screens, expected):
+    heal = load_script('06_heal')
+    monkeypatch.setattr(heal.subprocess, 'run', lambda *args, **kwargs: SimpleNamespace(returncode=0))
+    monkeypatch.setattr(heal, 'load_state', lambda: {
+        'dom_info': {'old': {'android': {'xml': '<old/>'}}, 'fresh': {'android': {'xml': '<fresh/>'}}},
+        'analysis_snapshot': {'platform': selected_platform, 'screens': screens},
+    })
+    assert heal._refresh_inspector_snapshot('android') == expected
+
+
+def test_analyzer_resets_collected_names_without_discarding_other_state(tmp_path, monkeypatch):
+    analyze = load_script('01_analyze')
+    (tmp_path / 'screens.json').write_text(json.dumps({'fresh': {'platform': ['android']}, 'old': {'platform': ['ios']}}))
+    (tmp_path / 'test_data.json').write_text('{}')
+    monkeypatch.setattr(analyze, 'CONFIG_DIR', tmp_path)
+    state = {'dom_info': {'old': {'ios': {'xml': '<old/>'}}}, 'user_metadata': 'preserve',
+             'analysis_snapshot': {'platform': 'ios', 'screens': ['old']}}
+    monkeypatch.setattr(analyze, 'load_state', lambda: state)
+    monkeypatch.setattr(analyze, 'save_state', lambda value: None)
+    monkeypatch.setattr('sys.argv', ['01_analyze.py', '--platform', 'android'])
+    import drivers.android_driver as driver_module
+    monkeypatch.setattr(driver_module, 'create_driver', lambda **kwargs: SimpleNamespace(quit=lambda: None))
+    monkeypatch.setattr(analyze, 'collect_screen_xml', lambda *args, **kwargs: '<fresh/>')
+    monkeypatch.setattr(analyze, 'HybridSession', lambda driver: SimpleNamespace(capture_webviews=lambda: [], close=lambda: None))
+    analyze.main()
+    assert state['analysis_snapshot'] == {'platform': 'android', 'screens': ['fresh']}
+    assert state['dom_info']['old']['ios']['xml'] == '<old/>'
+    assert state['user_metadata'] == 'preserve'
+    (tmp_path / 'screens.json').write_text('{}')
+    analyze.main()
+    assert state['analysis_snapshot'] == {'platform': 'android', 'screens': []}
+    assert state['dom_info']['old']['ios']['xml'] == '<old/>'

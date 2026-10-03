@@ -433,7 +433,7 @@ def _replace_strategy_only(
 def _run_pytest_single(file_path: str) -> bool:
     """단일 TC 파일에 pytest를 실행하고 통과 여부를 반환한다."""
     result = subprocess.run(
-        [sys.executable, "-m", "pytest", file_path, "-v", "--tb=no", "-q"],
+        [sys.executable, "-m", "pytest", file_path, "-v", "--tb=no", "-q", "-p", "no:rerunfailures"],
         capture_output=True,
         text=True,
         cwd=ROOT,
@@ -446,7 +446,7 @@ def _refresh_inspector_snapshot(platform: str) -> dict:
     """힐링 직전에 Appium page_source를 다시 수집한다.
 
     GUI Inspector를 사람이 조작하지 않아도, 동일한 native hierarchy를
-    자동 수집한다. 디바이스가 없으면 기존 snapshot을 유지한다.
+    자동 수집한다. 수집이 실패하면 검증 실행 전에 중단한다.
     """
     analyzer = ROOT / "scripts" / "01_analyze.py"
     mode = os.environ.get("DEVICE_MODE") or ("simulator" if platform == "ios" else "emulator")
@@ -457,10 +457,18 @@ def _refresh_inspector_snapshot(platform: str) -> dict:
         cmd, cwd=ROOT, capture_output=True, text=True, env=os.environ.copy(),
     )
     if result.returncode != 0:
-        print("[06_heal] fresh Inspector snapshot 실패 — 기존 snapshot 사용")
-        return {}
+        raise RuntimeError(f"새 Inspector snapshot 수집 실패 (종료 코드 {result.returncode}) — 자동 복구 중단")
     print("[06_heal] fresh Inspector snapshot 갱신 완료")
-    return load_state().get("dom_info", {})
+    state = load_state()
+    captured = state.get("analysis_snapshot")
+    if not isinstance(captured, dict) or captured.get("platform") != platform or not isinstance(captured.get("screens"), list):
+        return {}
+    dom_info = state.get("dom_info", {})
+    if not isinstance(dom_info, dict):
+        return {}
+    return {name: dom_info[name] for name in captured["screens"]
+            if isinstance(name, str) and name in dom_info
+            and isinstance(dom_info[name], dict) and isinstance(dom_info[name].get(platform), dict)}
 
 
 # ---------------------------------------------------------------------------
@@ -648,7 +656,8 @@ def heal_file_xml(file_path: str, dom_info: dict, platform: str = "android") -> 
 
     return {
         "file": file_path,
-        "reason": "XML 매칭 후 모든 시도 실패",
+        "reason": "복구 검증 실패 — 추가 자동 실행을 중단했습니다",
+        "validation_failed": True,
         "sel_const": heal_details[-1]["sel_const"],
     }
 
@@ -712,8 +721,8 @@ def heal_file_fallback(file_path: str) -> dict:
                     "matched_attr": "",
                 }
 
-            path.write_bytes(original_source)
-            source = original_source.decode("utf-8")
+            return {"file": file_path, "validation_failed": True,
+                    "reason": "복구 검증 실패 — 추가 자동 실행을 중단했습니다", "sel_const": const_name}
 
     return {
         "file": file_path,
@@ -779,10 +788,20 @@ def main():
         save_state(state)
         sys.exit(1)
 
-    fresh_dom_info = _refresh_inspector_snapshot(args.platform)
-    if fresh_dom_info:
-        dom_info = fresh_dom_info
-        state["dom_info"] = fresh_dom_info
+    try:
+        fresh_dom_info = _refresh_inspector_snapshot(args.platform)
+        state = load_state()  # Preserve all platforms and the analyzer provenance in persisted state.
+        screens = [info.get(args.platform, info) for info in fresh_dom_info.values() if isinstance(info, dict)]
+        if not any(isinstance(info, dict) and isinstance(info.get("xml"), str) and info["xml"].strip() for info in screens):
+            raise RuntimeError("새 Inspector snapshot에 사용할 XML 없음 — 자동 복구 중단")
+    except Exception as exc:
+        print(f"[06_heal] {exc}")
+        state = load_state()
+        state.update(step="heal_failed", heal_count=0,
+                     heal_results={"healed": [], "failed": [{"phase": "snapshot", "reason": str(exc)}]})
+        save_state(state)
+        sys.exit(1)
+    dom_info = fresh_dom_info  # Only this invocation's screens are eligible for validation.
 
     print(f"[06_heal] {len(failed_files)}개 실패 TC 처리 시작")
 
@@ -815,6 +834,8 @@ def main():
             healed.append(result)
         else:
             failed.append(result)
+            if result.get("validation_failed"):
+                break  # Failure category may have changed; never replay other strategies or files.
 
     heal_count = len(healed)
 

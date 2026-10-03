@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import sys
 import re
+from datetime import datetime, timezone
 from html import escape as html_escape
 from pathlib import Path
 
@@ -42,6 +43,7 @@ from utils.system import (  # noqa: E402
 )
 
 router = APIRouter()
+_RECOVERY_SERVER_STARTED_AT = datetime.now(timezone.utc).isoformat()
 
 
 @router.get("/api/run-history")
@@ -56,10 +58,71 @@ def delete_run_history():
     reset_run_history(PROJECT_ROOT, REPORTS_DIR)
     return JSONResponse({"ok": True})
 
+
+@router.get("/api/recovery-notices")
+def get_recovery_notices():
+    """Rebuild actionable notices from owned results; no device operations."""
+    import shared
+    from scripts.error_policy import classify_error, recovery_for_result
+    from scripts.run_results import read_execution_result
+    from utils.run_history import load_run_history
+
+    actions = {
+        'check_environment': ('환경 확인', '/?view=config'),
+        'reconnect_capture': ('Capture 확인', '/?view=capture'),
+        'review_locator': ('실행 기록 확인', '/?view=history'),
+        'review_assertion': ('실행 기록 확인', '/?view=history'),
+        'review_configuration': ('설정 확인', '/?view=config'),
+        'inspect_log': ('실행 기록 확인', '/?view=history'),
+    }
+    notices = []
+    with shared._process_lock:
+        active_run_id = (shared._execution_reservation.get('run') or {}).get('run_id')
+    for entry in load_run_history(PROJECT_ROOT, REPORTS_DIR):
+        status = 'interrupted' if entry.get('workflowStatus') == 'interrupted' else entry.get('status')
+        if status not in {'failed', 'timed_out', 'interrupted', 'incomplete'}:
+            continue
+        rid = entry.get('runId') or entry.get('id')
+        if rid == active_run_id:
+            continue
+        result = read_execution_result(PROJECT_ROOT, rid) or {}
+        recovery = recovery_for_result({**result, 'status': status})
+        action = 'check_environment' if recovery['action'] == 'reconnect_capture' else recovery['action']
+        label, href = actions.get(action, actions['inspect_log'])
+        notices.append({
+            'id': f'run:{rid}:{status}', 'run_id': rid,
+            'platform': entry.get('platform', ''), 'groups': entry.get('groups', []),
+            'category': recovery['category'], 'title': recovery['title'],
+            'message': recovery['message'], 'action_label': label, 'href': href,
+            'severity': 'error' if status == 'failed' else 'warning',
+            'created_at': entry.get('executedAt', ''),
+        })
+        if len(notices) == 10:
+            break
+    session = load_capture_session()
+    driver = shared.get_capture_driver()
+    if (session.get('active') and session.get('session_id') and not shared._capture_launch_active
+            and (driver is None or getattr(driver, '_capture_disconnected', False) is True)):
+        incident = session.get('connection_issue_at') or _RECOVERY_SERVER_STARTED_AT
+        recovery = session.get('connection_recovery')
+        if not isinstance(recovery, dict):
+            recovery = classify_error('InvalidSessionIdException')
+        notices.insert(0, {
+            'id': f'capture:{session["session_id"]}:{incident}',
+            'platform': session.get('platform', ''), 'groups': [session.get('tc_group', '')],
+            'category': recovery.get('category', 'session_lost'),
+            'title': 'Capture 연결 확인 필요',
+            'message': '작성 기록은 유지됩니다. 선택한 기기와 Appium을 확인한 뒤 같은 세션에서 재연결하세요.',
+            'action_label': 'Capture 확인', 'href': '/?view=capture',
+            'severity': 'warning', 'created_at': incident,
+        })
+    return JSONResponse({'ok': True, 'notices': notices})
+
 _DASHBOARD_ASSETS = {
     "tokens.css": "text/css",
     "dashboard.css": "text/css",
     "dashboard-shell.js": "text/javascript",
+    "recovery-notices.js": "text/javascript",
     "execution.js": "text/javascript",
     "import-studio.js": "text/javascript",
     "quick-run.js": "text/javascript",

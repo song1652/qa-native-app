@@ -433,7 +433,11 @@ function csReLaunchFromSetup() {
       var saveStatus = document.getElementById('cs-save-status');
       if(saveStatus){ saveStatus.textContent = ' 앱 재실행됨'; saveStatus.style.color='var(--pass)'; }
     } else {
-      if(statusEl){ statusEl.textContent = ' 재실행 실패: ' + (d.error||'알 수 없는 오류'); statusEl.style.color='var(--fail)'; }
+      if(statusEl){
+        statusEl.textContent = (d.recovery && d.recovery.message) || ' 재실행 실패: ' + (d.error||'알 수 없는 오류');
+        statusEl.style.color='var(--fail)';
+        if(d.recovery) csRecoveryControl(statusEl, d.recovery.action, csReLaunchFromSetup);
+      }
     }
   }).catch(function(err){
     clearTimeout(_ctrlTimer); clearInterval(_rfsProgress);

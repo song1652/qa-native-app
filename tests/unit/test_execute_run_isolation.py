@@ -8,6 +8,10 @@ from types import SimpleNamespace
 import pytest
 
 
+def _unavailable(*args):
+    raise RuntimeError("Selected Android device unavailable")
+
+
 @pytest.fixture
 def execute(tmp_path, monkeypatch):
     spec = importlib.util.spec_from_file_location('execute_isolation', Path(__file__).parents[2] / 'scripts/05_execute.py')
@@ -18,7 +22,8 @@ def execute(tmp_path, monkeypatch):
     module.STATE_DIR.mkdir()
     module.STATE_FILE.write_text(json.dumps({'execute_results': {'passed': ['OLD'], 'summary': {'passed': 1}}, 'report_path': 'old.html'}))
     (module.TESTS_DIR / 'android').mkdir(parents=True)
-    monkeypatch.setattr(module, 'check_android_device', lambda: True)
+    monkeypatch.setattr(module, 'resolve_selected_device', lambda platform, mode, udid: udid or 'selected-device')
+    monkeypatch.setattr(module.time, 'sleep', lambda _: None)
     monkeypatch.setattr(module, 'check_appium_server', lambda: True)
     monkeypatch.setattr(module, '_has_json_report_plugin', lambda: True)
     monkeypatch.setattr(module, '_has_rerun_plugin', lambda: False)
@@ -36,7 +41,7 @@ def outcome(module, run='run_one'):
 @pytest.mark.parametrize('failure', ['device', 'appium', 'no_tests', 'spawn'])
 def test_early_failure_never_reuses_previous_passes(execute, monkeypatch, failure):
     if failure == 'device':
-        monkeypatch.setattr(execute, 'check_android_device', lambda: False)
+        monkeypatch.setattr(execute, 'resolve_selected_device', _unavailable)
     elif failure == 'appium':
         monkeypatch.setattr(execute, 'check_appium_server', lambda: False)
     elif failure == 'no_tests':
@@ -110,7 +115,7 @@ def test_execution_result_preserves_target_context_on_preflight_failure(execute,
         monkeypatch.delenv(key, raising=False)
     for key, value in environment.items():
         monkeypatch.setenv(key, value)
-    monkeypatch.setattr(execute, 'check_android_device', lambda: False)
+    monkeypatch.setattr(execute, 'resolve_selected_device', _unavailable)
     with pytest.raises(SystemExit):
         execute.main()
     saved = outcome(execute)
@@ -120,7 +125,7 @@ def test_execution_result_preserves_target_context_on_preflight_failure(execute,
 
 def test_execution_records_start_and_finish_timestamps(execute, monkeypatch):
     from datetime import datetime
-    monkeypatch.setattr(execute, 'check_android_device', lambda: False)
+    monkeypatch.setattr(execute, 'resolve_selected_device', _unavailable)
     with pytest.raises(SystemExit):
         execute.main()
     result = outcome(execute)
@@ -129,10 +134,58 @@ def test_execution_records_start_and_finish_timestamps(execute, monkeypatch):
 
 
 def test_repeated_attempt_keeps_logical_run_start(execute, monkeypatch):
-    monkeypatch.setattr(execute, 'check_android_device', lambda: False)
+    monkeypatch.setattr(execute, 'resolve_selected_device', _unavailable)
     with pytest.raises(SystemExit):
         execute.main()
     started = outcome(execute)['started_at']
     with pytest.raises(SystemExit):
         execute.main()
     assert outcome(execute)['started_at'] == started
+
+
+@pytest.mark.parametrize('message,category,can_heal', [
+    ('AssertionError: wrong expected value', 'assertion', False),
+    ('InvalidSessionIdException: session deleted', 'session_lost', False),
+    ('NoSuchElementException: missing selector', 'locator', True),
+])
+def test_failed_run_records_recovery_without_replaying_pytest(execute, monkeypatch, message, category, can_heal):
+    calls = []
+    def pytest_process(cmd, **kwargs):
+        calls.append((cmd, kwargs))
+        report = Path(next(arg.split('=', 1)[1] for arg in cmd if arg.startswith('--json-report-file=')))
+        report.write_text(json.dumps({'tests': [{'nodeid': 'tc_one.py::test_one', 'outcome': 'failed',
+            'call': {'outcome': 'failed', 'crash': {'message': message}}}],
+            'summary': {'total': 1, 'failed': 1, 'passed': 0}}))
+        return SimpleNamespace(returncode=1)
+    monkeypatch.setattr(execute.subprocess, 'run', pytest_process)
+    with pytest.raises(SystemExit) as error:
+        execute.main()
+    assert error.value.code == 1
+    assert len(calls) == 1
+    command, options = calls[0]
+    assert command[command.index('-p') + 1] == 'no:rerunfailures'
+    assert '--reruns' not in command
+    assert options['env']['DEVICE_UDID'] == 'selected-device'
+    saved = outcome(execute)
+    assert saved['recovery']['category'] == category
+    assert saved['recovery']['can_heal'] is can_heal
+    assert message not in saved['recovery']['message']
+
+
+@pytest.mark.parametrize('arguments,groups', [
+    (['--tc-dir', 'settings'], ['settings']),
+    (['--test-file', 'settings/tc_one.py'], ['settings']),
+    (['--test-file', 'tc_root.py'], []),
+    ([], []),
+])
+def test_selected_groups_are_persisted_before_preflight_failure(execute, monkeypatch, arguments, groups):
+    monkeypatch.setattr('sys.argv', ['05_execute.py', '--no-report', *arguments])
+    (execute.TESTS_DIR / 'android/settings').mkdir()
+    (execute.TESTS_DIR / 'android/settings/tc_one.py').touch()
+    (execute.TESTS_DIR / 'android/tc_root.py').touch()
+    monkeypatch.setattr(execute, 'resolve_selected_device', _unavailable)
+    with pytest.raises(SystemExit):
+        execute.main()
+    saved = outcome(execute)
+    assert saved['groups'] == groups
+    assert saved['execute_results']['summary']['total'] == 0

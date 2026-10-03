@@ -45,6 +45,21 @@ def _remote_driver(appium_wd, options, platform):
     return driver
 
 
+def capture_error(exc, *, attempts=0, read=False, code=None):
+    """Adapt the shared diagnosis to Capture's explicit recovery controls."""
+    from scripts.error_policy import classify_error
+    recovery = classify_error(exc)
+    category = recovery["category"]
+    reconnect = category in {"transport", "timeout", "session_lost", "appium_unavailable", "device_unavailable"}
+    if category in {"transport", "timeout", "session_lost"}:
+        recovery["action"] = "reconnect_capture"
+    recovery.update(attempts=attempts, max_attempts=2,
+                    retryable=bool(read and recovery.get("read_retryable")))
+    return {"ok": False, "code": code or f"capture_{category}",
+            "error": recovery["message"], "recovery": recovery,
+            "reconnect_required": reconnect}
+
+
 def _launch_cancelled(session):
     event = session.get("_launch_cancelled")
     return ((event is not None and event.is_set())
@@ -104,7 +119,11 @@ def _get_appium_import():
 
 def _take_hierarchy_snapshot(session_id: str, driver, context: str = "native") -> str:
     """page_source를 캡처해 disk에 저장하고 snapshot_id 반환."""
-    xml    = driver.page_source
+    return save_hierarchy_snapshot(session_id, driver.page_source, context)
+
+
+def save_hierarchy_snapshot(session_id: str, xml: str, context: str = "native") -> str:
+    """Persist one successful read; disk writes are never retried as device I/O."""
     ts     = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     snap_id = f"hierarchy_{ts}"
     subdir = CAPTURES_DIR / session_id / context
@@ -219,7 +238,7 @@ def _do_start_android_session(session: dict) -> dict:
     try:
         appium_wd, RawOptions = _get_appium_import()
     except ImportError as exc:
-        return {"ok": False, "error": f"appium 라이브러리 없음: {exc}"}
+        return capture_error(exc)
 
     _dev = resolved["device"]
     _udid = resolved["udid"]
@@ -256,7 +275,7 @@ def _do_start_android_session(session: dict) -> dict:
     try:
         driver = _remote_driver(appium_wd, opts, "android")
     except Exception as exc:
-        return {"ok": False, "error": _friendly_appium_error(exc)}
+        return capture_error(exc)
 
     driver._capture_binding = ("android", session.get("target", "emulator"), _udid)
     # The route publishes only after checking the still-current session.
@@ -303,7 +322,7 @@ def _do_start_ios_session(session: dict) -> dict:
     try:
         appium_wd, _ = _get_appium_import()
     except ImportError as exc:
-        return {"ok": False, "error": f"appium 라이브러리 없음: {exc}"}
+        return capture_error(exc)
 
     try:
         from appium.options.ios.xcuitest.base import XCUITestOptions
@@ -315,7 +334,7 @@ def _do_start_ios_session(session: dict) -> dict:
 
     bundle_id = session.get("bundle_id", "")
     if not bundle_id:
-        return {"ok": False, "error": "iOS 세션에는 bundle_id가 필요합니다"}
+        return {**capture_error("invalid configuration: bundle_id is required"), "error": "iOS 세션에는 bundle_id가 필요합니다"}
 
     mjpeg_port = session.get("mjpeg_port", _IOS_MJPEG_PORT)
 
@@ -352,7 +371,7 @@ def _do_start_ios_session(session: dict) -> dict:
     try:
         driver = _remote_driver(appium_wd, opts, "ios")
     except Exception as exc:
-        return {"ok": False, "error": _friendly_appium_error(exc)}
+        return capture_error(exc)
 
     driver._capture_binding = ("ios", session.get("target", "emulator"), _ios_udid)
     # The route publishes only after checking the still-current session.

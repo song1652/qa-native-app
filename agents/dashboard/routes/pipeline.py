@@ -209,6 +209,8 @@ def _finalize_run(run, error=None):
         result["recovered_after_restart"] = True
         if run.get("status") == "interrupted" and any(batch is run for batch in _pipeline_batches.values()):
             result.update(workflow_status="interrupted", workflow_error=run.get("error") or error)
+            from scripts.error_policy import recovery_for_result
+            result['recovery'] = recovery_for_result({**result, 'status': 'interrupted'})
         write_execution_result(PROJECT_ROOT, run_id, result)
         return
     result.setdefault("execute_results", {"passed": [], "errors": [], "summary": {}})
@@ -223,6 +225,8 @@ def _finalize_run(run, error=None):
         result["error"] = error or run["error"]
     else:
         result["error"] = "실행이 취소되었습니다"
+    from scripts.error_policy import recovery_for_result
+    result['recovery'] = recovery_for_result(result)
     write_execution_result(PROJECT_ROOT, run_id, result)
 
 
@@ -512,6 +516,13 @@ def _quick_run_execute_args(
     if not heal:
         args.append("--no-rerun")
     return args
+
+
+def _can_auto_heal(run_id: str) -> bool:
+    """Only measured locator failures permit the existing opt-in repair flow."""
+    from scripts.error_policy import recovery_for_result
+    result = read_execution_result(PROJECT_ROOT, run_id) or {}
+    return result.get('status') == 'failed' and recovery_for_result(result)['can_heal']
 
 
 def _read_run_summary(run_id: str) -> dict:
@@ -872,11 +883,11 @@ async def post_run_all(request: Request):
             return True
         # Three healing attempts, each followed by execution of the same target.
         for heal_round in range(1, MAX_HEAL + 1):
-            if batch["cancelled"]:
+            if batch["cancelled"] or not _can_auto_heal(run_id):
                 return False
-            # Exit 1 can include committed fixes for some cases; execute to measure them.
+            # Failed healing verification stops automatic execution, even with partial fixes.
             heal_rc, _ = _spawn("heal", folder=folder, log_suffix=f"_{heal_round}", env=run_env)
-            if heal_rc not in (0, 1) or batch["cancelled"]:
+            if heal_rc != 0 or batch["cancelled"]:
                 return False
             rc, _ = _execute_with_obs(log_suffix=f"_{heal_round}")
             if batch["cancelled"]:
@@ -1034,10 +1045,10 @@ async def post_run_test(request: Request):
             return spawn(execute_args, mode, env=run_env)
 
         rc = _run_execute_with_obs("w")
-        if rc != 0 and heal and not run["cancelled"]:
+        if rc != 0 and heal and not run["cancelled"] and _can_auto_heal(run_id):
             heal_args = [str(PROJECT_ROOT / "scripts/06_heal.py"), "--platform", platform]
             heal_rc = spawn(heal_args, env=run_env)
-            if heal_rc in (0, 1) and not run["cancelled"]:
+            if heal_rc == 0 and not run["cancelled"]:
                 rc = _run_execute_with_obs("a")
         _broadcast_run_summary(run_id, rc == 0)
         with _process_lock:

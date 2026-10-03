@@ -19,6 +19,32 @@ var _cs = {
   screenHashTs: 0,            // 마지막 hierarchy 새로고침 시각
 };
 
+// Server retries reads within 18s; the browser gives each read 20s without replay.
+function csCaptureRead(url, options) {
+  var controller = new AbortController();
+  var timer = setTimeout(function(){ controller.abort(); }, 20000);
+  return fetch(url, Object.assign({}, options, {signal: controller.signal}))
+    .then(function(response){
+      var readJson = response.json.bind(response);
+      response.json = function(){ return readJson().finally(function(){ clearTimeout(timer); }); };
+      return response;
+    }, function(error){ clearTimeout(timer); throw error; });
+}
+var _csAliveRead = null;
+function csDriverAlive() {
+  if(!_csAliveRead) {
+    _csAliveRead = csCaptureRead('/capture/driver_alive').then(function(r){ return r.json(); })
+      .finally(function(){ _csAliveRead = null; });
+  }
+  return _csAliveRead;
+}
+function csRecoveryFailure(data) {
+  if(!data.recovery && !data.reconnect_required) return false;
+  csLaunchFailed((data.recovery && data.recovery.message) || '기기 연결이 끊겼습니다. 작성 내용은 유지됩니다.',
+    (data.recovery && data.recovery.action) || 'reconnect_capture');
+  return true;
+}
+
 // ── 화면 전환 감지기 ─────────────────────────────────────────────
 // 4초마다 page_source 해시를 확인 → 변경되면 hierarchy 자동 새로고침
 // hierarchy 새로고침이 최근 3초 이내에 있었으면 스킵 (중복 방지)
@@ -31,11 +57,11 @@ function csStartScreenWatcher() {
   _cs.screenWatcher = setInterval(function() {
     if (!_cs.sessionId || _cs.launching || checking) return;
     checking = true;
-    fetch('/capture/page_source_hash', {signal: AbortSignal.timeout(12000)})
+    csCaptureRead('/capture/page_source_hash')
       .then(function(r){ return r.json(); })
       .then(function(d){
         if(generation !== _cs.mirrorGeneration) return;
-        if(d.reconnect_required){ csLaunchFailed("기기 연결이 끊겼습니다. 작성 내용은 유지됩니다. 같은 기기로 세션 재연결을 눌러주세요."); return; }
+        if(csRecoveryFailure(d)) return;
         if (!d.ok || !d.hash) return;
         if (_cs.screenHash && _cs.screenHash !== d.hash) {
           // 화면이 바뀜 — hierarchy 새로고침 (쿨다운 3초)
@@ -159,7 +185,7 @@ function csInit() {
         if(devNameEl && !devNameEl.value) devNameEl.value = d.session.device_name || '';
 
         // 드라이버 상태 확인 후 분기
-        fetch('/capture/driver_alive').then(function(r2){ return r2.json(); }).then(function(d2){
+        csDriverAlive().then(function(d2){
           var statusEl2 = document.getElementById('cs-setup-status');
           if(d2.alive){
             // 드라이버 살아있음 → workspace로 이동
@@ -185,6 +211,13 @@ function csInit() {
                 + '<button class="cs-btn" onclick="csForceNewSession()" style="padding:4px 14px;font-size:11px;color:var(--text3)">새 세션 시작</button>'
                 + '</div>';
               statusEl2.style.color='var(--warn)';
+              if(d2.recovery){
+                statusEl2.replaceChildren();
+                var guidance = document.createElement('p');
+                guidance.textContent = d2.recovery.message;
+                statusEl2.appendChild(guidance);
+                csRecoveryControl(statusEl2, d2.recovery.action, csReLaunchFromSetup);
+              }
             }
             document.getElementById('cs-session-badge').style.display='';
           }
@@ -235,7 +268,7 @@ function csReLaunch() {
       csStartScreenWatcher();
       setTimeout(csRefreshHierarchy, 1500);
     } else {
-      csLaunchFailed(' 재실행 실패: ' + (d.error||'알 수 없는 오류'));
+      if(!csRecoveryFailure(d)) csLaunchFailed(' 재실행 실패: ' + (d.error||'알 수 없는 오류'));
     }
   }).catch(function(err){
     clearTimeout(_launchTimer); clearInterval(_reProgressTimer);
@@ -485,7 +518,7 @@ function csStartSession() {
           csMcpStartPoll();
         } else {
           // 백엔드가 이미 친화적 메시지를 반환 (_friendly_appium_error) → 그대로 표시
-          var errMsg = d2.error || '알 수 없는 오류가 발생했습니다.';
+          var errMsg = (d2.recovery && d2.recovery.message) || d2.error || '알 수 없는 오류가 발생했습니다.';
           statusEl.textContent = ' 앱 실행 실패: ' + errMsg;
           statusEl.style.color = 'var(--fail)';
           // 세션은 생성됐으므로 워크스페이스는 진입 허용
@@ -494,7 +527,7 @@ function csStartSession() {
           document.getElementById('cs-session-badge').style.display='';
           var _devLabel = isIos ? (document.getElementById('cs-device-name') ? document.getElementById('cs-device-name').value.trim() : '') : (d2.device_name || '');
           csInfoStripShow(platform, _devLabel, group);
-          csLaunchFailed(statusEl.textContent);
+          if(!csRecoveryFailure(d2)) csLaunchFailed(statusEl.textContent);
         }
       }).catch(function(err2){
         clearTimeout(_launchTimer);
@@ -543,7 +576,25 @@ function csMirrorDisconnect() {
   if(img) { img.onload = img.onerror = null; img.removeAttribute('src'); img.style.display = 'none'; }
 }
 
-function csLaunchFailed(message) {
+function csRecoveryControl(container, action, reconnect) {
+  if(!action || action === 'reconnect_capture') {
+    var retry = document.createElement('button');
+    retry.type = 'button';
+    retry.className = 'cs-btn primary';
+    retry.textContent = '세션 재연결';
+    retry.onclick = reconnect;
+    container.appendChild(retry);
+  } else {
+    var link = document.createElement('a');
+    link.className = 'cs-btn';
+    var environment = ['check_environment', 'review_configuration'].includes(action);
+    link.href = environment ? '/?view=config' : '/?view=history';
+    link.textContent = environment ? '환경 설정 확인' : '실행 기록 확인';
+    container.appendChild(link);
+  }
+}
+
+function csLaunchFailed(message, action) {
   csMirrorDisconnect();
   csStopScreenWatcher();
   var status = document.getElementById('cs-save-status');
@@ -556,11 +607,7 @@ function csLaunchFailed(message) {
     error.setAttribute('role', 'alert');
     error.style.cssText = 'color:var(--fail);padding:12px;white-space:pre-wrap';
     error.textContent = message + '\n';
-    var retry = document.createElement('button');
-    retry.className = 'cs-btn primary';
-    retry.textContent = '세션 재연결';
-    retry.onclick = csReLaunch;
-    error.appendChild(retry);
+    csRecoveryControl(error, action, csReLaunch);
     placeholder.appendChild(error);
     placeholder.style.display = '';
   }
@@ -597,10 +644,14 @@ function csMirrorConnect() {
     var _pollFailCount = 0;
     var _POLL_FAIL_THRESHOLD = 25; // 25회 연속 실패 후 에러 표시 (약 30초 — WDA 안정화 여유)
     var _firstFrame = true;
+    var _pollBusy = false;
 
     function doPoll() {
-      fetch('/capture/screenshot').then(function(r){ return r.json(); }).then(function(d){
+      if(_pollBusy || generation !== _cs.mirrorGeneration || _cs.launching) return;
+      _pollBusy = true;
+      csCaptureRead('/capture/screenshot').then(function(r){ return r.json(); }).then(function(d){
         if(generation !== _cs.mirrorGeneration) return;
+        if(csRecoveryFailure(d)) return;
         if(d.ok && d.data){
           _cs.mirrorConnected = true;
           csSubStatusConn(true);
@@ -646,7 +697,7 @@ function csMirrorConnect() {
         _cs.mirrorConnected = false;
         csSubStatusConn(false);
         _pollFailCount++;
-      });
+      }).finally(function(){ _pollBusy = false; });
     }
     doPoll();
     _cs.pollTimer = setInterval(doPoll, 1200);

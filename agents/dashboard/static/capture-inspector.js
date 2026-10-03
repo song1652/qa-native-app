@@ -577,12 +577,13 @@ function csRefreshHierarchy(retryCount) {
   // 드라이버가 살아있으면 fresh snapshot → 파일 로드, 없으면 바로 파일 로드
   if(!_cs.sessionId){ _csLoadHierarchyFromFile(retryCount); return; }
 
-  fetch('/capture/driver_alive').then(function(r){ return r.json(); }).then(function(d){
+  csDriverAlive().then(function(d){
+    if(csRecoveryFailure(d)){ _csLoadHierarchyFromFile(retryCount); return; }
     if(d.alive){
-      fetch('/capture/snapshot', {
+      csCaptureRead('/capture/snapshot', {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({session_id: _cs.sessionId, context: _cs.context})
-      }).then(function(){ _csLoadHierarchyFromFile(retryCount); })
+      }).then(function(r){ return r.json(); }).then(function(snapshot){ csRecoveryFailure(snapshot); _csLoadHierarchyFromFile(retryCount); })
         .catch(function(){ _csLoadHierarchyFromFile(retryCount); });
     } else {
       // 드라이버 없음 — 디스크 파일에서 바로 로드
@@ -593,7 +594,7 @@ function csRefreshHierarchy(retryCount) {
 
 function _csLoadHierarchyFromFile(retryCount) {
   retryCount = retryCount || 0;
-  fetch('/capture/hierarchy?session_id=' + encodeURIComponent(_cs.sessionId) + '&context=' + _cs.context)
+  csCaptureRead('/capture/hierarchy?session_id=' + encodeURIComponent(_cs.sessionId) + '&context=' + _cs.context)
     .then(function(r){ return r.json(); }).then(function(d){
       var treeEl = document.getElementById('cs-hierarchy-tree');
       if (d.hierarchy) {
@@ -611,10 +612,13 @@ function _csLoadHierarchyFromFile(retryCount) {
         } catch (e) {
           treeEl.textContent = d.hierarchy.substring(0, 8000);
         }
+      } else if (d.recovery || d.reconnect_required) {
+        csRecoveryFailure(d);
+        treeEl.textContent = (d.recovery && d.recovery.message) || '연결을 확인하세요. 작성 내용은 유지됩니다.';
       } else if (retryCount < 3) {
         // hierarchy 없음 → 드라이버 준비 중일 수 있으므로 재시도
         treeEl.innerHTML = '<span style="color:var(--text3)">hierarchy 대기 중... (' + (retryCount + 1) + '/3)</span>';
-        setTimeout(function(){ csRefreshHierarchy(retryCount + 1); }, 3000);
+        setTimeout(function(){ _csLoadHierarchyFromFile(retryCount + 1); }, 3000);
       } else {
         treeEl.innerHTML = '<span style="color:var(--text3)">hierarchy 없음</span>';
         _csHierarchyDom = null;

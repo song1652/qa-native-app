@@ -90,6 +90,7 @@ def test_full_run_heals_failed_execute_with_same_environment(harness, monkeypatc
                 self.returncode = 0
             return self.returncode
     monkeypatch.setattr(pipeline.subprocess, 'Popen', Process)
+    monkeypatch.setattr(pipeline, 'read_execution_result', lambda *_: {'status': 'failed', 'execute_results': {'errors': [{'error': 'NoSuchElementException'}]}})
     # Exhausted retries must not actually publish a Jira issue.
     monkeypatch.setattr(pipeline.subprocess, 'run', lambda *_a, **_k: SimpleNamespace(stdout='', stderr=''))
     response = client.post('/api/run_all', json={'tc_folders': ['one'], 'from_tc_studio': True})
@@ -181,8 +182,8 @@ def test_log_result_uses_its_run_not_latest_global_state(harness, monkeypatch, t
     assert client.post('/api/run_log', json={'log': 'missing.txt'}).json()['result']['summary'] == {}
 
 @pytest.mark.parametrize('quick', [False, True])
-@pytest.mark.parametrize('heal_code,executions', [(1, 2), (-15, 1), (143, 1)])
-def test_partial_heal_is_reexecuted_but_signalled_heal_is_not(harness, monkeypatch, quick, heal_code, executions):
+@pytest.mark.parametrize('heal_code,executions', [(0, 2), (1, 1), (-15, 1), (143, 1)])
+def test_only_successful_heal_is_reexecuted(harness, monkeypatch, quick, heal_code, executions):
     client, jobs, commands = harness
     base = pipeline.subprocess.Popen
     attempts = []
@@ -198,6 +199,7 @@ def test_partial_heal_is_reexecuted_but_signalled_heal_is_not(harness, monkeypat
                 self.returncode = heal_code
             return self.returncode
     monkeypatch.setattr(pipeline.subprocess, 'Popen', Process)
+    monkeypatch.setattr(pipeline, 'read_execution_result', lambda *_: {'status': 'failed', 'execute_results': {'errors': [{'error': 'NoSuchElementException'}]}})
     if quick:
         client.post('/api/run_test', json={'test_folder': 'one'})
     else:

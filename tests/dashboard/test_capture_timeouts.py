@@ -62,7 +62,9 @@ def test_launch_timeout_keeps_lock_until_late_driver_is_disposed():
     ):
         run_async(scenario())
     publish.assert_not_called()
-    save.assert_not_called()
+    assert save.call_args.args[0]["connection_issue_at"]
+    assert save.call_args.args[0]["session_id"] == "draft"
+    assert "device_name" not in save.call_args.args[0]
     driver.quit.assert_called_once()
     assert not capture._capture_launch_lock.locked()
 
@@ -76,7 +78,7 @@ def test_liveness_wait_does_not_block_other_requests():
         assert not check.done(), 'Appium liveness blocked event loop'
         release.set()
         assert json.loads((await check).body)['alive']
-    with patch.object(capture, 'get_capture_driver', return_value=driver):
+    with patch.object(capture, 'get_capture_driver', return_value=driver), patch.object(capture, 'load_capture_session', return_value={'session_id': 'draft', 'active': True}):
         run_async(scenario())
 
 
@@ -123,7 +125,7 @@ def test_cancelled_request_does_not_release_launch_ownership_early():
 def test_failed_old_liveness_does_not_disconnect_replacement():
     old = SimpleNamespace(get_window_size=Mock(side_effect=TimeoutError('device gone')))
     replacement = SimpleNamespace()
-    with patch.object(capture, 'get_capture_driver', return_value=old), patch.object(capture.shared, '_capture_driver', replacement):
+    with patch.object(capture, 'get_capture_driver', return_value=old), patch.object(capture.shared, '_capture_driver', replacement), patch.object(capture, 'load_capture_session', return_value={'session_id': 'draft', 'active': True}):
         response = run_async(capture.capture_driver_alive())
         assert capture.shared.get_capture_driver() is replacement
     assert not json.loads(response.body)['alive']

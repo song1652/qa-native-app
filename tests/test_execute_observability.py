@@ -28,19 +28,19 @@ def test_html_report_options_are_added_when_plugin_exists(monkeypatch):
     ]
 
 
-def test_rerun_options_are_omitted_when_single_attempt_is_requested(monkeypatch):
+def test_rerun_plugin_is_disabled_when_single_attempt_is_requested(monkeypatch):
     module = _module()
     monkeypatch.setattr(module, "_has_rerun_plugin", lambda: True)
 
-    assert module._pytest_rerun_options(disabled=True) == []
+    assert module._pytest_rerun_options(disabled=True) == ["-p", "no:rerunfailures"]
 
 
-def test_rerun_options_keep_existing_policy_when_enabled(monkeypatch):
+def test_rerun_plugin_is_disabled_even_when_legacy_retries_enabled(monkeypatch):
     module = _module()
     monkeypatch.setattr(module, "_has_rerun_plugin", lambda: True)
 
     assert module._pytest_rerun_options(disabled=False) == [
-        "--reruns", "2", "--reruns-delay", "5"
+        "-p", "no:rerunfailures"
     ]
 
 

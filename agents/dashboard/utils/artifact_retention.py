@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path
 import shutil
@@ -38,25 +38,48 @@ def _tree_size(path: Path) -> int:
     return total
 
 
-def _manifest_state(run_dir: Path, now: datetime, grace: timedelta) -> tuple[str, datetime]:
-    """Return (protected|deletable, ordering timestamp)."""
-    manifest_path = run_dir / "artifacts" / "manifest.json"
-    started_at = datetime.min
+def _read_metadata(path: Path) -> dict:
     try:
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        raw_started = manifest.get("started_at")
-        if raw_started:
-            started_at = datetime.fromisoformat(str(raw_started))
-        if manifest.get("finished_at") is None and raw_started:
-            comparable_now = now
-            if started_at.tzinfo and not comparable_now.tzinfo:
-                comparable_now = comparable_now.replace(tzinfo=started_at.tzinfo)
-            elif comparable_now.tzinfo and not started_at.tzinfo:
-                started_at = started_at.replace(tzinfo=comparable_now.tzinfo)
-            if comparable_now - started_at < grace:
-                return "protected", started_at
-    except (OSError, ValueError, TypeError, json.JSONDecodeError):
-        pass
+        value = json.loads(path.read_text(encoding="utf-8"))
+        return value if isinstance(value, dict) else {}
+    except (OSError, ValueError, TypeError):
+        return {}
+
+
+def _utc_timestamp(value) -> datetime | None:
+    try:
+        # Legacy manifests use naive local datetime.now(); results carry UTC.
+        return datetime.fromisoformat(str(value)).astimezone(timezone.utc)
+    except (ValueError, TypeError, OverflowError):
+        return None
+
+
+def _manifest_state(run_dir: Path, now: datetime, grace: timedelta) -> tuple[str, datetime]:
+    """Use owned outcomes for runs that never produced an artifact manifest."""
+    manifest = _read_metadata(run_dir / "artifacts" / "manifest.json")
+    result = _read_metadata(run_dir / "execution_result.json")
+    if result.get("run_id") != run_dir.name:
+        result = {}
+    manifest_started = _utc_timestamp(manifest.get("started_at"))
+    started_at = (_utc_timestamp(result.get("started_at")) or manifest_started
+                  or _utc_timestamp(result.get("finished_at"))
+                  or _utc_timestamp(manifest.get("finished_at")))
+    if started_at is None:
+        try:
+            started_at = datetime.fromtimestamp(run_dir.stat().st_mtime, timezone.utc)
+        except OSError:
+            started_at = now
+    status = result.get("status")
+    if not isinstance(status, str):
+        status = None
+    if status in {"passed", "failed", "cancelled", "timed_out", "interrupted", "incomplete"}:
+        active = False
+    elif status == "running":
+        active = True
+    else:
+        active = manifest.get("finished_at") is None and manifest_started is not None
+    if active and now - started_at < grace:
+        return "protected", started_at
     return "deletable", started_at
 
 
@@ -80,7 +103,7 @@ def purge_old_runs(
     if not runs_dir.exists():
         return empty
 
-    now = now or datetime.now()
+    now = (now or datetime.now()).astimezone(timezone.utc)
     grace = timedelta(hours=max(0, active_grace_hours))
     protected: list[tuple[datetime, Path, int]] = []
     deletable: list[tuple[datetime, Path, int]] = []
