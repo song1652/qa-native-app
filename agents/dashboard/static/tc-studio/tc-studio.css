@@ -435,8 +435,8 @@
 .tc-studio .panel-head{font-size:15px;font-weight:600;padding:14px 16px}
 .tc-studio .panel-body{padding:16px}
 .tc-studio .wrap{padding:20px 0;gap:20px}
-.tc-studio .lib{margin-top:20px;grid-template-columns:200px minmax(0,1fr) 380px;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--surface)}
-.tc-studio .lib.no-detail{grid-template-columns:200px minmax(0,1fr)}
+.tc-studio .lib{margin-top:20px;grid-template-columns:240px minmax(0,1fr) 380px;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--surface)}
+.tc-studio .lib.no-detail{grid-template-columns:240px minmax(0,1fr)}
 .tc-studio .tree-pane{background:var(--surface)}
 .tc-studio .filterbar{padding:12px;gap:8px;background:var(--surface)}
 .tc-studio .grid-meta{padding:12px;flex-wrap:wrap}
@@ -448,7 +448,7 @@
 .tc-studio .bulkbar{background:var(--accent-bg);box-shadow:none;border-color:var(--border)}
 .tc-studio .bulk-more{position:relative}.tc-studio .bulk-more summary{cursor:pointer;list-style:none;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);white-space:nowrap}
 .tc-studio .bulk-more>div{position:absolute;bottom:100%;right:0;min-width:180px;display:grid;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px;z-index:20}
-@container tcslib (min-width:1050px){.tc-studio .lib:not(.no-detail):not(.tree-hidden){grid-template-columns:200px minmax(0,1fr) 380px}.tc-studio .lib:not(.no-detail):not(.tree-hidden) .tree-pane{display:block}.tc-studio .lib .detail{position:relative;width:auto;max-height:none;box-shadow:none;z-index:auto}}
+@container tcslib (min-width:1050px){.tc-studio .lib:not(.no-detail):not(.tree-hidden){grid-template-columns:240px minmax(0,1fr) 380px}.tc-studio .lib:not(.no-detail):not(.tree-hidden) .tree-pane{display:block}.tc-studio .lib .detail{position:relative;width:auto;max-height:none;box-shadow:none;z-index:auto}}
 @container tcslib (max-width:760px){.tc-studio .lib,.tc-studio .lib.no-detail{grid-template-columns:minmax(0,1fr)}}
 .tc-studio .step-item{border-radius:0}
 .tc-studio .label{font-size:12px;letter-spacing:0;text-transform:none;font-weight:500;color:var(--text-2)}
@@ -502,30 +502,20 @@
 .tc-studio .step-item{padding:10px 0}
 .tc-studio .step-item[aria-selected="true"] .step-label{color:var(--text)}
 .tc-studio .step-label{font-weight:400}.tc-studio .step-item[aria-selected="true"] .step-label{font-weight:600}
-.tc-studio #screen-library>.filterbar{margin-top:20px;padding:0;border:0;background:transparent;flex-wrap:wrap}
-.tc-studio #screen-library>.filterbar .search{flex:1 1 240px;min-width:180px}
-.tc-studio #screen-library>.grid-meta{padding:20px 0 0;gap:8px}
-.tc-studio .lib{gap:16px;border:0;border-radius:0;background:transparent;align-items:start;min-height:0}
-.tc-studio .tree-pane,.tc-studio .center,.tc-studio .detail{border:1px solid var(--border);border-radius:8px;overflow:hidden}
-.tc-studio .tree-pane{min-height:340px}.tc-studio .tree-tools{padding:12px}.tc-studio .center{min-width:0;background:var(--surface)}
-.tc-studio .grid-wrap{margin:0;border:0;border-radius:0;max-height:580px}
+.tc-studio #screen-library .filterbar{order:-3;padding:12px;border-bottom:1px solid var(--border);background:transparent;flex-wrap:wrap}
+.tc-studio #screen-library .filterbar .search{flex:1 1 240px;min-width:180px}
+.tc-studio #screen-library .grid-meta{order:-2;padding:12px;gap:8px}
+/* 트리·표·상세를 한 카드로 묶고 화면 높이까지 채운다 */
+.tc-studio .lib{gap:0;border:1px solid var(--border);border-radius:8px;background:var(--surface);overflow:hidden;align-items:stretch;min-height:0}
+.tc-studio .tree-pane,.tc-studio .center,.tc-studio .detail{border:0;border-radius:0;overflow:hidden}
+.tc-studio .tree-pane{border-right:1px solid var(--border)}.tc-studio .detail{border-left:1px solid var(--border)}
+/* 상세 하단 버튼(저장·삭제)이 카드 맨 아래에 붙으므로 그동안 토스트를 그 위로 올린다 */
+.tc-studio:has(#screen-library.active .lib:not(.no-detail)) .toasts{bottom:calc(96px + env(safe-area-inset-bottom, 0px))}
+.tc-studio .tree-tools{padding:12px}.tc-studio .tree-tools>.row{flex-wrap:nowrap;gap:6px;min-width:0}.tc-studio .tree-tools>.row>.faint{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tc-studio .tree-tools>.row>.icon-btn{flex:none}.tc-studio .center{min-width:0;min-height:0;background:var(--surface)}
+.tc-studio .grid-wrap{margin:0 12px 12px;border:1px solid var(--border);border-radius:6px;max-height:580px}
+@container tcslib (min-width:761px){.tc-studio .lib{height:max(560px,calc(100vh - 210px))}.tc-studio .grid-wrap{max-height:none;min-height:0}.tc-studio .tree{max-height:none;flex:1;min-height:0}}
 .tc-studio .bulkbar{order:-1;position:relative;bottom:auto;margin:0;border:0;border-bottom:1px solid var(--border);border-radius:0;padding:10px 12px;gap:6px}
 .tc-studio .bulkbar select{max-width:96px;font-size:12px}.tc-studio .bulk-more>div{top:100%;bottom:auto}
-.tc-studio .grid:not(.show-extra-columns){min-width:0;table-layout:fixed}
-.tc-studio .grid:not(.show-extra-columns) :is(th,td,col):is(:nth-child(3),:nth-child(4),:nth-child(5),:nth-child(6),:nth-child(8),:nth-child(9),:nth-child(10)){display:none}
-.tc-studio .grid:not(.show-extra-columns) col:nth-child(1){width:30px!important}
-.tc-studio .grid:not(.show-extra-columns) col:nth-child(2){width:18px!important}
-.tc-studio .grid:not(.show-extra-columns) col:nth-child(7){width:auto!important}
-.tc-studio .grid:not(.show-extra-columns) col:nth-child(11){width:58px!important}
-.tc-studio .grid:not(.show-extra-columns) col:is(:nth-child(12),:nth-child(13),:nth-child(14)){width:68px!important}
-.tc-studio .grid:not(.show-extra-columns) col:nth-child(15){width:58px!important}
-.tc-studio .grid:not(.show-extra-columns) td{padding:12px 5px}
-.tc-studio .grid:not(.show-extra-columns) th{padding:10px 5px}
-.tc-studio .grid:not(.show-extra-columns) .chip-select{max-width:100%;padding:3px 2px;font-size:12px;border:0;background:transparent}
-.tc-studio .grid:not(.show-extra-columns) .etc>span:not(.pill){display:none}
-.tc-studio .compact-case-id{display:block;color:var(--text-3);font-size:11px;margin-bottom:2px}
-.tc-studio .grid.show-extra-columns .compact-case-id{display:none}
-.tc-studio .grid:not(.show-extra-columns) .grid-more td,.tc-studio .grid:not(.show-extra-columns) td[colspan]{display:table-cell}
 .tc-studio .detail-head{padding:14px 16px}.tc-studio .detail-body{padding:16px}
 /* 1440px 화면에서 생성 행동이 작성 규칙 아래에 보이도록 간격을 맞춘다. */
 .tc-studio .gen>.panel .panel-body{gap:12px!important}
@@ -593,9 +583,6 @@
 .tc-studio #import-history-detail:empty::before{content:'작업을 선택하면 변경 내용과 되돌리기 옵션을 확인할 수 있습니다.';color:var(--text-3);font-size:13px}
 .tc-studio #import-custom-mapping>.row:has([data-map]){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 16px}
 .tc-studio #import-custom-mapping label.field{width:auto!important;display:grid;grid-template-columns:110px minmax(0,1fr);align-items:center;font-size:13px}
-.tc-studio .grid:not(.show-extra-columns) .chip-select.result-pass{background:var(--pass-bg);color:var(--pass)}
-.tc-studio .grid:not(.show-extra-columns) .chip-select.result-fail{background:var(--fail-bg);color:var(--fail)}
-.tc-studio .grid:not(.show-extra-columns) .chip-select.result-none{background:var(--surface-sub);color:var(--text-2)}
 .tc-studio .detail .two{grid-template-columns:repeat(2,minmax(0,1fr))}
 .tc-studio .detail .two .field:has(#detail-status){grid-column:2;grid-row:1}
 .tc-studio .detail .two .field:has(#detail-result-android){grid-column:1;grid-row:2}
@@ -620,13 +607,10 @@
 .tc-studio #import-history-list>.row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px}
 .tc-studio #import-history-list>.row>.spacer{display:none}
 .tc-studio #import-history-list>.row>span:first-child{min-width:0}
-.tc-studio .grid:not(.show-extra-columns) .chip-select{border-radius:4px;min-height:24px;height:24px}
-.tc-studio .grid-meta>.fchip{min-height:30px;border-radius:6px;background:var(--surface);border:1px solid var(--border);font-size:12px}
-.tc-studio #screen-library>.filterbar{flex-wrap:nowrap}
-.tc-studio #screen-library>.filterbar .search{flex:1;min-width:150px}
-.tc-studio #screen-library>.filterbar .fselect{max-width:125px;font-size:12px;padding:0 8px}
-.tc-studio #screen-library>.filterbar #lib-filter-mismatch{order:10}
-@media(max-width:1200px){.tc-studio #screen-library>.filterbar{flex-wrap:wrap}}
+.tc-studio :is(.grid-meta,.filterbar)>.fchip{min-height:30px;border-radius:6px;background:var(--surface);border:1px solid var(--border);font-size:12px}
+.tc-studio #screen-library .filterbar .search{flex:1;min-width:150px}
+.tc-studio #screen-library .filterbar .fselect{max-width:125px;font-size:12px;padding:0 8px}
+.tc-studio #screen-library .filterbar #lib-filter-mismatch{order:10}
 
 /* Keep all studio screens and dialog fields readable on narrow displays. */
 @media(max-width:600px){

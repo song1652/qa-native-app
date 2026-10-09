@@ -52,7 +52,7 @@ def test_excel_modal_escape_closes_and_restores_opener(page, tc_server):
     expect(opener).to_be_focused()
 
 
-def test_library_defaults_to_excel_columns_and_optional_compact_view(page, tc_server):
+def test_library_shows_all_excel_columns(page, tc_server):
     import _tc_library as lib
     from _tc_model import new_case
     lib.import_cases('excel-columns', ['Sheet'], [new_case(case_id='COL_0001', sheet='Sheet',
@@ -70,13 +70,7 @@ def test_library_defaults_to_excel_columns_and_optional_compact_view(page, tc_se
     expect(page.locator('#grid-body')).to_contain_text('앱 실행 완료')
     expect(page.locator('#grid-body')).to_contain_text('1. 메뉴를 누른다')
     expect(page.locator('#grid-body')).to_contain_text('메뉴 화면 표시')
-    toggle=page.locator('#grid-extra-columns')
-    expect(toggle).to_have_text('간략 표 보기')
-    toggle.click()
-    expect(page.locator('#grid th:nth-child(4)')).to_be_hidden()
-    expect(toggle).to_have_text('전체 열 보기')
-    toggle.click()
-    expect(page.locator('#grid th:nth-child(4)')).to_be_visible()
+    expect(page.locator('#grid-extra-columns')).to_have_count(0)
     page.locator('#grid-body [data-edit="feature"]').click()
     expect(page.locator('#detail')).to_be_visible()
     page.locator('#detail-close').click()
