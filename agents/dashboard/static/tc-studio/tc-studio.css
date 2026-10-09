@@ -568,6 +568,7 @@
 .tc-studio #md-preview-panel :is(td,th){padding:14px 16px}
 .tc-studio #md-preview-panel>.row:last-of-type{padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:8px}
 @media(max-width:1100px){.tc-studio .review{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.tc-studio .rv-right{grid-column:1/-1;grid-row:auto}.tc-studio #review-case-list{grid-column:1}.tc-studio #drafts{grid-column:2}}
+@media(min-width:1800px){.tc-studio .review{grid-template-columns:minmax(0,400px) minmax(0,1fr) minmax(0,560px)}}
 .tc-studio .suite-label{font-size:13px;color:var(--text-2)}
 .tc-studio .rv-list-pane{grid-column:1;grid-row:2;display:grid;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--surface)}
 .tc-studio .rv-list-pane>.row{padding:12px;display:flex;flex-wrap:wrap;gap:8px}

@@ -251,8 +251,10 @@
         <td><div class="etc"><span>id:${c.case_id}</span><span class="pill st-${c.status}" data-id="grid-status-chip">${NS.STATUS_LABEL[c.status]}</span>${c.note ? `<span>${esc(c.note)}</span>` : ''}</div></td>
       </tr>`;
   }
+  // 숨긴 열(스위트·간략 보기)까지 세면 폭 없는 가짜 열이 남는 너비를 가져가 넓은 화면에서 헤더가 끝까지 안 찬다
+  const spanCols = () => $$('#grid thead th', root).filter((th) => getComputedStyle(th).display !== 'none').length;
   const moreHtml = () => (shown < state.items.length
-    ? `<tr class="grid-more" id="grid-more" data-id="grid-more"><td colspan="15">${shown.toLocaleString()} / ${state.items.length.toLocaleString()}건 표시 · 스크롤하면 더 불러옵니다</td></tr>`
+    ? `<tr class="grid-more" id="grid-more" data-id="grid-more"><td colspan="${spanCols()}">${shown.toLocaleString()} / ${state.items.length.toLocaleString()}건 표시 · 스크롤하면 더 불러옵니다</td></tr>`
     : '');
 
   // keep: 저장·선택 뒤 다시 그릴 때 지금까지 펼친 행 수를 유지한다 (스크롤 위치 보존)
@@ -262,7 +264,7 @@
     $('#grid', root).classList.toggle('no-l2', !state.items.some((c) => c.path[1]));
     $('#grid', root).classList.toggle('no-l3', !state.items.some((c) => c.path[2]));
     $('#grid-body', root).innerHTML = (state.items.slice(0, shown).map(rowHtml).join('') + moreHtml())
-      || `<tr><td colspan="15" style="text-align:center;padding:40px;color:var(--text3)" data-id="grid-empty-filter">조건에 맞는 케이스가 없습니다.</td></tr>`;
+      || `<tr><td colspan="${spanCols()}" style="text-align:center;padding:40px;color:var(--text3)" data-id="grid-empty-filter">조건에 맞는 케이스가 없습니다.</td></tr>`;
     $('#grid-crumb', root).textContent = state.filters.path.replaceAll('/', ' › ') || state.suite;
     $('#grid-count', root).textContent = `${state.total}건`;
     $('#n-invalid', root).textContent = state.items.filter((c) => c.has_error).length;
@@ -498,6 +500,7 @@
       const expanded = $('#grid', root).classList.toggle('show-extra-columns');
       e.currentTarget.setAttribute('aria-pressed', expanded);
       e.currentTarget.textContent = expanded ? '간략 표 보기' : '전체 열 보기';
+      $$('#grid-body td[colspan]', root).forEach((td) => { td.colSpan = spanCols(); });
     });
     const onFilter = (id, k, map = (v) => v) => $(id, root).addEventListener('change', (e) => {
       state.filters[k] = map(e.target.value);
