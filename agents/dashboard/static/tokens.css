@@ -26,6 +26,7 @@
 
   --radius-badge: 4px; --radius-control: 6px; --radius-card: 8px; --radius-modal: 10px;
   --control-h: 34px; --control-h-lg: 44px;
+  --page-max: 2000px; --form-max: 1440px;
   --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
   --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-12: 48px;
 }
